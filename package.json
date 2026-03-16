@@ -53,6 +53,9 @@
     "ts-jest": "29.2.5",
     "typescript": "5.3.3"
   },
+  "overrides": {
+    "@babel/helpers": ">=7.26.10"
+  },
   "publishConfig": {
     "access": "public"
   }
