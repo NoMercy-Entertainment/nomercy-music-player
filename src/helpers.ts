@@ -43,7 +43,19 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     protected siteTitle: string = 'NoMercy Player';
     protected disableAutoPlayback: boolean = false;
     public _crossfadePrepared: boolean = false;
+    /**
+     * True while a crossfade transition is actively running.
+     * Checked by consuming apps to suppress server-side auto-advance.
+     */
+    public _crossfadeActive: boolean = false;
     public _debug: boolean = false;
+
+    /**
+     * Optional callbacks wired up by the consuming app to coordinate
+     * with the server. See PlayerOptions for full documentation.
+     */
+    public onCrossfadeStart?: () => void;
+    public onCrossfadeComplete?: () => void;
 
     _log(tag: string, message: string): void {
         if (!this._debug) return;
@@ -286,6 +298,8 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     emit(event: 'setPreGain', data: number): void;
     emit(event: 'setPanner', data: number): void;
     emit(event: 'setFilter', data: EQBand): void;
+    emit(event: 'crossfadeStart'): void;
+    emit(event: 'crossfadeComplete'): void;
     emit(event: any, data?: any): void {
         this.eventTarget?.dispatchEvent?.(new CustomEvent(event, {
             detail: data,
@@ -328,6 +342,8 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     on(event: 'setPreGain', callback: (data: number) => void): void;
     on(event: 'setPanner', callback: (data: number) => void): void;
     on(event: 'setFilter', callback: (data: EQBand) => void): void;
+    on(event: 'crossfadeStart', callback: () => void): void;
+    on(event: 'crossfadeComplete', callback: () => void): void;
     on(event: any, callback: (arg: any) => any) {
         const cb = (e: Event) => callback((e as CustomEvent).detail);
         cb.original = callback; // Store original callback reference
@@ -373,6 +389,8 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     off(event: 'setPreGain',callback?: () => void): void;
     off(event: 'setPanner',callback?: () => void): void;
     off(event: 'setFilter',callback?: () => void): void;
+    off(event: 'crossfadeStart',callback?: () => void): void;
+    off(event: 'crossfadeComplete',callback?: () => void): void;
     off(event: any, callback?: () => void) {
         if (callback) {
             // Find event with matching original callback
@@ -441,6 +459,8 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     once(event: 'setPreGain', callback: (data: number) => void): void;
     once(event: 'setPanner', callback: (data: number) => void): void;
     once(event: 'setFilter', callback: (data: EQBand) => void): void;
+    once(event: 'crossfadeStart', callback: () => void): void;
+    once(event: 'crossfadeComplete', callback: () => void): void;
     once(event: any, callback: (arg: any) => any) {
         this.eventTarget.addEventListener(event, e => callback((e as CustomEvent).detail), {once: true});
     }

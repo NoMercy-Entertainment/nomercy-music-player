@@ -48,6 +48,13 @@ export class PlayerCore<S extends BasePlaylistItem> extends Queue<S> {
       this._debug = config.debug;
     }
 
+    if (config.onCrossfadeStart) {
+      this.onCrossfadeStart = config.onCrossfadeStart;
+    }
+    if (config.onCrossfadeComplete) {
+      this.onCrossfadeComplete = config.onCrossfadeComplete;
+    }
+
 	this.actions = config.actions;
   }
 
@@ -78,6 +85,15 @@ export class PlayerCore<S extends BasePlaylistItem> extends Queue<S> {
     this._currentAudio.stop();
     this.currentSong = null;
     this.state = PlayerState.STOPPED;
+
+    // If a crossfade was in progress when stop was called (e.g. disconnect),
+    // notify the server that it can resume normal auto-advance.
+    if (this._crossfadeActive) {
+      this._crossfadeActive = false;
+      this._crossfadePrepared = false;
+      this.emit("crossfadeComplete");
+      this.onCrossfadeComplete?.();
+    }
 
     this.emit("song", null);
     this.emit("stop");

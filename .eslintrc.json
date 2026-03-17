@@ -20,7 +20,7 @@
     "no-mixed-spaces-and-tabs": "off",
     "@typescript-eslint/no-explicit-any": "off"
   },
-  "ignorePatterns": ["node_modules", "dist"],
+  "ignorePatterns": ["node_modules", "dist", "examples"],
   "settings": {
     "import/resolver": {
       "node": {

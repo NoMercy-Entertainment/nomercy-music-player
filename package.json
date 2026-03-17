@@ -40,7 +40,7 @@
     "NoMercy"
   ],
   "dependencies": {
-    "@nomercy-entertainment/media-session": "0.2.5",
+    "@nomercy-entertainment/media-session": "^1.0.1",
     "audiomotion-analyzer": "4.5.4",
     "hls.js": "1.6.15"
   },

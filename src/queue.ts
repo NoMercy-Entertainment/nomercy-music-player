@@ -116,8 +116,13 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
             this.setCurrentSong(nexItem);
             this.removeFromQueue(nexItem);
         } else {
-            // TODO: find new items to play
-
+            // Queue is empty and there are no more tracks to fetch from an external
+            // source (that responsibility belongs to the consuming app via SignalR /
+            // StartPlaybackCommand). The fallback here is to wrap the backlog back
+            // into the queue and replay from the beginning — this matches the
+            // behaviour expected when repeat=all is not set but the user has no
+            // more tracks queued. If the server is driving playback it will issue
+            // a new StartPlaybackCommand before this branch is ever reached.
             this.setCurrentSong(this._backLog[0]);
             this.setQueue(this._backLog.slice(1));
 
@@ -173,6 +178,11 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
     /**
      * Server-driven crossfade: load the next track into the secondary audio node
      * so crossfade can begin when startFadeOut fires.
+     *
+     * The consuming app should pass onCrossfadeStart / onCrossfadeComplete via
+     * PlayerOptions to notify the server (e.g. via SignalR) to suppress its own
+     * auto-advance timer while the client is driving the transition. If the client
+     * disconnects mid-crossfade the server timer will fire as a safety fallback.
      */
     public prepareCrossfade(item?: S): void {
         if (this._repeat === 'one') return;
@@ -180,6 +190,14 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
 
         const target = item ?? this._queue[0];
         if (!target) return;
+
+        // Short-track guard: if the track is shorter than the crossfade window,
+        // skip the crossfade entirely so we don't clobber a track that barely started.
+        const duration = this._currentAudio.getDuration();
+        if (duration > 0 && duration <= this.fadeDuration) {
+            this.log(`prepareCrossfade: SKIPPED — duration (${duration.toFixed(1)}s) <= fadeDuration (${this.fadeDuration}s)`);
+            return;
+        }
 
         this._crossfadePrepared = true;
         const currentVolume = this.volume;
@@ -200,6 +218,11 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
                     if (this._repeat === 'one') return;
 
                     this.log(`prepareCrossfade: startFadeOut fired, beginning ${this.fadeDuration}s crossfade`);
+
+                    // Signal server to suppress auto-advance for the duration of this crossfade.
+                    this._crossfadeActive = true;
+                    this.emit('crossfadeStart');
+                    this.onCrossfadeStart?.();
 
                     this._currentAudio.isFading = true;
                     this._nextAudio.isFading = true;
@@ -244,12 +267,18 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
                             // Restore autoplay on new current node
                             this._currentAudio.getAudioElement().autoplay = true;
                             this._crossfadePrepared = false;
+
+                            // Crossfade is complete — allow server to resume auto-advance.
+                            this._crossfadeActive = false;
+                            this.emit('crossfadeComplete');
+                            this.onCrossfadeComplete?.();
                         });
                     });
                 });
             })
             .catch((err) => {
                 this._crossfadePrepared = false;
+                this._crossfadeActive = false;
                 console.error('prepareCrossfade error:', err);
             });
     }
@@ -294,6 +323,15 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
 
             if (this._queue.length == 0) return;
 
+            // Short-track guard: if the current track is shorter than the crossfade
+            // window, bail out now. The `ended` event will drive next-track selection
+            // instead, avoiding a fade that starts before the track barely plays.
+            const duration = this._currentAudio.getDuration();
+            if (duration > 0 && duration <= this.fadeDuration) {
+                this.log(`queueNext: SKIPPED — duration (${duration.toFixed(1)}s) <= fadeDuration (${this.fadeDuration}s)`);
+                return;
+            }
+
             const currentVolume = this.volume;
             const nextTrack = this._queue[0];
 
@@ -312,6 +350,11 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
                         if (this._repeat === 'one') return;
 
                         this.log(`queueNext: startFadeOut fired, beginning ${this.fadeDuration}s crossfade`);
+
+                        // Signal server to suppress auto-advance for this crossfade.
+                        this._crossfadeActive = true;
+                        this.emit('crossfadeStart');
+                        this.onCrossfadeStart?.();
 
                         this._currentAudio.isFading = true;
                         this._nextAudio.isFading = true;
@@ -359,12 +402,18 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
                                 // Restore autoplay on new current node
                                 this._currentAudio.getAudioElement().autoplay = true;
                                 this._crossfadePrepared = false;
+
+                                // Crossfade is complete — allow server to resume auto-advance.
+                                this._crossfadeActive = false;
+                                this.emit('crossfadeComplete');
+                                this.onCrossfadeComplete?.();
                             });
                         });
                     });
                 })
                 .catch((err) => {
                     this._crossfadePrepared = false;
+                    this._crossfadeActive = false;
                     console.error('queueNext error:', err);
                     this.currentSong = null;
                 });

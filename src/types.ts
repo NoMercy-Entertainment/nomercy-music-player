@@ -22,6 +22,21 @@ export interface PlayerOptions {
     next?: MediaSessionActionHandler;
     seek?: (number: number) => void;
   };
+  /**
+   * Called when the client begins a crossfade transition.
+   * Use this to notify the server (e.g. via SignalR) that auto-advance
+   * should be suppressed while the crossfade is in progress — the client
+   * will drive the track change. If the callback is not provided or the
+   * client disconnects before crossfade completes, the server's own
+   * auto-advance timer will eventually fire as a safety fallback.
+   */
+  onCrossfadeStart?: () => void;
+  /**
+   * Called when the crossfade transition is fully complete and the new
+   * track is the active current track. Use this to notify the server
+   * that it can resume normal auto-advance behaviour.
+   */
+  onCrossfadeComplete?: () => void;
 }
 
 export interface AudioOptions {
