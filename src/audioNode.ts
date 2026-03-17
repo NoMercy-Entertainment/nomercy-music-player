@@ -23,7 +23,7 @@ export default class AudioNode<S extends BasePlaylistItem> {
   public context: AudioContext | null = null;
   public motion: AudioMotionAnalyzer | null = null;
 
-  private accessToken?: string;
+  private _accessToken?: string | (() => string);
   private tag: string;
 
   protected options: AudioOptions = <AudioOptions>{};
@@ -81,8 +81,12 @@ export default class AudioNode<S extends BasePlaylistItem> {
     this._audioElement.remove();
   }
 
-  public setAccessToken(accessToken: string): void {
-    this.accessToken = accessToken;
+  private get accessToken(): string | undefined {
+    return typeof this._accessToken === 'function' ? this._accessToken() : this._accessToken;
+  }
+
+  public setAccessToken(accessToken: string | (() => string)): void {
+    this._accessToken = accessToken;
   }
 
   public setSource(url: string): AudioNode<S> {

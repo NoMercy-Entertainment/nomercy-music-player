@@ -33,7 +33,7 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     public isTransitioning: boolean = false;
     public newSourceLoaded: boolean = false;
     public baseUrl?: string = '/';
-    public accessToken: string = '';
+    private _accessToken: string | (() => string) = '';
     protected _options: PlayerOptions = <PlayerOptions>{};
 
     public context: AudioContext | null = null;
@@ -161,8 +161,12 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
         this._audioElement2._disableAutoPlayback = this.disableAutoPlayback;
     }
 
-    public setAccessToken(accessToken: string): void {
-        this.accessToken = accessToken;
+    public get accessToken(): string {
+        return typeof this._accessToken === 'function' ? this._accessToken() : this._accessToken;
+    }
+
+    public setAccessToken(accessToken: string | (() => string)): void {
+        this._accessToken = accessToken;
 
         this._audioElement1.setAccessToken(accessToken);
         this._audioElement2.setAccessToken(accessToken);
