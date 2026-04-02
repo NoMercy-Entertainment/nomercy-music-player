@@ -338,6 +338,23 @@ export default class AudioNode<S extends BasePlaylistItem> {
     return this;
   }
 
+  // Stored bound handler references so _removeEvents can pass the same
+  // function object to removeEventListener that _addEvents passed to
+  // addEventListener.  Allocating these here (not in _addEvents) means
+  // each AudioNode instance owns exactly one reference per handler.
+  private readonly _boundPlay            = this.playEvent.bind(this);
+  private readonly _boundPause           = this.pauseEvent.bind(this);
+  private readonly _boundEnded           = this.endedEvent.bind(this);
+  private readonly _boundError           = this.errorEvent.bind(this);
+  private readonly _boundWaiting         = this.waitingEvent.bind(this);
+  private readonly _boundCanplay         = this.canplayEvent.bind(this);
+  private readonly _boundLoadedmetadata  = this.loadedmetadataEvent.bind(this);
+  private readonly _boundLoadstart       = this.loadstartEvent.bind(this);
+  private readonly _boundTimeupdate      = this.timeupdateEvent.bind(this);
+  private readonly _boundDurationchange  = this.durationchangeEvent.bind(this);
+  private readonly _boundVolumechange    = this.volumechangeEvent.bind(this);
+  private readonly _boundSeeked          = this.seekedEvent.bind(this);
+
   private playEvent() {
     this.state = PlayerState.PLAYING;
     this.parent.emit("play-internal", this._audioElement);
@@ -455,78 +472,33 @@ export default class AudioNode<S extends BasePlaylistItem> {
   }
 
   private _addEvents() {
-    this._audioElement.addEventListener("play", this.playEvent.bind(this));
-    this._audioElement.addEventListener("pause", this.pauseEvent.bind(this));
-    this._audioElement.addEventListener("ended", this.endedEvent.bind(this));
-    this._audioElement.addEventListener("error", this.errorEvent.bind(this));
-    this._audioElement.addEventListener(
-      "waiting",
-      this.waitingEvent.bind(this)
-    );
-    this._audioElement.addEventListener(
-      "canplay",
-      this.canplayEvent.bind(this)
-    );
-    this._audioElement.addEventListener(
-      "loadedmetadata",
-      this.loadedmetadataEvent.bind(this)
-    );
-    this._audioElement.addEventListener(
-      "loadstart",
-      this.loadstartEvent.bind(this)
-    );
-    this._audioElement.addEventListener(
-      "timeupdate",
-      this.timeupdateEvent.bind(this)
-    );
-    this._audioElement.addEventListener(
-      "durationchange",
-      this.durationchangeEvent.bind(this)
-    );
-    this._audioElement.addEventListener(
-      "volumechange",
-      this.volumechangeEvent.bind(this)
-    );
-    this._audioElement.addEventListener("seeked", this.seekedEvent.bind(this));
+    this._audioElement.addEventListener("play",            this._boundPlay);
+    this._audioElement.addEventListener("pause",           this._boundPause);
+    this._audioElement.addEventListener("ended",           this._boundEnded);
+    this._audioElement.addEventListener("error",           this._boundError);
+    this._audioElement.addEventListener("waiting",         this._boundWaiting);
+    this._audioElement.addEventListener("canplay",         this._boundCanplay);
+    this._audioElement.addEventListener("loadedmetadata",  this._boundLoadedmetadata);
+    this._audioElement.addEventListener("loadstart",       this._boundLoadstart);
+    this._audioElement.addEventListener("timeupdate",      this._boundTimeupdate);
+    this._audioElement.addEventListener("durationchange",  this._boundDurationchange);
+    this._audioElement.addEventListener("volumechange",    this._boundVolumechange);
+    this._audioElement.addEventListener("seeked",          this._boundSeeked);
   }
 
   private _removeEvents() {
-    this._audioElement.removeEventListener("play", this.playEvent.bind(this));
-    this._audioElement.removeEventListener("pause", this.pauseEvent.bind(this));
-    this._audioElement.removeEventListener("ended", this.endedEvent.bind(this));
-    this._audioElement.removeEventListener("error", this.errorEvent.bind(this));
-    this._audioElement.removeEventListener(
-      "waiting",
-      this.waitingEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "canplay",
-      this.canplayEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "loadedmetadata",
-      this.loadedmetadataEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "loadstart",
-      this.loadstartEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "timeupdate",
-      this.timeupdateEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "durationchange",
-      this.durationchangeEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "volumechange",
-      this.volumechangeEvent.bind(this)
-    );
-    this._audioElement.removeEventListener(
-      "seeked",
-      this.seekedEvent.bind(this)
-    );
+    this._audioElement.removeEventListener("play",           this._boundPlay);
+    this._audioElement.removeEventListener("pause",          this._boundPause);
+    this._audioElement.removeEventListener("ended",          this._boundEnded);
+    this._audioElement.removeEventListener("error",          this._boundError);
+    this._audioElement.removeEventListener("waiting",        this._boundWaiting);
+    this._audioElement.removeEventListener("canplay",        this._boundCanplay);
+    this._audioElement.removeEventListener("loadedmetadata", this._boundLoadedmetadata);
+    this._audioElement.removeEventListener("loadstart",      this._boundLoadstart);
+    this._audioElement.removeEventListener("timeupdate",     this._boundTimeupdate);
+    this._audioElement.removeEventListener("durationchange", this._boundDurationchange);
+    this._audioElement.removeEventListener("volumechange",   this._boundVolumechange);
+    this._audioElement.removeEventListener("seeked",         this._boundSeeked);
   }
 
   private createFilter(frequency: number, type: BiquadFilterType) {
@@ -570,13 +542,19 @@ export default class AudioNode<S extends BasePlaylistItem> {
 
         this.context = this.motion.audioCtx;
 
-        this.context.addEventListener("error", () => {
+        this.context.addEventListener("error", (e) => {
           localStorage.setItem(
             "nmplayer-music-supports-audio-context",
             "false"
           );
           this.context!.close().then();
-          location.reload();
+          // A library must never reload the host page.  Emit a fatalError
+          // event and let the consuming application decide how to recover.
+          this.parent.emit("fatalError", {
+            error: e,
+            recoverable: false,
+            message: "AudioContext error — audio context has been closed.",
+          });
         });
 
         this._preGain = this.context.createGain();

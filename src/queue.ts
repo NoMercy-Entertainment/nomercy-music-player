@@ -38,14 +38,22 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
         this.emit('queue', this._queue)
     }
 
-    public pushToQueue(payload: S[]) {
-        payload = Object.assign({}, payload)
-        payload.forEach((song) => this._queue.push(song));
+    public pushToQueue(payload: S | S[]) {
+        // Object.assign({}, array) produces a plain object — not an array.
+        // Spread the items directly so the queue stays a flat S[].
+        const items = Array.isArray(payload) ? payload : [payload];
+        this._queue.push(...items);
         this.emit('queue', this._queue)
     }
 
     public removeFromQueue(payload: S) {
-        this._queue.splice(this._queue.indexOf(payload), 1);
+        // indexOf() uses reference equality.  Queue items are copies, so the
+        // passed object will almost never be the same reference.  Match by id
+        // instead.  Guard against not-found: indexOf returns -1, and
+        // splice(-1, 1) would silently remove the last item.
+        const index = this._queue.findIndex((item) => item.id === payload.id);
+        if (index === -1) return;
+        this._queue.splice(index, 1);
         this.emit('queue', this._queue)
     }
 
@@ -69,14 +77,18 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
         this.emit('backlog', this._backLog)
     }
 
-    public pushToBackLog(payload: S[]) {
-        payload = Object.assign({}, payload)
-        payload.forEach((song) => this._backLog.push(song));
+    public pushToBackLog(payload: S | S[]) {
+        // Same fix as pushToQueue — Object.assign({}, array) is not an array.
+        const items = Array.isArray(payload) ? payload : [payload];
+        this._backLog.push(...items);
         this.emit('backlog', this._backLog)
     }
 
     public removeFromBackLog(payload: S) {
-        this._backLog.splice(this._backLog.indexOf(payload), 1);
+        // Same fix as removeFromQueue — match by id, guard on not-found.
+        const index = this._backLog.findIndex((item) => item.id === payload.id);
+        if (index === -1) return;
+        this._backLog.splice(index, 1);
         this.emit('backlog', this._backLog)
     }
 
@@ -176,6 +188,79 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
     }
 
     /**
+     * Shared crossfade execution wired up after the next-track source is
+     * loaded into _nextAudio.  Both prepareCrossfade() and the queueNext
+     * handler previously duplicated this entire block — now there is one
+     * canonical copy.
+     *
+     * @param target       - The track that will become currentSong.
+     * @param currentVolume - Volume snapshot taken before source loading so
+     *                        the fade step size is consistent.
+     * @param callerTag    - Label used in log messages ("prepareCrossfade" /
+     *                        "queueNext") to keep diagnostics readable.
+     */
+    private _executeCrossfade(target: S, currentVolume: number, callerTag: string): void {
+        this.once('startFadeOut', () => {
+            if (this._repeat === 'one') return;
+
+            this.log(`${callerTag}: startFadeOut fired, beginning ${this.fadeDuration}s crossfade`);
+
+            // Signal server to suppress auto-advance for the duration of this crossfade.
+            this._crossfadeActive = true;
+            this.emit('crossfadeStart');
+            this.onCrossfadeStart?.();
+
+            this._currentAudio.isFading = true;
+            this._nextAudio.isFading = true;
+
+            const steps = currentVolume / this.fadeDuration / 5;
+            this._currentAudio.setCrossFadeSteps(steps);
+            this._currentAudio._fadeOut(true);
+
+            this._nextAudio.setCrossFadeSteps(steps);
+            this._nextAudio._fadeIn(true);
+
+            this.once('nextSong', () => {
+                if (this._repeat === 'one') return;
+
+                this.log(`${callerTag}: nextSong fired, switching to '${target?.name}', nextAudio.currentTime=${this._nextAudio.currentTime.toFixed(1)}`);
+
+                this.addToBackLog(this.currentSong);
+
+                this.currentSong = target;
+                this.removeFromQueue(target);
+
+                this._nextAudio.isFading = false;
+
+                this.emit('song', target);
+
+                this.once('setCurrentAudio', () => {
+                    if (this._repeat == 'one') return;
+
+                    this.log(`${callerTag}: setCurrentAudio, swapping nodes`);
+                    this._currentAudio.isFading = false;
+
+                    this._currentAudio = this._nextAudio;
+
+                    this._nextAudio =
+                        this._currentAudio == this._audioElement1
+                            ? this._audioElement2
+                            : this._audioElement1;
+
+                    // Restore autoplay on new current node
+                    this._currentAudio.getAudioElement().autoplay = true;
+                    this._crossfadePrepared = false;
+
+                    // Crossfade is complete — allow server to resume auto-advance.
+                    this._crossfadeActive = false;
+                    this.emit('crossfadeComplete');
+                    this.onCrossfadeComplete?.();
+                });
+            });
+        });
+    }
+
+    /**
      * Server-driven crossfade: load the next track into the secondary audio node
      * so crossfade can begin when startFadeOut fires.
      *
@@ -214,67 +299,7 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
                 this._nextAudio.setSource(src);
                 this._nextAudio.fadeVolume(0);
 
-                this.once('startFadeOut', () => {
-                    if (this._repeat === 'one') return;
-
-                    this.log(`prepareCrossfade: startFadeOut fired, beginning ${this.fadeDuration}s crossfade`);
-
-                    // Signal server to suppress auto-advance for the duration of this crossfade.
-                    this._crossfadeActive = true;
-                    this.emit('crossfadeStart');
-                    this.onCrossfadeStart?.();
-
-                    this._currentAudio.isFading = true;
-                    this._nextAudio.isFading = true;
-
-                    this._currentAudio.setCrossFadeSteps(
-                        currentVolume / this.fadeDuration / 5
-                    );
-                    this._currentAudio._fadeOut(true);
-
-                    this._nextAudio.setCrossFadeSteps(
-                        currentVolume / this.fadeDuration / 5
-                    );
-                    this._nextAudio._fadeIn(true);
-
-                    this.once('nextSong', () => {
-                        if (this._repeat === 'one') return;
-
-                        this.log(`prepareCrossfade: nextSong fired, switching to '${target?.name}', nextAudio.currentTime=${this._nextAudio.currentTime.toFixed(1)}`);
-
-                        this.addToBackLog(this.currentSong);
-
-                        this.currentSong = target;
-                        this.removeFromQueue(target);
-
-                        this._nextAudio.isFading = false;
-
-                        this.emit('song', target);
-
-                        this.once('setCurrentAudio', () => {
-                            if (this._repeat == 'one') return;
-
-                            this.log(`prepareCrossfade: setCurrentAudio, swapping nodes`);
-                            this._currentAudio.isFading = false;
-
-                            this._currentAudio = this._nextAudio;
-
-                            this._nextAudio =
-                                this._currentAudio == this._audioElement1
-                                    ? this._audioElement2
-                                    : this._audioElement1;
-
-                            // Restore autoplay on new current node
-                            this._currentAudio.getAudioElement().autoplay = true;
-                            this._crossfadePrepared = false;
-
-                            // Crossfade is complete — allow server to resume auto-advance.
-                            this._crossfadeActive = false;
-                            this.emit('crossfadeComplete');
-                            this.onCrossfadeComplete?.();
-                        });
-                    });
-                });
+                this._executeCrossfade(target, currentVolume, 'prepareCrossfade');
             })
             .catch((err) => {
                 this._crossfadePrepared = false;
@@ -346,70 +371,8 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
                     this.log(`queueNext: source loaded, nextAudio.autoplay=false`);
                     this._nextAudio.setSource(src);
                     this._nextAudio.fadeVolume(0);
-                    this.once('startFadeOut', () => {
-                        if (this._repeat === 'one') return;
 
-                        this.log(`queueNext: startFadeOut fired, beginning ${this.fadeDuration}s crossfade`);
-
-                        // Signal server to suppress auto-advance for this crossfade.
-                        this._crossfadeActive = true;
-                        this.emit('crossfadeStart');
-                        this.onCrossfadeStart?.();
-
-                        this._currentAudio.isFading = true;
-                        this._nextAudio.isFading = true;
-
-                        this._currentAudio.setCrossFadeSteps(
-                            currentVolume / this.fadeDuration / 5
-                        );
-                        this._currentAudio._fadeOut(true);
-
-                        this._nextAudio.setCrossFadeSteps(
-                            currentVolume / this.fadeDuration / 5
-                        );
-                        this._nextAudio._fadeIn(true);
-
-                        this.once('nextSong', () => {
-                            if (this._repeat === 'one') return;
-
-                            const nexItem = this._queue[0];
-
-                            this.log(`queueNext: nextSong fired, switching to '${nexItem?.name}', nextAudio.currentTime=${this._nextAudio.currentTime.toFixed(1)}`);
-
-                            this.addToBackLog(this.currentSong);
-
-                            this.currentSong = nexItem;
-
-                            this.removeFromQueue(nexItem);
-
-                            this._nextAudio.isFading = false;
-
-                            this.emit('song', nexItem);
-
-                            this.once('setCurrentAudio', () => {
-                                if (this._repeat == 'one') return;
-
-                                this.log(`queueNext: setCurrentAudio, swapping nodes`);
-                                this._currentAudio.isFading = false;
-
-                                this._currentAudio = this._nextAudio;
-
-                                this._nextAudio =
-                                    this._currentAudio == this._audioElement1
-                                        ? this._audioElement2
-                                        : this._audioElement1;
-
-                                // Restore autoplay on new current node
-                                this._currentAudio.getAudioElement().autoplay = true;
-                                this._crossfadePrepared = false;
-
-                                // Crossfade is complete — allow server to resume auto-advance.
-                                this._crossfadeActive = false;
-                                this.emit('crossfadeComplete');
-                                this.onCrossfadeComplete?.();
-                            });
-                        });
-                    });
+                    this._executeCrossfade(nextTrack, currentVolume, 'queueNext');
                 })
                 .catch((err) => {
                     this._crossfadePrepared = false;

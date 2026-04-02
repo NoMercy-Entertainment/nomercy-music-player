@@ -300,6 +300,7 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     emit(event: 'setFilter', data: EQBand): void;
     emit(event: 'crossfadeStart'): void;
     emit(event: 'crossfadeComplete'): void;
+    emit(event: 'fatalError', data: { error: Event | unknown; recoverable: boolean; message: string }): void;
     emit(event: any, data?: any): void {
         this.eventTarget?.dispatchEvent?.(new CustomEvent(event, {
             detail: data,
@@ -344,6 +345,7 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     on(event: 'setFilter', callback: (data: EQBand) => void): void;
     on(event: 'crossfadeStart', callback: () => void): void;
     on(event: 'crossfadeComplete', callback: () => void): void;
+    on(event: 'fatalError', callback: (data: { error: Event | unknown; recoverable: boolean; message: string }) => void): void;
     on(event: any, callback: (arg: any) => any) {
         const cb = (e: Event) => callback((e as CustomEvent).detail);
         cb.original = callback; // Store original callback reference
@@ -357,41 +359,42 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
      * @param callback - The function to remove.
      */
     // All
-    off(event: 'all', callback?: () => void): void;
-    off(event: 'duration',callback?: () => void): void;
-    off(event: 'loadstart',callback?: () => void): void;
-    off(event: 'loadedmetadata',callback?: () => void): void;
-    off(event: 'canplay',callback?: () => void): void;
-    off(event: 'waiting',callback?: () => void): void;
-    off(event: 'error',callback?: () => void): void;
-    off(event: 'ended',callback?: () => void): void;
-    off(event: 'pause',callback?: () => void): void;
-    off(event: 'play',callback?: () => void): void;
-    off(event: 'stop',callback?: () => void): void;
-    off(event: 'pause-internal',callback?: () => void): void;
-    off(event: 'play-internal',callback?: () => void): void;
-    off(event: 'queueNext',callback?: () => void): void;
-    off(event: 'startFadeOut',callback?: () => void): void;
-    off(event: 'endFadeOut',callback?: () => void): void;
-    off(event: 'nextSong',callback?: () => void): void;
-    off(event: 'ready',callback?: () => void): void;
-    off(event: 'song',callback?: () => void): void;
-    off(event: 'backlog',callback?: () => void): void;
-    off(event: 'queue',callback?: () => void): void;
-    off(event: 'shuffle',callback?: () => void): void;
-    off(event: 'mute',callback?: () => void): void;
-    off(event: 'repeat',callback?: () => void): void;
-    off(event: 'seeked',callback?: () => void): void;
-    off(event: 'setCurrentAudio',callback?: () => void): void;
-    off(event: 'time',callback?: () => void): void;
-    off(event: 'time-internal',callback?: () => void): void;
-    off(event: 'volume',callback?: () => void): void;
-    off(event: 'setPreGain',callback?: () => void): void;
-    off(event: 'setPanner',callback?: () => void): void;
-    off(event: 'setFilter',callback?: () => void): void;
-    off(event: 'crossfadeStart',callback?: () => void): void;
-    off(event: 'crossfadeComplete',callback?: () => void): void;
-    off(event: any, callback?: () => void) {
+    off(event: 'all', callback?: (...args: any[]) => any): void;
+    off(event: 'duration',callback?: (...args: any[]) => any): void;
+    off(event: 'loadstart',callback?: (...args: any[]) => any): void;
+    off(event: 'loadedmetadata',callback?: (...args: any[]) => any): void;
+    off(event: 'canplay',callback?: (...args: any[]) => any): void;
+    off(event: 'waiting',callback?: (...args: any[]) => any): void;
+    off(event: 'error',callback?: (...args: any[]) => any): void;
+    off(event: 'ended',callback?: (...args: any[]) => any): void;
+    off(event: 'pause',callback?: (...args: any[]) => any): void;
+    off(event: 'play',callback?: (...args: any[]) => any): void;
+    off(event: 'stop',callback?: (...args: any[]) => any): void;
+    off(event: 'pause-internal',callback?: (...args: any[]) => any): void;
+    off(event: 'play-internal',callback?: (...args: any[]) => any): void;
+    off(event: 'queueNext',callback?: (...args: any[]) => any): void;
+    off(event: 'startFadeOut',callback?: (...args: any[]) => any): void;
+    off(event: 'endFadeOut',callback?: (...args: any[]) => any): void;
+    off(event: 'nextSong',callback?: (...args: any[]) => any): void;
+    off(event: 'ready',callback?: (...args: any[]) => any): void;
+    off(event: 'song',callback?: (...args: any[]) => any): void;
+    off(event: 'backlog',callback?: (...args: any[]) => any): void;
+    off(event: 'queue',callback?: (...args: any[]) => any): void;
+    off(event: 'shuffle',callback?: (...args: any[]) => any): void;
+    off(event: 'mute',callback?: (...args: any[]) => any): void;
+    off(event: 'repeat',callback?: (...args: any[]) => any): void;
+    off(event: 'seeked',callback?: (...args: any[]) => any): void;
+    off(event: 'setCurrentAudio',callback?: (...args: any[]) => any): void;
+    off(event: 'time',callback?: (...args: any[]) => any): void;
+    off(event: 'time-internal',callback?: (...args: any[]) => any): void;
+    off(event: 'volume',callback?: (...args: any[]) => any): void;
+    off(event: 'setPreGain',callback?: (...args: any[]) => any): void;
+    off(event: 'setPanner',callback?: (...args: any[]) => any): void;
+    off(event: 'setFilter',callback?: (...args: any[]) => any): void;
+    off(event: 'crossfadeStart',callback?: (...args: any[]) => any): void;
+    off(event: 'crossfadeComplete',callback?: (...args: any[]) => any): void;
+    off(event: 'fatalError', callback?: (...args: any[]) => any): void;
+    off(event: any, callback?: (...args: any[]) => any) {
         if (callback) {
             // Find event with matching original callback
             const eventObj = this.events.find(e => e.type === event && e.fn.original === callback);
@@ -461,8 +464,17 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     once(event: 'setFilter', callback: (data: EQBand) => void): void;
     once(event: 'crossfadeStart', callback: () => void): void;
     once(event: 'crossfadeComplete', callback: () => void): void;
+    once(event: 'fatalError', callback: (data: { error: Event | unknown; recoverable: boolean; message: string }) => void): void;
     once(event: any, callback: (arg: any) => any) {
-        this.eventTarget.addEventListener(event, e => callback((e as CustomEvent).detail), {once: true});
+        // Wrap in a self-removing handler so:
+        //   1. The listener fires at most once (removes itself before calling back).
+        //   2. The listener is stored in this.events via this.on(), so off('all')
+        //      and off(event) can still remove it before it ever fires.
+        const wrapper = (arg: any) => {
+            this.off(event, wrapper);
+            callback(arg);
+        };
+        this.on(event, wrapper);
     }
 
 }
