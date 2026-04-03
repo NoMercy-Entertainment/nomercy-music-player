@@ -632,3 +632,116 @@ describe('onCrossfadeStart / onCrossfadeComplete callbacks', () => {
         expect(completeCb).not.toHaveBeenCalled();
     });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('Event system — on / off / once', () => {
+    let q: TestableQueue;
+
+    beforeEach(() => {
+        q = new TestableQueue();
+    });
+
+    it('off() with callback removes only that listener', () => {
+        const cb1 = jest.fn();
+        const cb2 = jest.fn();
+
+        q.on('shuffle', cb1);
+        q.on('shuffle', cb2);
+
+        q.off('shuffle', cb1);
+        q.emit('shuffle', true);
+
+        expect(cb1).not.toHaveBeenCalled();
+        expect(cb2).toHaveBeenCalledTimes(1);
+    });
+
+    it('off("all") removes every registered listener', () => {
+        const cb1 = jest.fn();
+        const cb2 = jest.fn();
+
+        q.on('shuffle', cb1);
+        q.on('mute', cb2);
+
+        q.off('all');
+
+        q.emit('shuffle', true);
+        q.emit('mute', true);
+
+        expect(cb1).not.toHaveBeenCalled();
+        expect(cb2).not.toHaveBeenCalled();
+    });
+
+    it('off(event) without callback removes all listeners for that event', () => {
+        const cb1 = jest.fn();
+        const cb2 = jest.fn();
+        const other = jest.fn();
+
+        q.on('shuffle', cb1);
+        q.on('shuffle', cb2);
+        q.on('mute', other);
+
+        q.off('shuffle');
+
+        q.emit('shuffle', true);
+        q.emit('mute', true);
+
+        expect(cb1).not.toHaveBeenCalled();
+        expect(cb2).not.toHaveBeenCalled();
+        expect(other).toHaveBeenCalledTimes(1);
+    });
+
+    it('once() fires exactly once and not on subsequent emits', () => {
+        const cb = jest.fn();
+
+        q.once('shuffle', cb);
+
+        q.emit('shuffle', true);
+        q.emit('shuffle', false);
+        q.emit('shuffle', true);
+
+        expect(cb).toHaveBeenCalledTimes(1);
+        expect(cb).toHaveBeenCalledWith(true);
+    });
+
+    it('once() listener can be removed by off() before it fires', () => {
+        const cb = jest.fn();
+
+        q.once('shuffle', cb);
+        q.off('shuffle', cb);
+
+        q.emit('shuffle', true);
+
+        expect(cb).not.toHaveBeenCalled();
+    });
+
+    it('pushToQueue adds multiple items when given an array', () => {
+        q.setQueue([makeTrack('a', 'A')]);
+        q.pushToQueue([makeTrack('b', 'B'), makeTrack('c', 'C')]);
+        expect(q.getQueue()).toHaveLength(3);
+        expect(q.getQueue()[1].id).toBe('b');
+        expect(q.getQueue()[2].id).toBe('c');
+    });
+
+    it('pushToQueue adds a single item when given one item', () => {
+        q.setQueue([]);
+        q.pushToQueue(makeTrack('x', 'X'));
+        expect(q.getQueue()).toHaveLength(1);
+        expect(q.getQueue()[0].id).toBe('x');
+    });
+
+    it('removeFromQueue is a no-op when item is not in queue', () => {
+        q.setQueue([makeTrack('a', 'A')]);
+        q.removeFromQueue(makeTrack('z', 'Z')); // not in queue
+        expect(q.getQueue()).toHaveLength(1);
+    });
+
+    it('removeFromQueue removes by id not by reference', () => {
+        // Queue items are copies — original reference is not the same object
+        const original = makeTrack('a', 'A');
+        q.setQueue([original]);
+        // Pass a fresh object with the same id — should still be found
+        q.removeFromQueue(makeTrack('a', 'A'));
+        expect(q.getQueue()).toHaveLength(0);
+    });
+});

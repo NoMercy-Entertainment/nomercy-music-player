@@ -10,7 +10,7 @@ import type {
 import { PlayerState, VolumeState } from "./state";
 
 import { equalizerBands, equalizerPresets, equalizerSliderValues } from "./equalizer";
-import { ConstructorOptions } from "audiomotion-analyzer";
+import type { ConstructorOptions } from "audiomotion-analyzer";
 
 export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     public volume: Volume = Number(localStorage.getItem('nmplayer-music-volume')) || 100;
@@ -348,7 +348,9 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
     on(event: 'fatalError', callback: (data: { error: Event | unknown; recoverable: boolean; message: string }) => void): void;
     on(event: any, callback: (arg: any) => any) {
         const cb = (e: Event) => callback((e as CustomEvent).detail);
-        cb.original = callback; // Store original callback reference
+        // Prefer a pre-tagged original (set by once()) so that off(event, originalCb)
+        // can locate a once-wrapper by the original callback reference.
+        cb.original = (callback as any).original ?? callback;
         this.eventTarget.addEventListener(event, cb);
         this.events.push({ type: event, fn: cb });
     }
@@ -470,10 +472,13 @@ export default class Helpers<S extends BasePlaylistItem> extends EventTarget {
         //   1. The listener fires at most once (removes itself before calling back).
         //   2. The listener is stored in this.events via this.on(), so off('all')
         //      and off(event) can still remove it before it ever fires.
+        //   3. Tag the wrapper with the original callback so off(event, originalCb)
+        //      can locate and remove the once-wrapper before it fires.
         const wrapper = (arg: any) => {
-            this.off(event, wrapper);
+            this.off(event, callback);
             callback(arg);
         };
+        (wrapper as any).original = callback;
         this.on(event, wrapper);
     }
 

@@ -4,10 +4,10 @@ import type { AudioOptions, EQBand, BasePlaylistItem } from "./types";
 import HLS from "hls.js";
 import { PlayerState } from "./state";
 
+import type AudioMotionAnalyzerType from "audiomotion-analyzer";
+import type { ConstructorOptions } from "audiomotion-analyzer";
 import {
   spectrumAnalyser,
-  AudioMotionAnalyzer,
-  type ConstructorOptions,
 } from "./spectrumAnalyzer";
 
 export default class AudioNode<S extends BasePlaylistItem> {
@@ -21,7 +21,7 @@ export default class AudioNode<S extends BasePlaylistItem> {
   public isFading: boolean = false;
   public isFadingOut: boolean = false;
   public context: AudioContext | null = null;
-  public motion: AudioMotionAnalyzer | null = null;
+  public motion: AudioMotionAnalyzerType | null = null;
 
   private _accessToken?: string | (() => string);
   private tag: string;
@@ -518,85 +518,88 @@ export default class AudioNode<S extends BasePlaylistItem> {
       return;
 
     if (!this.context) {
-      try {
-        this.motion = spectrumAnalyser(this._audioElement, this.motionConfig);
+      spectrumAnalyser(this._audioElement, this.motionConfig)
+        .then((motion) => {
+          if (!motion) return; // audiomotion-analyzer not installed — skip context setup
 
-        if (this.motionColors.length) {
-          this.motion.registerGradient("theme", {
-            bgColor: "transparent",
-            dir: "h",
-            colorStops: this.motionColors,
+          this.motion = motion;
+
+          if (this.motionColors.length) {
+            this.motion.registerGradient("theme", {
+              bgColor: "transparent",
+              dir: "h",
+              colorStops: this.motionColors,
+            });
+
+            this.motion.gradient = "theme";
+          }
+
+          setTimeout(() => {
+            this.motion!.canvas.style.position = "absolute";
+            this.motion!.canvas.style.height = "320px";
+            this.motion!.canvas.style.width = "1400px";
+            this.motion!.canvas.style.overflow = "hidden";
+            this.motion!.canvas.style.opacity = "0";
+            this.motion!.canvas.style.pointerEvents = "none";
+          }, 500);
+
+          this.context = this.motion.audioCtx;
+
+          this.context.addEventListener("error", (e) => {
+            localStorage.setItem(
+              "nmplayer-music-supports-audio-context",
+              "false"
+            );
+            this.context!.close().then();
+            // A library must never reload the host page.  Emit a fatalError
+            // event and let the consuming application decide how to recover.
+            this.parent.emit("fatalError", {
+              error: e,
+              recoverable: false,
+              message: "AudioContext error — audio context has been closed.",
+            });
           });
 
-          this.motion.gradient = "theme";
-        }
+          this._preGain = this.context.createGain();
+          this._filters = this.bands
+            .slice(1) // Skip the first band (it's the pre-gain)
+            .map((band) =>
+              this.createFilter(band.frequency as number, "peaking")
+            );
 
-        setTimeout(() => {
-          this.motion!.canvas.style.position = "absolute";
-          this.motion!.canvas.style.height = "320px";
-          this.motion!.canvas.style.width = "1400px";
-          this.motion!.canvas.style.overflow = "hidden";
-          this.motion!.canvas.style.opacity = "0";
-          this.motion!.canvas.style.pointerEvents = "none";
-        }, 500);
+          this._panner = this.context.createStereoPanner();
 
-        this.context = this.motion.audioCtx;
+          const track1 = this.motion.connectedSources.at(0)!;
+          track1.connect(this._preGain!);
 
-        this.context.addEventListener("error", (e) => {
-          localStorage.setItem(
-            "nmplayer-music-supports-audio-context",
-            "false"
-          );
-          this.context!.close().then();
-          // A library must never reload the host page.  Emit a fatalError
-          // event and let the consuming application decide how to recover.
-          this.parent.emit("fatalError", {
-            error: e,
-            recoverable: false,
-            message: "AudioContext error — audio context has been closed.",
+          this._filters
+            .reduce((prev, curr) => {
+              // noinspection CommaExpressionJS
+              return prev.connect(curr), curr;
+            }, this._preGain!)
+            .connect(this._panner!)
+            .connect(this.context.destination);
+
+          this.parent.on("setPreGain", (gain: number) => {
+            this._preGain!.gain.value = gain;
           });
+
+          this.parent.on("setPanner", (pan: number) => {
+            this._panner!.pan.value = pan;
+          });
+
+          this.parent.on("setFilter", (band: EQBand) => {
+            const index = this.bands.findIndex(
+              (b) => b.frequency === band.frequency
+            );
+            this._filters[index - 1].gain.value = band.gain;
+          });
+
+          this.parent.loadEqualizerSettings();
+        })
+        .catch((e) => {
+          console.error("Failed to create AudioContext:", e);
         });
-
-        this._preGain = this.context.createGain();
-        this._filters = this.bands
-          .slice(1) // Skip the first band (it's the pre-gain)
-          .map((band) =>
-            this.createFilter(band.frequency as number, "peaking")
-          );
-
-        this._panner = this.context.createStereoPanner();
-
-        const track1 = this.motion.connectedSources.at(0)!;
-        track1.connect(this._preGain);
-
-        this._filters
-          .reduce((prev, curr) => {
-            // noinspection CommaExpressionJS
-            return prev.connect(curr), curr;
-          }, this._preGain)
-          .connect(this._panner)
-          .connect(this.context.destination);
-
-        this.parent.on("setPreGain", (gain: number) => {
-          this._preGain!.gain.value = gain;
-        });
-
-        this.parent.on("setPanner", (pan: number) => {
-          this._panner!.pan.value = pan;
-        });
-
-        this.parent.on("setFilter", (band: EQBand) => {
-          const index = this.bands.findIndex(
-            (b) => b.frequency === band.frequency
-          );
-          this._filters[index - 1].gain.value = band.gain;
-        });
-
-        this.parent.loadEqualizerSettings();
-      } catch (e) {
-        console.error("Failed to create AudioContext:", e);
-        return;
-      }
     }
 
     if (this.context && this.context.state === "suspended") {

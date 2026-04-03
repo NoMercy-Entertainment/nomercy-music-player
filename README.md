@@ -65,11 +65,11 @@ pnpm add @nomercy-entertainment/nomercy-music-player
 ### Basic Usage
 
 ```typescript
-import { MusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
-import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-music-player/dist/types';
+import { PlayerCore } from '@nomercy-entertainment/nomercy-music-player';
+import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-music-player';
 
 // Create player instance
-const player = new MusicPlayer<BasePlaylistItem>({
+const player = new PlayerCore<BasePlaylistItem>({
   baseUrl: 'https://your-media-server.com/',
   siteTitle: 'My Music App',
   expose: true, // Optional: expose to window.musicPlayer
@@ -109,7 +109,7 @@ player.on('time', (timeState) => {
 
 ```javascript
 // Simple setup for vanilla JavaScript projects
-const player = new MusicPlayer({ 
+const player = new PlayerCore({
   baseUrl: 'https://your-server.com',
   siteTitle: 'My Music App',
   expose: true // Access via window.musicPlayer
@@ -163,7 +163,7 @@ player.saveEqualizerSettings();
 Real-time audio visualization powered by AudioMotion-Analyzer:
 
 ```typescript
-const player = new MusicPlayer({
+const player = new PlayerCore({
   baseUrl: 'https://cdn.example.com/',
   siteTitle: 'Visual Music Player',
   motionConfig: {
@@ -201,7 +201,7 @@ player.previous();                  // Previous track or restart current
 Native OS media controls with metadata:
 
 ```typescript
-const player = new MusicPlayer({
+const player = new PlayerCore({
   baseUrl: 'https://cdn.example.com/',
   siteTitle: 'My Music App',
   actions: {
