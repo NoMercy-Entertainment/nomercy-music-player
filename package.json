@@ -1,10 +1,10 @@
 {
   "name": "@nomercy-entertainment/nomercy-music-player",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "description": "Full event-driven music player without a UI.",
   "type": "module",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
@@ -29,7 +29,7 @@
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
+        "default": "./dist/index.js"
       },
       "require": {
         "types": "./dist/index.d.ts",
