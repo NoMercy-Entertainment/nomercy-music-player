@@ -1,6 +1,6 @@
 {
   "name": "@nomercy-entertainment/nomercy-music-player",
-  "version": "0.2.13",
+  "version": "0.2.14",
   "description": "Full event-driven music player without a UI.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -50,7 +50,7 @@
     "NoMercy"
   ],
   "dependencies": {
-    "@nomercy-entertainment/media-session": "^1.1.0",
+    "@nomercy-entertainment/media-session": "^1.1.1",
     "hls.js": "1.6.15"
   },
   "peerDependencies": {
