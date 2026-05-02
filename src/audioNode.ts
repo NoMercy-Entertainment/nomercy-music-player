@@ -78,6 +78,33 @@ export default class AudioNode<S extends BasePlaylistItem> {
 
   public dispose(): void {
     this._removeEvents();
+
+    // Stop and destroy the analyzer — this also closes the AudioContext it owns.
+    if (this.motion) {
+      try { this.motion.toggleAnalyzer(false); } catch { /* already stopped */ }
+      try { this.motion.destroy(); } catch { /* already destroyed */ }
+      this.motion = null;
+    }
+
+    // Disconnect Web Audio graph in reverse signal-flow order.
+    try { this._panner?.disconnect(); } catch { /* already disconnected */ }
+    this._panner = null;
+
+    for (const filter of this._filters) {
+      try { filter.disconnect(); } catch { /* already disconnected */ }
+    }
+    this._filters = [];
+
+    try { this._preGain?.disconnect(); } catch { /* already disconnected */ }
+    this._preGain = null;
+
+    // Context ref is borrowed from motion.audioCtx — null it without closing.
+    this.context = null;
+
+    // Tear down HLS before removing the element.
+    this.hls?.destroy();
+    this.hls = undefined;
+
     this._audioElement.remove();
   }
 
