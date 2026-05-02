@@ -1,6 +1,6 @@
 {
   "name": "@nomercy-entertainment/nomercy-music-player",
-  "version": "0.2.15",
+  "version": "1.0.0",
   "description": "Full event-driven music player without a UI.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -50,11 +50,11 @@
     "NoMercy"
   ],
   "dependencies": {
-    "@nomercy-entertainment/media-session": "^1.1.1",
-    "hls.js": "1.6.15"
+    "@nomercy-entertainment/media-session": "^1.1.1"
   },
   "peerDependencies": {
-    "audiomotion-analyzer": ">=4.5.0"
+    "audiomotion-analyzer": ">=4.5.0",
+    "hls.js": ">=1.6.0"
   },
   "peerDependenciesMeta": {
     "audiomotion-analyzer": {
@@ -63,6 +63,7 @@
   },
   "devDependencies": {
     "@types/jest": "29.5.14",
+    "hls.js": "1.6.15",
     "@typescript-eslint/eslint-plugin": "6.0.0",
     "@typescript-eslint/parser": "6.0.0",
     "audiomotion-analyzer": "4.5.4",

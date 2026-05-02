@@ -53,14 +53,18 @@ Choose your preferred package manager:
 
 ```bash
 # npm
-npm install @nomercy-entertainment/nomercy-music-player
+npm install @nomercy-entertainment/nomercy-music-player hls.js
 
 # yarn
-yarn add @nomercy-entertainment/nomercy-music-player
+yarn add @nomercy-entertainment/nomercy-music-player hls.js
 
 # pnpm
-pnpm add @nomercy-entertainment/nomercy-music-player
+pnpm add @nomercy-entertainment/nomercy-music-player hls.js
 ```
+
+`hls.js` is a required peer dependency — install it alongside this package. This keeps your bundler's deduplication working correctly when you also use `@nomercy-entertainment/nomercy-video-player` or any other HLS consumer. Any version `>=1.6.0` is supported.
+
+If you only need to play non-HLS audio formats (MP3, FLAC, AAC, etc.), `hls.js` is still required by the package — it is not optional.
 
 ### Basic Usage
 
