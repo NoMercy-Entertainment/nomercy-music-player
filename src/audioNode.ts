@@ -266,7 +266,9 @@ export default class AudioNode<S extends BasePlaylistItem> {
       this.nextSongFired = false;
     }
 
-    this._audioElement.play().then();
+    this._audioElement.play().catch((err) => {
+      this.log(`_fadeIn play() rejected: ${err}`);
+    });
 
     if (this.fadeInVolume < this.volume) {
       this.fadeInVolume += this.crossFadeSteps;

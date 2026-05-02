@@ -332,7 +332,12 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
             if (this._repeat === 'one') {
                 this._currentAudio.setCurrentTime(0);
                 setTimeout(() => {
-                    this._currentAudio.play().then();
+                    this._currentAudio.play().catch((err) => {
+                        // Repeat-one restart can race with a stop / source
+                        // change. Don't surface as an unhandled rejection.
+                        // eslint-disable-next-line no-console
+                        console.warn('[music-player] repeat-one play rejected:', err);
+                    });
                 }, 150);
             }
         });

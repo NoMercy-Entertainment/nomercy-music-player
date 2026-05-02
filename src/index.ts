@@ -78,7 +78,10 @@ export class PlayerCore<S extends BasePlaylistItem> extends Queue<S> {
     if (this.isPlaying) {
       this.pause();
     } else {
-      this.play().then();
+      this.play().catch(() => {
+        // Autoplay policy / unloaded source — caller already pressed
+        // a UI control, so silently swallowing keeps the toggle UX intact.
+      });
     }
   }
 
