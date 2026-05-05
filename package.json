@@ -1,6 +1,6 @@
 {
   "name": "@nomercy-entertainment/nomercy-music-player",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Full event-driven music player without a UI.",
   "type": "module",
   "main": "./dist/index.cjs",

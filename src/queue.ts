@@ -210,8 +210,11 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
             this.emit('crossfadeStart');
             this.onCrossfadeStart?.();
 
+            // Old node fades out — its position is no longer the user's current track,
+            // so suppress its time events. New node is what the user hears coming in,
+            // so let its time/song info flow from the moment fade-in begins.
             this._currentAudio.isFading = true;
-            this._nextAudio.isFading = true;
+            this._nextAudio.isFading = false;
 
             const steps = currentVolume / this.fadeDuration / 5;
             this._currentAudio.setCrossFadeSteps(steps);
@@ -220,42 +223,35 @@ export default class Queue<S extends BasePlaylistItem> extends Helpers<S> {
             this._nextAudio.setCrossFadeSteps(steps);
             this._nextAudio._fadeIn(true);
 
-            this.once('nextSong', () => {
-                if (this._repeat === 'one') return;
+            // Update song info at fade start, not at nextSong (which fired ~2.4s
+            // before fade end). The new track is already audible — UI should match.
+            this.log(`${callerTag}: switching to '${target?.name}' at fade start`);
+            this.addToBackLog(this.currentSong);
+            this.currentSong = target;
+            this.removeFromQueue(target);
+            this.emit('song', target);
 
-                this.log(`${callerTag}: nextSong fired, switching to '${target?.name}', nextAudio.currentTime=${this._nextAudio.currentTime.toFixed(1)}`);
+            this.once('setCurrentAudio', () => {
+                if (this._repeat == 'one') return;
 
-                this.addToBackLog(this.currentSong);
+                this.log(`${callerTag}: setCurrentAudio, swapping nodes`);
+                this._currentAudio.isFading = false;
 
-                this.currentSong = target;
-                this.removeFromQueue(target);
+                this._currentAudio = this._nextAudio;
 
-                this._nextAudio.isFading = false;
+                this._nextAudio =
+                    this._currentAudio == this._audioElement1
+                        ? this._audioElement2
+                        : this._audioElement1;
 
-                this.emit('song', target);
+                // Restore autoplay on new current node
+                this._currentAudio.getAudioElement().autoplay = true;
+                this._crossfadePrepared = false;
 
-                this.once('setCurrentAudio', () => {
-                    if (this._repeat == 'one') return;
-
-                    this.log(`${callerTag}: setCurrentAudio, swapping nodes`);
-                    this._currentAudio.isFading = false;
-
-                    this._currentAudio = this._nextAudio;
-
-                    this._nextAudio =
-                        this._currentAudio == this._audioElement1
-                            ? this._audioElement2
-                            : this._audioElement1;
-
-                    // Restore autoplay on new current node
-                    this._currentAudio.getAudioElement().autoplay = true;
-                    this._crossfadePrepared = false;
-
-                    // Crossfade is complete — allow server to resume auto-advance.
-                    this._crossfadeActive = false;
-                    this.emit('crossfadeComplete');
-                    this.onCrossfadeComplete?.();
-                });
+                // Crossfade is complete — allow server to resume auto-advance.
+                this._crossfadeActive = false;
+                this.emit('crossfadeComplete');
+                this.onCrossfadeComplete?.();
             });
         });
     }

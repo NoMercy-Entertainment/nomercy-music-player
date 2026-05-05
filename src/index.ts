@@ -62,7 +62,6 @@ export class PlayerCore<S extends BasePlaylistItem> extends Queue<S> {
     this._audioElement1.dispose();
     this._audioElement2.dispose();
 
-    this.mediaSession?.clearActionHandler();
     this.mediaSession?.setPlaybackState("none");
   }
 
