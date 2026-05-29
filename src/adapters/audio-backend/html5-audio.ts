@@ -1,11 +1,11 @@
 
-import { BrowserPolicyError } from '@nomercy-entertainment/nomercy-player-core';
+import { BrowserPolicyError, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
 
 import type { BackendEvent, BackendLoaderState, BackendState, IAudioBackend } from './IAudioBackend';
 
 type Listener = (data?: any) => void;
 
-const isHls = (url: string): boolean => /\.m3u8(\?|$)/i.test(url);
+const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
 const supportsNativeHls = (audio: HTMLAudioElement): boolean => {
 	const can = audio.canPlayType('application/vnd.apple.mpegurl');
