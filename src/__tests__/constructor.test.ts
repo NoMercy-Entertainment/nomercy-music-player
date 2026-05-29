@@ -15,15 +15,15 @@
  *  - Per-library registry (music ↔ video are independent)
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PlayerError, ResourceError, StateError } from '@nomercy-entertainment/nomercy-player-core';
-import { NMMusicPlayer, nmMPlayer } from '../index';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { nmMPlayer, NMMusicPlayer } from '../index';
 
-const catchError = (fn: () => unknown): PlayerError => {
+function catchError(fn: () => unknown): PlayerError {
 	try { fn(); }
 	catch (e) { return e as PlayerError; }
 	throw new Error('catchError: fn did not throw');
-};
+}
 
 describe('NMMusicPlayer constructor', () => {
 	beforeEach(() => {

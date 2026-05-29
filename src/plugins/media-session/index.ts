@@ -1,7 +1,7 @@
-import { MediaSessionPlugin as BaseMediaSession } from '@nomercy-entertainment/nomercy-player-core/plugins/media-session';
 import type { MediaSessionMetadata } from '@nomercy-entertainment/nomercy-player-core/plugins/media-session';
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
+import { MediaSessionPlugin as BaseMediaSession } from '@nomercy-entertainment/nomercy-player-core/plugins/media-session';
 
 /** Options for {@link MediaSessionPlugin}. */
 export interface MediaSessionOptions {
@@ -27,7 +27,7 @@ function resolveName(field: Array<{ name: string }> | string | undefined): strin
 	if (typeof field === 'string')
 		return field;
 	return field.map(x => x?.name).filter(Boolean)
-.join(', ');
+		.join(', ');
 }
 
 /**

@@ -9,15 +9,15 @@
  * never silently leaks listeners or throws.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../../index';
-import { KeyHandlerPlugin } from '../../plugins/key-handler';
-import { MediaSessionPlugin } from '../../plugins/media-session';
 import { CastSenderPlugin } from '../../plugins/cast-sender';
 import { DrmPlugin } from '../../plugins/drm';
 import { GroupListeningPlugin } from '../../plugins/group-listening';
+import { KeyHandlerPlugin } from '../../plugins/key-handler';
 import { LiveTranscodingPlugin } from '../../plugins/live-transcoding';
+import { MediaSessionPlugin } from '../../plugins/media-session';
 
 describe('NMMusicPlayer — remaining plugin stubs', () => {
 	beforeEach(() => {
@@ -41,7 +41,8 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 			await p.ready();
 			const instance = p.getPlugin(KeyHandlerPlugin);
 			expect(instance).toBeInstanceOf(KeyHandlerPlugin);
-			if (!instance) throw new Error('KeyHandlerPlugin not registered');
+			if (!instance)
+				throw new Error('KeyHandlerPlugin not registered');
 			const bindings = instance.bindings();
 			// Kit defaults — must still be present.
 			expect(bindings.has(' ')).toBe(true);
@@ -86,7 +87,8 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 			await p.ready();
 			const instance = p.getPlugin(CastSenderPlugin);
 			expect(instance).toBeInstanceOf(CastSenderPlugin);
-			if (!instance) throw new Error('CastSenderPlugin not registered');
+			if (!instance)
+				throw new Error('CastSenderPlugin not registered');
 			expect(instance.isConnected()).toBe(false);
 			await expect(instance.connect()).rejects.toMatchObject({
 				name: 'BrowserPolicyError',
@@ -155,7 +157,8 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				p.addPlugin(CastSenderPlugin);
 				await p.ready();
 				const instance = p.getPlugin(CastSenderPlugin);
-				if (!instance) throw new Error('CastSenderPlugin not registered');
+				if (!instance)
+					throw new Error('CastSenderPlugin not registered');
 
 				// Stub player.current() to return a track.
 				const trackItem = {
@@ -211,6 +214,7 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				addEventListener = (event: string, handler: (e: { value: unknown }) => void): void => {
 					handlers[event] = handler;
 				};
+
 				removeEventListener = vi.fn();
 				playOrPause = vi.fn();
 				stop = vi.fn();
@@ -243,7 +247,8 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				p.addPlugin(CastSenderPlugin);
 				await p.ready();
 				const instance = p.getPlugin(CastSenderPlugin);
-				if (!instance) throw new Error('CastSenderPlugin not registered');
+				if (!instance)
+					throw new Error('CastSenderPlugin not registered');
 				(p as any).current = (): unknown => undefined;
 
 				await instance.connect();
@@ -252,7 +257,8 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				p.on('pause' as any, (data: any) => { seenPause.push(data); });
 
 				// Receiver flipped to paused — fire IS_PAUSED_CHANGED.
-				if (stubRemoteRef) (stubRemoteRef as StubRemote).isPaused = true;
+				if (stubRemoteRef)
+					(stubRemoteRef as StubRemote).isPaused = true;
 				handlers['isPausedChanged']?.({ value: true });
 
 				expect(seenPause.length).toBeGreaterThan(0);

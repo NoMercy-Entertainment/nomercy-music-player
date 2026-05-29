@@ -8,8 +8,8 @@
  * register and removed on dispose.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NMMusicPlayer } from '../index';
 
 class HelloPlugin extends Plugin {

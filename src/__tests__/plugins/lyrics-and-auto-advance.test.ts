@@ -6,17 +6,19 @@
  * present the plugin is a no-op.
  */
 
+import type { MusicPlaylistItem } from '../../types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NMMusicPlayer } from '../../index';
-import type { MusicPlaylistItem } from '../../types';
 import { autoAdvancePlugin, AutoAdvancePlugin } from '../../plugins/auto-advance';
 import { lyricsPlugin, LyricsPlugin } from '../../plugins/lyrics';
 
-const track = (id: string, extra?: Partial<MusicPlaylistItem>): MusicPlaylistItem => ({
-	id,
-	name: `track ${id}`,
-	...extra,
-});
+function track(id: string, extra?: Partial<MusicPlaylistItem>): MusicPlaylistItem {
+	return {
+		id,
+		name: `track ${id}`,
+		...extra,
+	};
+}
 
 describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 	beforeEach(() => {
@@ -60,7 +62,7 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 
 			p.emit('ended' as any, undefined as any);
 			// `next()` runs through the dispatch pipeline asynchronously
-			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(nextFired).toBe(true);
 		});
@@ -79,7 +81,7 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			p.on('next' as any, () => { nextFired = true; });
 
 			p.emit('ended' as any, undefined as any);
-			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(nextFired).toBe(false);
 		});
@@ -101,7 +103,7 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			// media decoder). Yield one macrotask to flush the _dispatchBefore
 			// microtask chain so the `next` event fires, then assert.
 			void instance!.advance();
-			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(nextFired).toBe(true);
 		});

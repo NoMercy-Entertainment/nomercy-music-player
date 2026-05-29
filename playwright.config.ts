@@ -11,6 +11,6 @@ export default defineConfig({
 	webServer: {
 		command: 'npx vite --port 5504 --force',
 		port: 5504,
-		reuseExistingServer: !process.env['CI'],
+		reuseExistingServer: !process.env.CI,
 	},
 });

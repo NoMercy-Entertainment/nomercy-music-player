@@ -7,8 +7,8 @@
  * environment (no mock).
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BrowserPolicyError } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 import { NMMusicPlayer } from '../index';
 
@@ -74,7 +74,8 @@ function removeAudioContext(): void {
 
 /** Return the MockAudioContext instance created by the most recent `new WebAudioBackend()`. */
 function lastCtx(): MockAudioContext {
-	if (!MockAudioContext.lastInstance) throw new Error('No MockAudioContext was created yet');
+	if (!MockAudioContext.lastInstance)
+		throw new Error('No MockAudioContext was created yet');
 	return MockAudioContext.lastInstance;
 }
 
@@ -106,7 +107,7 @@ describe('WebAudioBackend', () => {
 		it('BrowserPolicyError carries code core:policy/audioContextUnsupported', () => {
 			const container = makeContainer();
 			let err: unknown;
-			try { new WebAudioBackend(container); }
+			try { const _backend = new WebAudioBackend(container); void _backend; }
 			catch (e) { err = e; }
 			expect(err).toBeInstanceOf(BrowserPolicyError);
 			expect((err as BrowserPolicyError).code).toBe('core:policy/audioContextUnsupported');

@@ -20,9 +20,9 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NMMusicPlayer } from '../index';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
+import { NMMusicPlayer } from '../index';
 
 // ── Web Audio stubs ───────────────────────────────────────────────────────────
 
@@ -89,7 +89,8 @@ async function makeReadyPlayer(id: string, opts?: { backend?: 'webaudio' | 'audi
 	await player.ready();
 
 	const audioEl = player.container.querySelector('audio');
-	if (!audioEl) throw new Error('AudioElementBackend did not append <audio> to container');
+	if (!audioEl)
+		throw new Error('AudioElementBackend did not append <audio> to container');
 
 	return { player, audioEl };
 }
@@ -189,7 +190,7 @@ describe('_wireBackend regression', () => {
 
 			// NaN duration — happens before valid metadata loads.
 			Object.defineProperty(audioEl, 'duration', {
-				value: NaN,
+				value: Number.NaN,
 				writable: true,
 				configurable: true,
 			});

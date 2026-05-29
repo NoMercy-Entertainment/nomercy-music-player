@@ -1,7 +1,3 @@
-// Music-specific plugins
-export { musicUiPlugin, MusicUiPlugin } from './music-ui';
-export type { MusicUiEvents, MusicUiOptions } from './music-ui';
-
 export { autoAdvancePlugin, AutoAdvancePlugin } from './auto-advance';
 export type { AutoAdvanceOptions } from './auto-advance';
 
@@ -13,6 +9,7 @@ export type { DrmEvents, DrmOptions } from './drm';
 
 export { embedPlugin, EmbedPlugin } from './embed';
 export type { EmbedCommand, EmbedEventMessage, EmbedOptions } from './embed';
+
 export { groupListeningPlugin, GroupListeningPlugin } from './group-listening';
 export type { GroupListeningEvents, GroupListeningOptions } from './group-listening';
 // Cross-library plugins (from core, with music-specific defaults where applicable)
@@ -25,6 +22,9 @@ export type { LyricsEvents, LyricsOptions } from './lyrics';
 export { mediaSessionPlugin, MediaSessionPlugin } from './media-session';
 export { messagePlugin, MessagePlugin } from './message';
 export type { MessageOptions } from './message';
+// Music-specific plugins
+export { musicUiPlugin, MusicUiPlugin } from './music-ui';
+export type { MusicUiEvents, MusicUiOptions } from './music-ui';
 export { tabLeaderPlugin, TabLeaderPlugin } from './tab-leader';
 export type { TabLeaderOptions } from './tab-leader';
 // Audio-graph plugins re-exported from core for ergonomic imports.

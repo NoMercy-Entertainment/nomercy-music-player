@@ -1,4 +1,3 @@
-import { CueTracker, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 import type {
 	Cue,
 	CueList,
@@ -6,17 +5,17 @@ import type {
 } from '@nomercy-entertainment/nomercy-player-core';
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
+import { CueTracker, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Events emitted by {@link LyricsPlugin}. */
 export interface LyricsEvents {
-	'line': { text: string; [key: string]: unknown };
-	'lineEnter': { text: string; [key: string]: unknown };
-	'lineExit': { text: string; [key: string]: unknown };
-	'loaded': void;
-	'enabled': void;
-	'disabled': void;
+	line: { text: string; [key: string]: unknown };
+	lineEnter: { text: string; [key: string]: unknown };
+	lineExit: { text: string; [key: string]: unknown };
+	loaded: void;
+	enabled: void;
+	disabled: void;
 }
-
 
 /** Options for {@link LyricsPlugin}. */
 export interface LyricsOptions {

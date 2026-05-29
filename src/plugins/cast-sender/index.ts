@@ -1,7 +1,7 @@
-import { CastSenderPlugin as BaseCastSenderPlugin, translationsFromGlob } from '@nomercy-entertainment/nomercy-player-core';
 import type { ChromeCastMediaCtors, Translations } from '@nomercy-entertainment/nomercy-player-core';
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
+import { CastSenderPlugin as BaseCastSenderPlugin, translationsFromGlob } from '@nomercy-entertainment/nomercy-player-core';
 
 export type { CastSenderEvents, CastSenderOptions } from '@nomercy-entertainment/nomercy-player-core';
 
@@ -38,7 +38,8 @@ export class CastSenderPlugin extends BaseCastSenderPlugin<NMMusicPlayer<any>, M
 		const Music = ctors.MusicTrackMediaMetadata ?? ctors.GenericMediaMetadata;
 		const meta = new Music();
 		meta['title'] = item.name ?? '';
-		const artists = item.artist_track?.map(a => a?.name).filter(Boolean).join(', ') ?? '';
+		const artists = item.artist_track?.map(a => a?.name).filter(Boolean)
+			.join(', ') ?? '';
 		if (artists)
 			meta['artist'] = artists;
 		const album = item.album_track?.[0]?.name;

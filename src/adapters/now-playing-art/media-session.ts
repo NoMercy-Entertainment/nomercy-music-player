@@ -1,4 +1,3 @@
-
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 
 import type { INowPlayingArt } from './INowPlayingArt';
@@ -14,9 +13,12 @@ interface MusicMetadataSource extends BasePlaylistItem {
 }
 
 function resolveDisplayName(field: Array<{ name: string }> | string | undefined): string {
-	if (!field) return '';
-	if (typeof field === 'string') return field;
-	return field.map(entry => entry?.name).filter(Boolean).join(', ');
+	if (!field)
+		return '';
+	if (typeof field === 'string')
+		return field;
+	return field.map(entry => entry?.name).filter(Boolean)
+		.join(', ');
 }
 
 /**
@@ -31,11 +33,12 @@ function resolveDisplayName(field: Array<{ name: string }> | string | undefined)
  * is responsible for URL resolution via `this.resolveUrl()`.
  */
 export class MediaSessionArtProvider<T extends BasePlaylistItem = BasePlaylistItem>
-	implements INowPlayingArt<T> {
+implements INowPlayingArt<T> {
 	readonly id = 'media-session';
 
 	async publish(item: T, artwork: string | undefined): Promise<void> {
-		if (typeof navigator === 'undefined' || !navigator.mediaSession) return;
+		if (typeof navigator === 'undefined' || !navigator.mediaSession)
+			return;
 
 		const source = item as MusicMetadataSource;
 		const title = source.name ?? source.title ?? '';
@@ -47,13 +50,17 @@ export class MediaSessionArtProvider<T extends BasePlaylistItem = BasePlaylistIt
 			artist,
 			album,
 			artwork: artwork
-				? [{ src: artwork, sizes: '512x512' }]
+				? [{
+						src: artwork,
+						sizes: '512x512',
+					}]
 				: [],
 		});
 	}
 
 	clear(): void {
-		if (typeof navigator === 'undefined' || !navigator.mediaSession) return;
+		if (typeof navigator === 'undefined' || !navigator.mediaSession)
+			return;
 		navigator.mediaSession.metadata = null;
 	}
 }

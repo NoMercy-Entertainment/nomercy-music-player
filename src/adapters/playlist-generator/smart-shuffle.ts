@@ -1,4 +1,3 @@
-
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 
 import type { IPlaylistGenerator } from './IPlaylistGenerator';
@@ -25,20 +24,23 @@ interface TaggedItem extends BasePlaylistItem {
  * items when available, or a random queue item otherwise.
  */
 export class SmartShuffleGenerator<T extends BasePlaylistItem = BasePlaylistItem>
-	implements IPlaylistGenerator<T> {
+implements IPlaylistGenerator<T> {
 	readonly id = 'smart-shuffle';
 
 	private readonly played: number[] = [];
 
 	next(items: ReadonlyArray<T>, currentIndex: number): number | undefined {
-		if (items.length === 0) return undefined;
-		if (items.length === 1) return 0;
+		if (items.length === 0)
+			return undefined;
+		if (items.length === 1)
+			return 0;
 
 		const candidates = items
 			.map((_, idx) => idx)
 			.filter(idx => idx !== currentIndex);
 
-		if (candidates.length === 0) return undefined;
+		if (candidates.length === 0)
+			return undefined;
 
 		const current = currentIndex >= 0 ? (items[currentIndex] as TaggedItem | undefined) : undefined;
 		const currentGenres = this.toSet(current?.genre);
@@ -50,7 +52,10 @@ export class SmartShuffleGenerator<T extends BasePlaylistItem = BasePlaylistItem
 			const genreOverlap = [...genres].some(g => currentGenres.has(g));
 			const sameDecade = item.decade !== undefined && item.decade === currentDecade;
 			const penalty = (genreOverlap ? 1 : 0) + (sameDecade ? 1 : 0);
-			return { idx, score: -penalty + Math.random() * 0.5 };
+			return {
+				idx,
+				score: -penalty + Math.random() * 0.5,
+			};
 		});
 
 		scored.sort((a, b) => b.score - a.score);
@@ -59,13 +64,15 @@ export class SmartShuffleGenerator<T extends BasePlaylistItem = BasePlaylistItem
 		const top = scored.filter(item => item.score >= topScore - 0.1);
 		const chosen = top[Math.floor(Math.random() * top.length)]!.idx;
 
-		if (currentIndex >= 0) this.played.push(currentIndex);
+		if (currentIndex >= 0)
+			this.played.push(currentIndex);
 
 		return chosen;
 	}
 
 	previous(items: ReadonlyArray<T>, _currentIndex: number): number | undefined {
-		if (items.length === 0) return undefined;
+		if (items.length === 0)
+			return undefined;
 
 		if (this.played.length > 0) {
 			return this.played.pop();
@@ -76,8 +83,10 @@ export class SmartShuffleGenerator<T extends BasePlaylistItem = BasePlaylistItem
 	}
 
 	private toSet(field: string | string[] | undefined): Set<string> {
-		if (!field) return new Set();
-		if (typeof field === 'string') return new Set([field]);
+		if (!field)
+			return new Set();
+		if (typeof field === 'string')
+			return new Set([field]);
 		return new Set(field);
 	}
 }

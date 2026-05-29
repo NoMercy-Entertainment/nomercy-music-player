@@ -1,4 +1,10 @@
-import type { ActionOptions, BaseEventMap, BasePlayerConfig, BasePlaylistItem, IPlayer } from '@nomercy-entertainment/nomercy-player-core';
+import type {
+	ActionOptions,
+	BaseEventMap,
+	BasePlayerConfig,
+	BasePlaylistItem,
+	IPlayer,
+} from '@nomercy-entertainment/nomercy-player-core';
 import type { IAudioBackend } from './adapters/audio-backend/IAudioBackend';
 
 export interface ArtistRef {

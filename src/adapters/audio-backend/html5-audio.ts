@@ -1,14 +1,18 @@
+import type {
+	BackendEventPayload,
+	BackendLoaderState,
+	BackendState,
+	IAudioBackend,
+} from './IAudioBackend';
 
 import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
 
-import type { BackendEventPayload, BackendLoaderState, BackendState, IAudioBackend } from './IAudioBackend';
-
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
-const supportsNativeHls = (audio: HTMLAudioElement): boolean => {
+function supportsNativeHls(audio: HTMLAudioElement): boolean {
 	const can = audio.canPlayType('application/vnd.apple.mpegurl');
 	return can === 'probably' || can === 'maybe';
-};
+}
 
 interface HlsCtor {
 	new (cfg?: unknown): {
@@ -81,7 +85,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 				// most CDNs) deliver real samples. Same-origin tracks are unaffected.
 				this.element.crossOrigin = 'anonymous';
 				this.ownsElement = true;
-				if (container) container.appendChild(this.element);
+				if (container)
+					container.appendChild(this.element);
 			}
 		}
 		this.attachDomBridges();
@@ -92,22 +97,25 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		const track = (domEvent: string, handler: EventListener): void => {
 			this.element.addEventListener(domEvent, handler);
-			this.domHandlers.push({ event: domEvent, handler });
+			this.domHandlers.push({
+				event: domEvent,
+				handler,
+			});
 		};
 
-		track('loadstart', (ev) => this.emit('loadstart', ev));
-		track('loadedmetadata', (ev) => this.emit('loadedmetadata', ev));
-		track('canplay', (ev) => this.emit('canplay', ev));
-		track('play', (ev) => this.emit('play', ev));
-		track('playing', (ev) => this.emit('playing', ev));
-		track('pause', (ev) => this.emit('pause', ev));
-		track('ended', (ev) => this.emit('ended', ev));
-		track('timeupdate', (ev) => this.emit('timeupdate', ev));
-		track('waiting', (ev) => this.emit('waiting', ev));
-		track('stalled', (ev) => this.emit('stalled', ev));
-		track('ratechange', (ev) => this.emit('ratechange', ev));
-		track('encrypted', (ev) => this.emit('encrypted', ev));
-		track('error', (ev) => this.emit('error', ev));
+		track('loadstart', ev => this.emit('loadstart', ev));
+		track('loadedmetadata', ev => this.emit('loadedmetadata', ev));
+		track('canplay', ev => this.emit('canplay', ev));
+		track('play', ev => this.emit('play', ev));
+		track('playing', ev => this.emit('playing', ev));
+		track('pause', ev => this.emit('pause', ev));
+		track('ended', ev => this.emit('ended', ev));
+		track('timeupdate', ev => this.emit('timeupdate', ev));
+		track('waiting', ev => this.emit('waiting', ev));
+		track('stalled', ev => this.emit('stalled', ev));
+		track('ratechange', ev => this.emit('ratechange', ev));
+		track('encrypted', ev => this.emit('encrypted', ev));
+		track('error', ev => this.emit('error', ev));
 
 		// State-mutation handlers tracked in the same array so detachDomBridges
 		// and dispose always remove them — no separate cleanup path.
@@ -130,11 +138,13 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		this.domHandlers = [];
 	}
 
-
 	async load(url: string, opts?: { preload: 'auto' | 'metadata' | 'none' }): Promise<void> {
 		this.element.preload = opts?.preload ?? 'auto';
 		this.currentState = 'loading';
-		this.emit('backend:loading', { url, kind: this.kind });
+		this.emit('backend:loading', {
+			url,
+			kind: this.kind,
+		});
 
 		if (this.hlsInstance) {
 			try { this.hlsInstance.destroy(); }
@@ -187,7 +197,11 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		const duration = Number.isFinite(this.element.duration) ? this.element.duration : 0;
 		this.currentState = 'ready';
-		this.emit('backend:loaded', { url, kind: this.kind, duration });
+		this.emit('backend:loaded', {
+			url,
+			kind: this.kind,
+			duration,
+		});
 	}
 
 	unload(): void {
@@ -206,7 +220,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	}
 
 	dispose(): void {
-		if (this.disposed) return;
+		if (this.disposed)
+			return;
 		this.disposed = true;
 		this.disposeSecondary();
 		this.unload();
@@ -234,7 +249,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	currentTime(): number;
 	currentTime(t: number): void;
 	currentTime(t?: number): number | void {
-		if (t === undefined) return this.element.currentTime;
+		if (t === undefined)
+			return this.element.currentTime;
 		try { this.element.currentTime = t; }
 		catch { /* element not ready — best effort */ }
 	}
@@ -246,7 +262,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 	buffered(): number {
 		const ranges = this.element.buffered;
-		if (!ranges || ranges.length === 0) return 0;
+		if (!ranges || ranges.length === 0)
+			return 0;
 		return ranges.end(ranges.length - 1);
 	}
 
@@ -261,17 +278,20 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	playbackRate(): number;
 	playbackRate(rate: number): void;
 	playbackRate(rate?: number): number | void {
-		if (rate === undefined) return this.element.playbackRate;
+		if (rate === undefined)
+			return this.element.playbackRate;
 		this.element.playbackRate = rate;
 	}
 
 	volume(): number;
 	volume(v: number): void;
 	volume(v?: number): number | void {
-		if (v === undefined) return this.element.volume;
+		if (v === undefined)
+			return this.element.volume;
 		const clamped = Math.max(0, Math.min(1, v));
 		this.element.volume = clamped;
-		if (clamped > 0) this.prevVolume = clamped;
+		if (clamped > 0)
+			this.prevVolume = clamped;
 	}
 
 	mute(): void {
@@ -300,7 +320,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	}
 
 	private ensureSourceGraph(ctx: AudioContext): void {
-		if (this.sourceNode && this.sourceCtx === ctx) return;
+		if (this.sourceNode && this.sourceCtx === ctx)
+			return;
 
 		// Different context (consumer swapped AudioContext) — drop the old graph.
 		if (this.sourceNode && this.sourceCtx !== ctx) {
@@ -335,7 +356,10 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			throw new BrowserPolicyError({
 				code: 'core:policy/captureStreamUnsupported',
 				severity: 'error',
-				scope: { kind: 'backend', id: 'audio-element' },
+				scope: {
+					kind: 'backend',
+					id: 'audio-element',
+				},
 				message: 'HTMLAudioElement.captureStream() is not available in this environment.',
 			});
 		}
@@ -348,7 +372,10 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			throw new BrowserPolicyError({
 				code: 'core:policy/setSinkIdUnsupported',
 				severity: 'error',
-				scope: { kind: 'backend', id: 'audio-element' },
+				scope: {
+					kind: 'backend',
+					id: 'audio-element',
+				},
 				message: 'HTMLAudioElement.setSinkId() is not available in this environment.',
 			});
 		}
@@ -370,7 +397,10 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			throw new BrowserPolicyError({
 				code: 'core:policy/emeUnsupported',
 				severity: 'error',
-				scope: { kind: 'backend', id: 'audio-element' },
+				scope: {
+					kind: 'backend',
+					id: 'audio-element',
+				},
 				message: 'HTMLMediaElement.setMediaKeys() is not available in this environment.',
 			});
 		}
@@ -385,13 +415,15 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 	pauseLoader(): void {
 		const stop = this.hlsInstance?.stopLoad;
-		if (typeof stop === 'function') stop.call(this.hlsInstance);
+		if (typeof stop === 'function')
+			stop.call(this.hlsInstance);
 		this.loaderRunning = 'paused';
 	}
 
 	resumeLoader(): void {
 		const start = this.hlsInstance?.startLoad;
-		if (typeof start === 'function') start.call(this.hlsInstance);
+		if (typeof start === 'function')
+			start.call(this.hlsInstance);
 		this.loaderRunning = 'running';
 	}
 
@@ -415,7 +447,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	 * sample-accurate. Use `WebAudioBackend` for sample-accurate crossfades.
 	 */
 	async loadSecondary(url: string): Promise<void> {
-		if (this._secondary && this._secondary.currentSrc === url) return;
+		if (this._secondary && this._secondary.currentSrc === url)
+			return;
 
 		this.disposeSecondary();
 
@@ -451,7 +484,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	 * the reference. Idempotent.
 	 */
 	disposeSecondary(): void {
-		if (!this._secondary) return;
+		if (!this._secondary)
+			return;
 		try { this._secondary.pause(); }
 		catch { /* ignore */ }
 		this._secondary.removeAttribute('src');
@@ -470,7 +504,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	 */
 	async primeSecondary(seekMs?: number): Promise<void> {
 		const el = this._secondary;
-		if (!el) return;
+		if (!el)
+			return;
 
 		await new Promise<void>((resolve) => {
 			if (el.readyState >= 3) {
@@ -495,7 +530,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	 */
 	async crossfade(durationMs: number): Promise<void> {
 		const secondary = this._secondary;
-		if (!secondary) throw new Error('crossfade() called without a loaded secondary');
+		if (!secondary)
+			throw new Error('crossfade() called without a loaded secondary');
 
 		const startVolume = this.element.volume;
 

@@ -1,42 +1,43 @@
-
 import type { AudioBackendKind } from '../../types';
 
 /** Backend-internal events forwarded to the player's eventTarget. */
-export type BackendEvent =
-	| 'loadstart'
-	| 'loadedmetadata'
-	| 'canplay'
-	| 'play'
+export type BackendEvent
+	= | 'loadstart'
+		| 'loadedmetadata'
+		| 'canplay'
+		| 'play'
 	/**
 	 * Fires when media is actually rendering — after buffering resolves, not
 	 * just on element.play(). Use this to hide buffering spinners.
 	 */
-	| 'playing'
-	| 'pause'
-	| 'ended'
-	| 'timeupdate'
-	| 'waiting'
-	| 'stalled'
-	| 'ratechange'
-	| 'encrypted'
-	| 'error';
+		| 'playing'
+		| 'pause'
+		| 'ended'
+		| 'timeupdate'
+		| 'waiting'
+		| 'stalled'
+		| 'ratechange'
+		| 'encrypted'
+		| 'error';
 
-/** Typed payload map for backend events. All DOM-bridge events carry the
- *  original `Event` object; internal lifecycle events carry metadata. */
+/**
+ * Typed payload map for backend events. All DOM-bridge events carry the
+ *  original `Event` object; internal lifecycle events carry metadata.
+ */
 export interface BackendEventPayload {
-	loadstart: Event;
-	loadedmetadata: Event;
-	canplay: Event;
-	play: Event;
-	playing: Event;
-	pause: Event;
-	ended: Event;
-	timeupdate: Event;
-	waiting: Event;
-	stalled: Event;
-	ratechange: Event;
-	encrypted: Event;
-	error: Event;
+	'loadstart': Event;
+	'loadedmetadata': Event;
+	'canplay': Event;
+	'play': Event;
+	'playing': Event;
+	'pause': Event;
+	'ended': Event;
+	'timeupdate': Event;
+	'waiting': Event;
+	'stalled': Event;
+	'ratechange': Event;
+	'encrypted': Event;
+	'error': Event;
 	'backend:loading': { url: string; kind: AudioBackendKind };
 	'backend:loaded': { url: string; kind: AudioBackendKind; duration: number };
 }

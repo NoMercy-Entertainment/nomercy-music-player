@@ -4,9 +4,9 @@
  * MediaList events surface on the player as `queue`, `queue:append`, etc.
  */
 
+import type { MusicPlaylistItem } from '../types';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NMMusicPlayer } from '../index';
-import type { MusicPlaylistItem } from '../types';
 
 const track = (id: string): MusicPlaylistItem => ({ id, name: `track ${id}` });
 

@@ -1,4 +1,3 @@
-
 import type { MusicPlaylistItem } from '../../types';
 
 import type { ILyricSource } from './ILyricSource';

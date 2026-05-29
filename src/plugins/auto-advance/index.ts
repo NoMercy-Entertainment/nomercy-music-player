@@ -1,6 +1,6 @@
-import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
+import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Options for {@link AutoAdvancePlugin}. */
 export interface AutoAdvanceOptions {
@@ -35,12 +35,14 @@ export class AutoAdvancePlugin extends Plugin<NMMusicPlayer, AutoAdvanceOptions>
 
 	override use(): void {
 		this.on('ended', () => {
-			if (this.opts?.enabled === false) return;
+			if (this.opts?.enabled === false)
+				return;
 			void this.onEnded();
 		});
 
 		this.on('trackEndingSoon', () => {
-			if (this.opts?.enabled === false) return;
+			if (this.opts?.enabled === false)
+				return;
 			void this.onTrackEndingSoon();
 		});
 	}
@@ -56,7 +58,8 @@ export class AutoAdvancePlugin extends Plugin<NMMusicPlayer, AutoAdvanceOptions>
 	 */
 	async preloadNext(): Promise<void> {
 		const next = this.player.peekNext();
-		if (!next) return;
+		if (!next)
+			return;
 
 		try {
 			await this.player.load(next, { slot: 'next' });

@@ -1,24 +1,9 @@
-import {
-	AudioGraphPlugin,
-	BufferState,
-	composeMixins,
-	EqualizerPlugin,
-	EventEmitter,
-	initPlayerCoreState,
-	MediaFormatError,
-	NetworkState,
-	NotImplementedError,
-	playerCoreMethods,
-	resolvePlayerConstructor,
-	VisibilityState,
-} from '@nomercy-entertainment/nomercy-player-core';
-
-export { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core';
 import type {
 	ActionOptions,
 	AudioTrack,
 	AuthConfig,
 	BasePlaylistItem,
+	BufferState,
 	CanPlayResult,
 	CastState,
 	Chapter,
@@ -30,51 +15,55 @@ import type {
 	IPlayer,
 	TimeState as KitTimeState,
 	LoadOptions,
+	NetworkState,
 	PlaybackMetrics,
 	PlayerExperimental,
 	PlayerPhase,
 	PlayStateToken,
 	Plugin,
 	PluginCtorWithId,
+	PreloadStrategy,
 	QualityLevel,
 	ResolvedUrl,
 	SetupState,
 	StreamFactory,
 	SubtitleTrack,
+	TransitionStrategy,
 	Translations,
 	UrlCategory,
 	UrlResolver,
+	VisibilityState,
 } from '@nomercy-entertainment/nomercy-player-core';
-import type { PreloadStrategy, TransitionStrategy } from '@nomercy-entertainment/nomercy-player-core';
 import type { IAudioBackend } from './adapters/audio-backend/IAudioBackend';
-import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
-import { WebAudioBackend } from './adapters/audio-backend/web-audio';
-import { MusicPreloadStrategy } from './player/preload';
-import { CrossfadeTransitionStrategy } from '@nomercy-entertainment/nomercy-player-core';
 import type {
 	AudioBackendKind,
+	AudioTrackState,
 	CrossfadeOptions,
 	IMusicPlayer,
 	MusicEventMap,
 	MusicPlayerConfig,
 	MusicPlaylistItem,
 	PlayState,
+	QualityState,
 	RepeatState,
 	ShuffleState,
 	VolumeState,
 } from './types';
 import {
-	AudioTrackState,
-	QualityState,
-} from './types';
-import {
-	AutoAdvancePlugin,
-	CastSenderPlugin,
-	KeyHandlerPlugin,
-	LyricsPlugin,
-	MediaSessionPlugin,
-	TabLeaderPlugin,
-} from './plugins';
+	composeMixins,
+	CrossfadeTransitionStrategy,
+	EventEmitter,
+	initPlayerCoreState,
+	MediaFormatError,
+	NotImplementedError,
+	playerCoreMethods,
+	resolvePlayerConstructor,
+} from '@nomercy-entertainment/nomercy-player-core';
+import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
+import { WebAudioBackend } from './adapters/audio-backend/web-audio';
+import { MusicPreloadStrategy } from './player/preload';
+
+export { MusicPreloadStrategy } from './player/preload';
 
 export type {
 	AudioBackendKind,
@@ -85,7 +74,6 @@ export type {
 	MusicPlaylistItem,
 	TimeState,
 } from './types';
-export { MusicPreloadStrategy } from './player/preload';
 export {
 	AudioTrackState,
 	PlayState,
@@ -94,6 +82,7 @@ export {
 	ShuffleState,
 	VolumeState,
 } from './types';
+export { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core';
 
 const _instances = new Map<string, NMMusicPlayer<any>>();
 
@@ -147,15 +136,18 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		(key: string, vars?: Record<string, string>): string;
 		(PluginClass: PluginCtorWithId, key: string, vars?: Record<string, string>): string;
 	};
+
 	declare language: {
 		(): string;
 		(lang: string): Promise<void>;
 	};
+
 	declare addTranslations: (bundle: Translations) => void;
 	declare translation: {
 		(lang: string, key: string): string | undefined;
 		(lang: string, key: string, value: string): void;
 	};
+
 	declare removeTranslations: (prefix: string, lang?: string) => void;
 
 	declare registerCueParser: (parser: CueParser, prepend?: boolean) => void;
@@ -238,6 +230,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		(): T | undefined;
 		(target: T | string | number, opts?: ActionOptions): void;
 	};
+
 	declare currentIndex: () => number;
 	declare seekToIndex: (position: number, opts?: ActionOptions) => void;
 
@@ -332,12 +325,14 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		this._firstFrameEmitted = false;
 		this._trackEndingSoonEmitted = false;
 
-		/** Narrow view of the composed kit internals needed by this method only.
+		/**
+		 * Narrow view of the composed kit internals needed by this method only.
 		 *  These fields are written onto the instance by playerCoreMethods via
 		 *  composeMixins — they exist at runtime but are not declared on the class
 		 *  (they live on the Internals interface in the kit). The cast is isolated
 		 *  here; all mutations go through the declared helpers or direct assignment
-		 *  on the typed surface. */
+		 *  on the typed surface.
+		 */
 		interface WireInternals {
 			_phase: PlayerPhase;
 			_playState: PlayStateToken;
@@ -346,7 +341,8 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		const internals = this as unknown as WireInternals;
 
 		instance.on('canplay', () => {
-			if (this._firstFrameEmitted) return;
+			if (this._firstFrameEmitted)
+				return;
 			this._firstFrameEmitted = true;
 
 			if (internals._phase === 'starting') {
@@ -510,6 +506,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		(): QualityState;
 		(target: number | 'auto'): void;
 	};
+
 	declare audioTrackState: {
 		(): AudioTrackState;
 		(idx: number): void;
@@ -543,21 +540,25 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		(): CurrentSubtitleSelection | null;
 		(idx: number | null): void;
 	};
+
 	declare audioTracks: () => AudioTrack[];
 	declare currentAudioTrack: {
 		(): CurrentAudioTrackSelection | null;
 		(idx: number): void;
 	};
+
 	declare qualityLevels: () => QualityLevel[];
 	declare currentQuality: {
 		(): CurrentQualitySelection | 'auto';
 		(idx: number | 'auto'): void;
 	};
+
 	declare chapters: () => Chapter[];
 	declare currentChapter: {
 		(): Chapter | null;
 		(idx: number): void;
 	};
+
 	declare seekToChapter: (idx: number, opts?: ActionOptions) => void;
 	declare nextChapter: (opts?: ActionOptions) => void;
 	declare previousChapter: (opts?: ActionOptions) => void;
@@ -572,6 +573,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		(config: AuthConfig): void;
 		(partial: Partial<AuthConfig>): void;
 	};
+
 	declare refreshAuth: () => Promise<void>;
 	declare resolveUrl: (url: string, category?: UrlCategory) => Promise<ResolvedUrl>;
 	declare urlResolver: {

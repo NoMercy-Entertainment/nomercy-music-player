@@ -1,5 +1,5 @@
-import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 import type { NMMusicPlayer } from '../../index';
+import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Options for the music {@link LiveTranscodingPlugin}. */
 export interface LiveTranscodingOptions {

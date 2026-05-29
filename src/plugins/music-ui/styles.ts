@@ -347,9 +347,10 @@ export const musicUiCss = `
 `;
 
 export function ensureMusicUiStyles(): void {
-    if (document.getElementById(STYLE_ELEMENT_ID)) return;
-    const style = document.createElement('style');
-    style.id = STYLE_ELEMENT_ID;
-    style.textContent = musicUiCss;
-    document.head.appendChild(style);
+	if (document.getElementById(STYLE_ELEMENT_ID))
+		return;
+	const style = document.createElement('style');
+	style.id = STYLE_ELEMENT_ID;
+	style.textContent = musicUiCss;
+	document.head.appendChild(style);
 }

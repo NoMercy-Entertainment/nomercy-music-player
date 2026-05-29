@@ -1,7 +1,6 @@
-import type { PreloadAsset } from '@nomercy-entertainment/nomercy-player-core';
-import { DefaultPreloadStrategy } from '@nomercy-entertainment/nomercy-player-core';
-import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
+import type { BasePlaylistItem, PreloadAsset } from '@nomercy-entertainment/nomercy-player-core';
 import type { MusicPlaylistItem } from '../types';
+import { DefaultPreloadStrategy } from '@nomercy-entertainment/nomercy-player-core';
 
 /**
  * Music-domain preload strategy. Extends the kit's `DefaultPreloadStrategy`
@@ -18,15 +17,27 @@ export class MusicPreloadStrategy extends DefaultPreloadStrategy {
 		const assets: PreloadAsset[] = [];
 
 		if (musicItem.url) {
-			assets.push({ url: musicItem.url, category: 'media', mode: 'metadata' });
+			assets.push({
+				url: musicItem.url,
+				category: 'media',
+				mode: 'metadata',
+			});
 		}
 
 		if (musicItem.cover) {
-			assets.push({ url: musicItem.cover, category: 'poster', mode: 'auto' });
+			assets.push({
+				url: musicItem.cover,
+				category: 'poster',
+				mode: 'auto',
+			});
 		}
 
 		if (musicItem.lyricsUrl) {
-			assets.push({ url: musicItem.lyricsUrl, category: 'lyrics', mode: 'auto' });
+			assets.push({
+				url: musicItem.lyricsUrl,
+				category: 'lyrics',
+				mode: 'auto',
+			});
 		}
 
 		return assets;

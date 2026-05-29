@@ -1,12 +1,8 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
+	"type": "module",
 	"version": "2.0.0-beta.1",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
-	"type": "module",
-	"main": "./dist/index.js",
-	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
-	"license": "Apache-2.0",
 	"author": {
 		"name": "NoMercy Entertainment",
 		"email": "info@nomercy.tv",
@@ -15,26 +11,25 @@
 	"contributors": [
 		"Stoney Eagle <stoney@nomercy.tv>"
 	],
+	"license": "Apache-2.0",
 	"homepage": "https://docs.nomercy.tv/player/music/",
-	"bugs": {
-		"url": "https://github.com/NoMercy-Entertainment/nomercy-music-player/issues"
-	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/NoMercy-Entertainment/nomercy-music-player.git"
 	},
-	"engines": {
-		"node": ">=18.0.0"
+	"bugs": {
+		"url": "https://github.com/NoMercy-Entertainment/nomercy-music-player/issues"
 	},
-	"sideEffects": false,
-	"files": [
-		"dist",
-		"CHANGELOG.md",
-		"MIGRATION.md",
-		"CODE_OF_CONDUCT.md",
-		"CONTRIBUTING.md",
-		"SECURITY.md"
+	"keywords": [
+		"music",
+		"player",
+		"audio",
+		"hls",
+		"crossfade",
+		"plugin",
+		"NoMercy"
 	],
+	"sideEffects": false,
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
@@ -130,6 +125,20 @@
 		},
 		"./package.json": "./package.json"
 	},
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"CHANGELOG.md",
+		"CODE_OF_CONDUCT.md",
+		"CONTRIBUTING.md",
+		"MIGRATION.md",
+		"SECURITY.md",
+		"dist"
+	],
+	"engines": {
+		"node": ">=18.0.0"
+	},
 	"scripts": {
 		"build": "tsc -p tsconfig.build.json",
 		"dev": "tsc -p tsconfig.build.json --watch",
@@ -142,15 +151,6 @@
 		"test:e2e:report": "npx playwright show-report reports/playwright",
 		"prepublishOnly": "npm run build"
 	},
-	"keywords": [
-		"music",
-		"player",
-		"audio",
-		"hls",
-		"crossfade",
-		"plugin",
-		"NoMercy"
-	],
 	"dependencies": {
 		"@nomercy-entertainment/nomercy-player-core": "file:../nomercy-player-kit",
 		"audiomotion-analyzer": "^4.5.4"

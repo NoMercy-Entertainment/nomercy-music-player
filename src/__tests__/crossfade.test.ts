@@ -6,10 +6,10 @@
  * This keeps tests fast and deterministic.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NMMusicPlayer } from '../index';
 import type { IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
 import type { MusicPlaylistItem } from '../types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { NMMusicPlayer } from '../index';
 
 // ── Mock backend ──────────────────────────────────────────────────────────────
 

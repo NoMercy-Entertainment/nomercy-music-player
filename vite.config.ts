@@ -1,9 +1,9 @@
+import { resolve } from 'node:path';
 /// <reference types="vitest" />
 import { fileURLToPath } from 'node:url';
-import { resolve } from 'node:path';
+import { nomercyTranslationsPlugin } from '@nomercy-entertainment/nomercy-player-core/vite-plugin';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
-import { nomercyTranslationsPlugin } from '@nomercy-entertainment/nomercy-player-core/vite-plugin';
 
 const selfRoot = fileURLToPath(new URL('./src', import.meta.url));
 

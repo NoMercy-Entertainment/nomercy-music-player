@@ -1,4 +1,3 @@
-
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 
 import type { IPlaylistGenerator } from './IPlaylistGenerator';
@@ -13,7 +12,7 @@ import type { IPlaylistGenerator } from './IPlaylistGenerator';
  * unless they explicitly wire a different implementation.
  */
 export class LinearPlaylistGenerator<T extends BasePlaylistItem = BasePlaylistItem>
-	implements IPlaylistGenerator<T> {
+implements IPlaylistGenerator<T> {
 	readonly id = 'linear';
 
 	next(items: ReadonlyArray<T>, currentIndex: number): number | undefined {

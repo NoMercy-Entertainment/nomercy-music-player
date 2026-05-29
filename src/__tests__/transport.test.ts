@@ -15,8 +15,8 @@
  * compound (currentTime → 0 + play).
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PlayerError, StateError } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NMMusicPlayer } from '../index';
 
 describe('NMMusicPlayer — transport', () => {

@@ -1,14 +1,18 @@
+import type {
+	BackendEventPayload,
+	BackendLoaderState,
+	BackendState,
+	IAudioBackend,
+} from './IAudioBackend';
 
 import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
 
-import type { BackendEventPayload, BackendLoaderState, BackendState, IAudioBackend } from './IAudioBackend';
-
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
-const supportsNativeHls = (audio: HTMLAudioElement): boolean => {
+function supportsNativeHls(audio: HTMLAudioElement): boolean {
 	const can = audio.canPlayType('application/vnd.apple.mpegurl');
 	return can === 'probably' || can === 'maybe';
-};
+}
 
 interface HlsCtor {
 	new (cfg?: unknown): {
@@ -34,7 +38,10 @@ function resolveAudioContext(existing?: AudioContext): AudioContext {
 	if (!Ctor) {
 		throw new BrowserPolicyError({
 			code: 'core:policy/audioContextUnsupported',
-			scope: { kind: 'backend', id: 'webaudio' },
+			scope: {
+				kind: 'backend',
+				id: 'webaudio',
+			},
 			message: 'Web Audio API is not available in this environment.',
 			suggestion: 'Use a browser that supports the Web Audio API (all modern browsers).',
 		});
@@ -75,6 +82,7 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		stopLoad: () => void;
 		startLoad: (pos?: number) => void;
 	};
+
 	private loaderPaused = false;
 	private currentState: BackendState = 'idle';
 	private prevVolume: number = 1;
@@ -109,7 +117,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			// crossOrigin required for createMediaElementSource on cross-origin URLs.
 			this.element.crossOrigin = 'anonymous';
 			this.ownsElement = true;
-			if (container) container.appendChild(this.element);
+			if (container)
+				container.appendChild(this.element);
 		}
 
 		this.attachDomBridges();
@@ -126,7 +135,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 * throw; callers sharing an element must pass in the same AudioContext.
 	 */
 	private ensureGraph(): MediaElementAudioSourceNode {
-		if (this.sourceNode) return this.sourceNode;
+		if (this.sourceNode)
+			return this.sourceNode;
 
 		this.sourceNode = this.ctx.createMediaElementSource(this.element);
 		this.gainNode = this.ctx.createGain();
@@ -149,22 +159,25 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 		const track = (domEvent: string, handler: EventListener): void => {
 			this.element.addEventListener(domEvent, handler);
-			this.domHandlers.push({ event: domEvent, handler });
+			this.domHandlers.push({
+				event: domEvent,
+				handler,
+			});
 		};
 
-		track('loadstart', (ev) => this.emit('loadstart', ev));
-		track('loadedmetadata', (ev) => this.emit('loadedmetadata', ev));
-		track('canplay', (ev) => this.emit('canplay', ev));
-		track('play', (ev) => this.emit('play', ev));
-		track('playing', (ev) => this.emit('playing', ev));
-		track('pause', (ev) => this.emit('pause', ev));
-		track('ended', (ev) => this.emit('ended', ev));
-		track('timeupdate', (ev) => this.emit('timeupdate', ev));
-		track('waiting', (ev) => this.emit('waiting', ev));
-		track('stalled', (ev) => this.emit('stalled', ev));
-		track('ratechange', (ev) => this.emit('ratechange', ev));
-		track('encrypted', (ev) => this.emit('encrypted', ev));
-		track('error', (ev) => this.emit('error', ev));
+		track('loadstart', ev => this.emit('loadstart', ev));
+		track('loadedmetadata', ev => this.emit('loadedmetadata', ev));
+		track('canplay', ev => this.emit('canplay', ev));
+		track('play', ev => this.emit('play', ev));
+		track('playing', ev => this.emit('playing', ev));
+		track('pause', ev => this.emit('pause', ev));
+		track('ended', ev => this.emit('ended', ev));
+		track('timeupdate', ev => this.emit('timeupdate', ev));
+		track('waiting', ev => this.emit('waiting', ev));
+		track('stalled', ev => this.emit('stalled', ev));
+		track('ratechange', ev => this.emit('ratechange', ev));
+		track('encrypted', ev => this.emit('encrypted', ev));
+		track('error', ev => this.emit('error', ev));
 
 		// State-mutation handlers tracked in the same array so dispose always
 		// removes them — no separate cleanup path.
@@ -180,13 +193,15 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		track('error', () => { this.currentState = 'error'; });
 	}
 
-
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 
 	async load(url: string, opts?: { preload: 'auto' | 'metadata' | 'none' }): Promise<void> {
 		this.element.preload = opts?.preload ?? 'auto';
 		this.currentState = 'loading';
-		this.emit('backend:loading', { url, kind: this.kind });
+		this.emit('backend:loading', {
+			url,
+			kind: this.kind,
+		});
 
 		if (this.hlsInstance) {
 			try { this.hlsInstance.destroy(); }
@@ -239,7 +254,11 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 		const duration = Number.isFinite(this.element.duration) ? this.element.duration : 0;
 		this.currentState = 'ready';
-		this.emit('backend:loaded', { url, kind: this.kind, duration });
+		this.emit('backend:loaded', {
+			url,
+			kind: this.kind,
+			duration,
+		});
 	}
 
 	unload(): void {
@@ -258,7 +277,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	}
 
 	dispose(): void {
-		if (this.disposed) return;
+		if (this.disposed)
+			return;
 		this.disposed = true;
 		this.disposeSecondary();
 		this.unload();
@@ -310,7 +330,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	currentTime(): number;
 	currentTime(t: number): void;
 	currentTime(t?: number): number | void {
-		if (t === undefined) return this.element.currentTime;
+		if (t === undefined)
+			return this.element.currentTime;
 		try { this.element.currentTime = t; }
 		catch { /* element not ready — best effort */ }
 	}
@@ -322,7 +343,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 	buffered(): number {
 		const ranges = this.element.buffered;
-		if (!ranges || ranges.length === 0) return 0;
+		if (!ranges || ranges.length === 0)
+			return 0;
 		return ranges.end(ranges.length - 1);
 	}
 
@@ -337,7 +359,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	playbackRate(): number;
 	playbackRate(rate: number): void;
 	playbackRate(rate?: number): number | void {
-		if (rate === undefined) return this.element.playbackRate;
+		if (rate === undefined)
+			return this.element.playbackRate;
 		this.element.playbackRate = rate;
 	}
 
@@ -361,7 +384,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		else {
 			this.element.volume = clamped;
 		}
-		if (clamped > 0) this.prevVolume = clamped;
+		if (clamped > 0)
+			this.prevVolume = clamped;
 	}
 
 	mute(): void {
@@ -419,7 +443,10 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		}
 		throw new BrowserPolicyError({
 			code: 'core:policy/captureStreamUnsupported',
-			scope: { kind: 'backend', id: 'webaudio' },
+			scope: {
+				kind: 'backend',
+				id: 'webaudio',
+			},
 			message: 'captureStream() is not supported in this browser.',
 			suggestion: 'Use Chrome or another Chromium-based browser for stream capture.',
 		});
@@ -432,7 +459,10 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		if (typeof el.setSinkId !== 'function') {
 			throw new BrowserPolicyError({
 				code: 'core:policy/sinkIdUnsupported',
-				scope: { kind: 'backend', id: 'webaudio' },
+				scope: {
+					kind: 'backend',
+					id: 'webaudio',
+				},
 				message: 'setSinkId() is not supported in this browser.',
 				suggestion: 'Use Chrome 49+ for audio output device selection.',
 			});
@@ -445,7 +475,10 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		if (typeof el.sinkId !== 'string') {
 			throw new BrowserPolicyError({
 				code: 'core:policy/sinkIdUnsupported',
-				scope: { kind: 'backend', id: 'webaudio' },
+				scope: {
+					kind: 'backend',
+					id: 'webaudio',
+				},
 				message: 'sinkId is not supported in this browser.',
 				suggestion: 'Use Chrome 49+ for audio output device selection.',
 			});
@@ -475,13 +508,15 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	// ── Loader backpressure ─────────────────────────────────────────────────
 
 	pauseLoader(): void {
-		if (!this.hlsInstance) return;
+		if (!this.hlsInstance)
+			return;
 		this.hlsInstance.stopLoad();
 		this.loaderPaused = true;
 	}
 
 	resumeLoader(): void {
-		if (!this.hlsInstance) return;
+		if (!this.hlsInstance)
+			return;
 		this.hlsInstance.startLoad();
 		this.loaderPaused = false;
 	}
@@ -509,7 +544,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 * @param url - Fully-resolved media URL for the incoming track.
 	 */
 	async loadSecondary(url: string): Promise<void> {
-		if (this._secondaryEl && this._secondaryEl.currentSrc === url) return;
+		if (this._secondaryEl && this._secondaryEl.currentSrc === url)
+			return;
 
 		this.disposeSecondary();
 
@@ -553,7 +589,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		const gain = this._secondaryGain;
 		const source = this._secondarySource;
 		const el = this._secondaryEl;
-		if (!el) return;
+		if (!el)
+			return;
 
 		if (gain) {
 			try {
@@ -589,7 +626,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 */
 	async primeSecondary(seekMs?: number): Promise<void> {
 		const el = this._secondaryEl;
-		if (!el) return;
+		if (!el)
+			return;
 
 		await new Promise<void>((resolve) => {
 			if (el.readyState >= 3) {
@@ -634,7 +672,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		const endTime = now + durationMs / 1000;
 
 		if (durationMs <= 0) {
-			if (primaryGain) primaryGain.gain.value = 0;
+			if (primaryGain)
+				primaryGain.gain.value = 0;
 			secondaryGain.gain.value = targetVolume;
 		}
 		else {
@@ -651,7 +690,7 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		secondaryEl.play().catch(() => { /* best-effort — autoplay may block */ });
 
 		if (durationMs > 0) {
-			await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+			await new Promise<void>(resolve => setTimeout(resolve, durationMs));
 		}
 	}
 

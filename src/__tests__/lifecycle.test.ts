@@ -3,9 +3,9 @@
  * phase transitions, dispose. No throw-tolerance — methods are implemented now.
  */
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { PlayerError, StateError } from '@nomercy-entertainment/nomercy-player-core';
-import { NMMusicPlayer, nmMPlayer } from '../index';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { nmMPlayer, NMMusicPlayer } from '../index';
 
 describe('NMMusicPlayer — lifecycle', () => {
 	beforeEach(() => {

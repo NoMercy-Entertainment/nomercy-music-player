@@ -1,4 +1,3 @@
-
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 
 import type { IScrobbler, ScrobbleContext } from './IScrobbler';
@@ -12,7 +11,7 @@ import type { IScrobbler, ScrobbleContext } from './IScrobbler';
  * the NoMercy server activity endpoint, or any other service.
  */
 export class NoopScrobbler<T extends BasePlaylistItem = BasePlaylistItem>
-	implements IScrobbler<T> {
+implements IScrobbler<T> {
 	readonly id = 'noop';
 
 	scrobble(_item: T, _context: ScrobbleContext): Promise<void> {

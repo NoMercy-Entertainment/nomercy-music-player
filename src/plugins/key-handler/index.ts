@@ -1,7 +1,6 @@
-import { KeyHandlerPlugin as BaseKeyHandler } from '@nomercy-entertainment/nomercy-player-core/plugins/key-handler';
 import type { NMMusicPlayer } from '../../index';
+import { KeyHandlerPlugin as BaseKeyHandler } from '@nomercy-entertainment/nomercy-player-core/plugins/key-handler';
 import { RepeatState, ShuffleState } from '../../types';
-
 
 /**
  * Music-specific key handler. Inherits all kit defaults (space=play/pause,

@@ -11,8 +11,8 @@ const idx: number | null = player.currentAudioTrack();
 
 // After (beta.1)
 const sel = player.currentAudioTrack(); // CurrentAudioTrackSelection | null
-sel?.index;  // number
-sel?.track;  // AudioTrack
+sel?.index; // number
+sel?.track; // AudioTrack
 ```
 
 Setter forms are unchanged. Full details in the kit migration guide.
