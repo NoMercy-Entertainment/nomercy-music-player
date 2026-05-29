@@ -33,6 +33,7 @@ import type {
 	PlaybackMetrics,
 	PlayerExperimental,
 	PlayerPhase,
+	PlayStateToken,
 	Plugin,
 	PluginCtorWithId,
 	QualityLevel,
@@ -330,24 +331,34 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	private _wireBackend(instance: IAudioBackend): void {
 		this._firstFrameEmitted = false;
 		this._trackEndingSoonEmitted = false;
-		const self = this as unknown as { _phase: string; _playState: string; emit: (e: string, d?: unknown) => void };
+
+		/** Narrow view of the composed kit internals needed by this method only.
+		 *  These fields are written onto the instance by playerCoreMethods via
+		 *  composeMixins — they exist at runtime but are not declared on the class
+		 *  (they live on the Internals interface in the kit). The cast is isolated
+		 *  here; all mutations go through the declared helpers or direct assignment
+		 *  on the typed surface. */
+		interface WireInternals {
+			_phase: PlayerPhase;
+			_playState: PlayStateToken;
+			_transitionPhase: (next: PlayerPhase) => void;
+		}
+		const internals = this as unknown as WireInternals;
 
 		instance.on('canplay', () => {
 			if (this._firstFrameEmitted) return;
 			this._firstFrameEmitted = true;
 
-			if (self._phase === 'starting') {
-				const from = self._phase;
-				self._phase = 'playing';
-				this.emit('phase', { from, to: 'playing' });
+			if (internals._phase === 'starting') {
+				internals._transitionPhase('playing');
 			}
 
 			this.emit('firstFrame', undefined);
 		});
 
 		instance.on('play', () => {
-			if (self._playState !== 'playing') {
-				self._playState = 'playing';
+			if (internals._playState !== 'playing') {
+				internals._playState = 'playing';
 				this.emit('play', undefined);
 			}
 
@@ -355,10 +366,8 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 			// Needed for the "load → wait → play" pattern where canplay already
 			// fired during load (setting _firstFrameEmitted = true) and won't
 			// re-fire on element.play().
-			if (self._phase === 'starting') {
-				const from = self._phase;
-				self._phase = 'playing';
-				this.emit('phase', { from, to: 'playing' });
+			if (internals._phase === 'starting') {
+				internals._transitionPhase('playing');
 			}
 		});
 
@@ -367,26 +376,24 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		});
 
 		instance.on('pause', () => {
-			if (self._playState === 'playing') {
-				self._playState = 'paused';
+			if (internals._playState === 'playing') {
+				internals._playState = 'paused';
 				this.emit('pause', undefined);
 			}
 		});
 
 		instance.on('ended', () => {
-			const from = self._phase;
-			if (from !== 'ended') {
-				self._phase = 'ended';
-				this.emit('phase', { from, to: 'ended' });
+			if (internals._phase !== 'ended') {
+				internals._transitionPhase('ended');
 			}
 			this.emit('ended', undefined);
 		});
 
-		const onResetToPaused = () => {
+		const onResetToPaused = (): void => {
 			this._firstFrameEmitted = false;
 			this._trackEndingSoonEmitted = false;
-			if (self._playState === 'playing') {
-				self._playState = 'paused';
+			if (internals._playState === 'playing') {
+				internals._playState = 'paused';
 				this.emit('pause', undefined);
 			}
 		};
