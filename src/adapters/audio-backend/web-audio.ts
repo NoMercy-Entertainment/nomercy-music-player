@@ -1,9 +1,7 @@
 
-import { BrowserPolicyError, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
+import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
 
-import type { BackendEvent, BackendLoaderState, BackendState, IAudioBackend } from './IAudioBackend';
-
-type Listener = (data?: any) => void;
+import type { BackendEventPayload, BackendLoaderState, BackendState, IAudioBackend } from './IAudioBackend';
 
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
@@ -59,14 +57,13 @@ function resolveAudioContext(existing?: AudioContext): AudioContext {
  * Construction throws `BrowserPolicyError` immediately when AudioContext is
  * unavailable — this backend requires Web Audio, never silently degrades.
  */
-export class WebAudioBackend implements IAudioBackend {
+export class WebAudioBackend extends EventEmitter<BackendEventPayload> implements IAudioBackend {
 	readonly kind = 'webaudio' as const;
 
 	private readonly element: HTMLAudioElement;
 	private readonly ownsElement: boolean;
 	private readonly container?: HTMLElement;
-	private readonly listeners: Map<string, Set<Listener>> = new Map();
-	private readonly domHandlers: Map<string, EventListener> = new Map();
+	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
 
 	private ctx: AudioContext;
 	private sourceNode?: MediaElementAudioSourceNode;
@@ -92,7 +89,7 @@ export class WebAudioBackend implements IAudioBackend {
 	private _secondaryGain?: GainNode;
 
 	constructor(container?: HTMLElement, opts?: { audioContext?: AudioContext }) {
-		// Fail-fast: throw at construction if Web Audio is unavailable.
+		super();
 		this.ctx = resolveAudioContext(opts?.audioContext);
 
 		this.container = container;
@@ -148,46 +145,41 @@ export class WebAudioBackend implements IAudioBackend {
 	// ── DOM event bridging ──────────────────────────────────────────────────
 
 	private attachDomBridges(): void {
-		const bridge = (domEvent: string, backendEvent: BackendEvent): void => {
-			const handler: EventListener = (ev): void => {
-				this.emit(backendEvent, ev);
-			};
+		this.domHandlers = [];
+
+		const track = (domEvent: string, handler: EventListener): void => {
 			this.element.addEventListener(domEvent, handler);
-			this.domHandlers.set(domEvent, handler);
+			this.domHandlers.push({ event: domEvent, handler });
 		};
-		bridge('loadstart', 'loadstart');
-		bridge('loadedmetadata', 'loadedmetadata');
-		bridge('canplay', 'canplay');
-		bridge('play', 'play');
-		bridge('playing', 'playing');
-		bridge('pause', 'pause');
-		bridge('ended', 'ended');
-		bridge('timeupdate', 'timeupdate');
-		bridge('waiting', 'waiting');
-		bridge('stalled', 'stalled');
-		bridge('ratechange', 'ratechange');
-		bridge('encrypted', 'encrypted');
-		bridge('error', 'error');
 
-		const setState = (s: BackendState): void => { this.currentState = s; };
-		this.element.addEventListener('loadstart', () => setState('loading'));
-		this.element.addEventListener('loadedmetadata', () => setState('ready'));
-		this.element.addEventListener('play', () => setState('playing'));
-		this.element.addEventListener('pause', () => {
-			if (this.currentState !== 'idle' && this.currentState !== 'error') setState('paused');
+		track('loadstart', (ev) => this.emit('loadstart', ev));
+		track('loadedmetadata', (ev) => this.emit('loadedmetadata', ev));
+		track('canplay', (ev) => this.emit('canplay', ev));
+		track('play', (ev) => this.emit('play', ev));
+		track('playing', (ev) => this.emit('playing', ev));
+		track('pause', (ev) => this.emit('pause', ev));
+		track('ended', (ev) => this.emit('ended', ev));
+		track('timeupdate', (ev) => this.emit('timeupdate', ev));
+		track('waiting', (ev) => this.emit('waiting', ev));
+		track('stalled', (ev) => this.emit('stalled', ev));
+		track('ratechange', (ev) => this.emit('ratechange', ev));
+		track('encrypted', (ev) => this.emit('encrypted', ev));
+		track('error', (ev) => this.emit('error', ev));
+
+		// State-mutation handlers tracked in the same array so dispose always
+		// removes them — no separate cleanup path.
+		track('loadstart', () => { this.currentState = 'loading'; });
+		track('loadedmetadata', () => { this.currentState = 'ready'; });
+		track('play', () => { this.currentState = 'playing'; });
+		track('pause', () => {
+			if (this.currentState !== 'idle' && this.currentState !== 'error') {
+				this.currentState = 'paused';
+			}
 		});
-		this.element.addEventListener('ended', () => setState('paused'));
-		this.element.addEventListener('error', () => setState('error'));
+		track('ended', () => { this.currentState = 'paused'; });
+		track('error', () => { this.currentState = 'error'; });
 	}
 
-	private emit(event: string, data?: unknown): void {
-		const set = this.listeners.get(event);
-		if (!set) return;
-		for (const fn of set) {
-			try { fn(data); }
-			catch { /* swallow listener errors */ }
-		}
-	}
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 
@@ -221,9 +213,9 @@ export class WebAudioBackend implements IAudioBackend {
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs) {
-				(new Function('m', 'return import(m)') as (m: string) => Promise<any>)('hls.js')
-					.then((mod: any) => {
-						const Hls = (mod.default ?? mod) as HlsCtor;
+				import(/* @vite-ignore */ 'hls.js')
+					.then((mod) => {
+						const Hls = (mod.default ?? mod) as unknown as HlsCtor;
 						if (!Hls.isSupported()) {
 							this.element.src = url;
 							this.element.load();
@@ -282,11 +274,10 @@ export class WebAudioBackend implements IAudioBackend {
 		this.gainNode = undefined;
 		this.analyserNode = undefined;
 
-		for (const [evt, handler] of this.domHandlers) {
-			this.element.removeEventListener(evt, handler);
+		for (const { event, handler } of this.domHandlers) {
+			this.element.removeEventListener(event, handler);
 		}
-		this.domHandlers.clear();
-		this.listeners.clear();
+		this.domHandlers = [];
 
 		if (this.ownsElement && this.element.parentNode) {
 			this.element.parentNode.removeChild(this.element);
@@ -320,18 +311,8 @@ export class WebAudioBackend implements IAudioBackend {
 	currentTime(t: number): void;
 	currentTime(t?: number): number | void {
 		if (t === undefined) return this.element.currentTime;
-		return new Promise<void>((resolve) => {
-			const onSeeked = (): void => {
-				this.element.removeEventListener('seeked', onSeeked);
-				resolve();
-			};
-			this.element.addEventListener('seeked', onSeeked, { once: true });
-			try { this.element.currentTime = t; }
-			catch {
-				this.element.removeEventListener('seeked', onSeeked);
-				resolve();
-			}
-		}) as unknown as void;
+		try { this.element.currentTime = t; }
+		catch { /* element not ready — best effort */ }
 	}
 
 	duration(): number {
@@ -507,24 +488,6 @@ export class WebAudioBackend implements IAudioBackend {
 
 	loaderState(): BackendLoaderState {
 		return this.loaderPaused ? 'paused' : 'running';
-	}
-
-	// ── Events ──────────────────────────────────────────────────────────────
-
-	on(event: BackendEvent, fn: (data?: any) => void): void {
-		let set = this.listeners.get(event);
-		if (!set) {
-			set = new Set();
-			this.listeners.set(event, set);
-		}
-		set.add(fn);
-	}
-
-	off(event: BackendEvent, fn: (data?: any) => void): void {
-		const set = this.listeners.get(event);
-		if (!set) return;
-		set.delete(fn);
-		if (set.size === 0) this.listeners.delete(event);
 	}
 
 	// ── Crossfade ─────────────────────────────────────────────────────────────

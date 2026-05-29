@@ -21,6 +21,26 @@ export type BackendEvent =
 	| 'encrypted'
 	| 'error';
 
+/** Typed payload map for backend events. All DOM-bridge events carry the
+ *  original `Event` object; internal lifecycle events carry metadata. */
+export interface BackendEventPayload {
+	loadstart: Event;
+	loadedmetadata: Event;
+	canplay: Event;
+	play: Event;
+	playing: Event;
+	pause: Event;
+	ended: Event;
+	timeupdate: Event;
+	waiting: Event;
+	stalled: Event;
+	ratechange: Event;
+	encrypted: Event;
+	error: Event;
+	'backend:loading': { url: string; kind: AudioBackendKind };
+	'backend:loaded': { url: string; kind: AudioBackendKind; duration: number };
+}
+
 /** Backend lifecycle state. Returned by `state()`. */
 export type BackendState = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'error';
 
