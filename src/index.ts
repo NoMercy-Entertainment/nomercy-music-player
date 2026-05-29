@@ -292,11 +292,12 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 				const opts = this.options as MusicPlayerConfig<T> | undefined;
 				const configKind = opts?.backend ?? 'audio-element';
 				const factory = opts?.backendFactory;
-				this._backend = factory
-					? factory(configKind, opts as MusicPlayerConfig<BasePlaylistItem>)
-					: configKind === 'webaudio'
-						? new WebAudioBackend(this.container)
-						: new AudioElementBackend(this.container);
+				if (factory)
+					this._backend = factory(configKind, opts as MusicPlayerConfig<BasePlaylistItem>);
+				else if (configKind === 'webaudio')
+					this._backend = new WebAudioBackend(this.container);
+				else
+					this._backend = new AudioElementBackend(this.container);
 				this._wireBackend(this._backend);
 			}
 			return this._backend;
@@ -308,11 +309,12 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 			}
 			const opts = this.options as MusicPlayerConfig<T> | undefined;
 			const factory = opts?.backendFactory;
-			this._backend = factory
-				? factory(kind, opts as MusicPlayerConfig<BasePlaylistItem>)
-				: kind === 'webaudio'
-					? new WebAudioBackend(this.container)
-					: new AudioElementBackend(this.container);
+			if (factory)
+				this._backend = factory(kind, opts as MusicPlayerConfig<BasePlaylistItem>);
+			else if (kind === 'webaudio')
+				this._backend = new WebAudioBackend(this.container);
+			else
+				this._backend = new AudioElementBackend(this.container);
 			this._wireBackend(this._backend);
 			this.emit('backend:changed', { kind });
 		});

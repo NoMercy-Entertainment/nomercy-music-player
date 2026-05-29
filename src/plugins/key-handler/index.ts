@@ -23,12 +23,18 @@ export class KeyHandlerPlugin extends BaseKeyHandler<NMMusicPlayer<any>> {
 
 		this.bind('r', () => {
 			const current = this.player.repeatState?.();
-			const next
-				= current === RepeatState.OFF
-					? RepeatState.ALL
-					: current === RepeatState.ALL
-						? RepeatState.ONE
-						: RepeatState.OFF;
+			let next: RepeatState;
+			switch (current) {
+				case RepeatState.OFF:
+					next = RepeatState.ALL;
+					break;
+				case RepeatState.ALL:
+					next = RepeatState.ONE;
+					break;
+				default:
+					next = RepeatState.OFF;
+					break;
+			}
 			this.player.repeatState?.(next);
 		});
 

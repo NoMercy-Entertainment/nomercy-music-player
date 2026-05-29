@@ -47,7 +47,11 @@ export class MediaSessionPlugin extends BaseMediaSession<NMMusicPlayer<any>, Mus
 		const artist = resolveName(x.artist_track) || (x.artist ?? '');
 		const album = resolveName(x.album_track) || (x.album ?? '');
 		const base = this.opts?.artworkBaseUrl ?? '';
-		const coverSrc = x.cover ? (base ? `${base}${x.cover}` : x.cover) : undefined;
+		let coverSrc: string | undefined;
+		if (x.cover)
+			coverSrc = base ? `${base}${x.cover}` : x.cover;
+		else
+			coverSrc = undefined;
 		return {
 			title,
 			artist,
