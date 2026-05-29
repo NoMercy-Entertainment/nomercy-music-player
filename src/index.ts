@@ -13,6 +13,9 @@ import type {
 	DeviceCapabilities,
 	ICueParser,
 	IPlayer,
+	IPreloadStrategy,
+	IStreamFactory,
+	ITransitionStrategy,
 	IUrlResolver,
 	TimeState as KitTimeState,
 	LoadOptions,
@@ -23,13 +26,10 @@ import type {
 	PlayStateToken,
 	Plugin,
 	PluginCtorWithId,
-	PreloadStrategy,
 	QualityLevel,
 	ResolvedUrl,
 	SetupState,
-	StreamFactory,
 	SubtitleTrack,
-	TransitionStrategy,
 	Translations,
 	UrlCategory,
 	VisibilityState,
@@ -273,10 +273,10 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	}
 
 	// ── Stream registration ── composed in via `streamRegistrationMethods` mixin.
-	declare registerStream: (factory: StreamFactory, prepend?: boolean) => this;
+	declare registerStream: (factory: IStreamFactory, prepend?: boolean) => this;
 	declare unregisterStream: (id: string) => this;
 	declare streams: () => ReadonlyArray<string>;
-	declare getStreamFactory: (id: string) => StreamFactory | undefined;
+	declare getStreamFactory: (id: string) => IStreamFactory | undefined;
 
 	// ── Backend ──
 	// The active audio backend. `_isTransitioning` flips true during a crossfade
@@ -588,10 +588,10 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	declare announce: (text: string, level?: 'polite' | 'assertive') => void;
 
 	// ── Preload + transition strategies ── composed via `preloadStrategyMethods` mixin.
-	declare setPreloadStrategy: (strategy: PreloadStrategy) => void;
-	declare setTransitionStrategy: (strategy: TransitionStrategy) => void;
-	declare preloadStrategy: () => PreloadStrategy;
-	declare transitionStrategy: () => TransitionStrategy;
+	declare setPreloadStrategy: (strategy: IPreloadStrategy) => void;
+	declare setTransitionStrategy: (strategy: ITransitionStrategy) => void;
+	declare preloadStrategy: () => IPreloadStrategy;
+	declare transitionStrategy: () => ITransitionStrategy;
 
 	// ── DOM construction helpers ── composed via `domMethods` mixin.
 	declare createElement: IPlayer<MusicEventMap>['createElement'];
