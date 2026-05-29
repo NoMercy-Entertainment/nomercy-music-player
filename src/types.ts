@@ -5,7 +5,7 @@ import type {
 	BasePlaylistItem,
 	IPlayer,
 } from '@nomercy-entertainment/nomercy-player-core';
-import type { IAudioBackend } from './adapters/audio-backend/IAudioBackend';
+import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/IAudioBackend';
 
 export interface ArtistRef {
 	id: string | number;
@@ -60,6 +60,8 @@ export enum ShuffleState {
 	ON = 'on',
 }
 
+export type { AudioBackendKind } from './adapters/audio-backend/IAudioBackend';
+
 /** Re-exported from kit — canonical definition lives in nomercy-player-core. */
 export { AudioTrackState, QualityState } from '@nomercy-entertainment/nomercy-player-core';
 
@@ -92,9 +94,6 @@ export interface CrossfadeOptions {
 	/** Start position of the incoming track in milliseconds (default 0). */
 	startAt?: number;
 }
-
-/** Backend selection at setup time. */
-export type AudioBackendKind = 'audio-element' | 'webaudio';
 
 /**
  * Custom backend factory. Receives the resolved backend kind and the player

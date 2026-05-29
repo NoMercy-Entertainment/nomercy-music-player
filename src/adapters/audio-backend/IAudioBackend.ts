@@ -1,4 +1,5 @@
-import type { AudioBackendKind } from '../../types';
+/** Backend selection — which audio engine handles playback. */
+export type AudioBackendKind = 'audio-element' | 'webaudio';
 
 /** Backend-internal events forwarded to the player's eventTarget. */
 export type BackendEvent
