@@ -29,7 +29,7 @@ interface HlsCtor {
  * graph (so consumers without EQ/spectrum pay zero Web Audio cost).
  *
  * HLS support comes from the kit's stream registry — the registry resolves
- * the URL to a StreamSource (native or hls.js) and `attach()`es it to the
+ * the URL to an IStreamSource (native or hls.js) and `attach()`es it to the
  * underlying `<audio>` element.
  *
  * Use `WebAudioBackend` when sample-accurate crossfades or full Web Audio

@@ -1,7 +1,7 @@
 import type {
 	Cue,
 	CueList,
-	CueParser,
+	ICueParser,
 } from '@nomercy-entertainment/nomercy-player-core';
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
@@ -138,7 +138,7 @@ export class LyricsPlugin extends Plugin<NMMusicPlayer<any>, LyricsOptions> {
 		return list;
 	}
 
-	private resolveParser(url: string): CueParser | undefined {
+	private resolveParser(url: string): ICueParser | undefined {
 		return this.player.resolveCueParser(url);
 	}
 

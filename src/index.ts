@@ -7,12 +7,13 @@ import type {
 	CanPlayResult,
 	CastState,
 	Chapter,
-	CueParser,
 	CurrentAudioTrackSelection,
 	CurrentQualitySelection,
 	CurrentSubtitleSelection,
 	DeviceCapabilities,
+	ICueParser,
 	IPlayer,
+	IUrlResolver,
 	TimeState as KitTimeState,
 	LoadOptions,
 	NetworkState,
@@ -31,7 +32,6 @@ import type {
 	TransitionStrategy,
 	Translations,
 	UrlCategory,
-	UrlResolver,
 	VisibilityState,
 } from '@nomercy-entertainment/nomercy-player-core';
 import type { IAudioBackend } from './adapters/audio-backend/IAudioBackend';
@@ -150,9 +150,9 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 
 	declare removeTranslations: (prefix: string, lang?: string) => void;
 
-	declare registerCueParser: (parser: CueParser, prepend?: boolean) => void;
+	declare registerCueParser: (parser: ICueParser, prepend?: boolean) => void;
 	declare unregisterCueParser: (id: string) => void;
-	declare resolveCueParser: (url: string) => CueParser | undefined;
+	declare resolveCueParser: (url: string) => ICueParser | undefined;
 
 	declare play: (opts?: ActionOptions) => Promise<void>;
 	declare pause: (opts?: ActionOptions) => Promise<void>;
@@ -577,8 +577,8 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	declare refreshAuth: () => Promise<void>;
 	declare resolveUrl: (url: string, category?: UrlCategory) => Promise<ResolvedUrl>;
 	declare urlResolver: {
-		(): UrlResolver | undefined;
-		(resolver: UrlResolver | undefined): void;
+		(): IUrlResolver | undefined;
+		(resolver: IUrlResolver | undefined): void;
 	};
 
 	// ── Performance metrics / clock / accessibility ── composed in via `metricsMethods` mixin.
