@@ -9,49 +9,36 @@ export interface MediaSessionOptions {
 	artworkBaseUrl?: string;
 }
 
-/** Loose shape covering both the canonical `MusicPlaylistItem` and ad-hoc items. */
-interface MusicMetadataSource {
-	name?: string;
-	title?: string;
-	cover?: string;
-	artist_track?: Array<{ name: string }> | string;
-	artist?: string;
-	album_track?: Array<{ name: string }> | string;
-	album?: string;
-}
-
-/** Reduce an artist/album list/string field down to a single display string. */
-function resolveName(field: Array<{ name: string }> | string | undefined): string {
-	if (!field)
+/** Reduce an `ArtistRef[]` / `AlbumRef[]` list down to a single display string. */
+function resolveRefList(field: Array<{ name: string }> | undefined): string {
+	if (!field || field.length === 0)
 		return '';
-	if (typeof field === 'string')
-		return field;
-	return field.map(x => x?.name).filter(Boolean)
+	return field.map(entry => entry?.name).filter(Boolean)
 		.join(', ');
 }
 
 /**
- * Music-specific MediaSession integration. Reads music-shaped fields off the
- * playlist item — `name`, `artist_track[]`, `album_track[]`, `cover` — and
- * synthesizes the OS-level MediaMetadata.
+ * Music-specific MediaSession integration. Reads canonical `MusicPlaylistItem`
+ * fields — `name`, `artist_track[]`, `album_track[]`, `cover` — and synthesizes
+ * the OS-level MediaMetadata.
+ *
+ * Only canonical fields are accessed. Consumers that carry server-specific flat
+ * strings (`artist`, `album`) should subclass and override `getMetadata()`.
  */
-export class MediaSessionPlugin extends BaseMediaSession<NMMusicPlayer<any>, MusicPlaylistItem> {
+export class MediaSessionPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseMediaSession<NMMusicPlayer<T>, T> {
 	static override readonly id: string = 'media-session';
 
 	/** Narrows the inherited `opts` to the music-specific options shape. */
 	declare opts: MediaSessionOptions;
 
-	protected override getMetadata(item: MusicPlaylistItem): MediaSessionMetadata {
-		const x = item as MusicPlaylistItem & MusicMetadataSource;
-		const title = x.name ?? x.title ?? '';
-		const artist = resolveName(x.artist_track) || (x.artist ?? '');
-		const album = resolveName(x.album_track) || (x.album ?? '');
+	protected override getMetadata(item: T): MediaSessionMetadata {
+		const title = item.name ?? '';
+		const artist = resolveRefList(item.artist_track);
+		const album = resolveRefList(item.album_track);
 		const base = this.opts?.artworkBaseUrl ?? '';
-		let coverSrc: string | undefined;
-		if (x.cover)
-			coverSrc = base ? `${base}${x.cover}` : x.cover;
-		else
-			coverSrc = undefined;
+		const coverSrc = item.cover
+			? (base ? `${base}${item.cover}` : item.cover)
+			: undefined;
 		return {
 			title,
 			artist,

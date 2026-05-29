@@ -1,4 +1,5 @@
 import type { NMMusicPlayer } from '../../index';
+import type { MusicPlaylistItem } from '../../types';
 import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Options for the music {@link DrmPlugin}. */
@@ -33,7 +34,7 @@ export interface DrmEvents {
  * Shipping as an explicit stub in 2.0.0 so the public surface is reserved and
  * consumers can introspect the error rather than hitting a silent no-op.
  */
-export class DrmPlugin extends Plugin<NMMusicPlayer<any>, DrmOptions, DrmEvents> {
+export class DrmPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends Plugin<NMMusicPlayer<T>, DrmOptions, DrmEvents> {
 	static override readonly id: string = 'music-drm';
 	static override readonly version: string = '2.0.0';
 	static override readonly description: string = 'EME (Widevine / FairPlay / PlayReady) license + key system coordination';

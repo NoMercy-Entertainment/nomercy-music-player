@@ -111,6 +111,14 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		return this.playerId;
 	}
 
+	/**
+	 * Phantom brand — never assigned at runtime. Declared explicitly here so
+	 * `PlayerEventMap<NMMusicPlayer<T>>` resolves to `MusicEventMap` without
+	 * TypeScript having to walk the `EventEmitter` inheritance chain (which
+	 * stalls in conditional-type inference for complex class hierarchies).
+	 */
+	declare readonly __eventMap__: MusicEventMap;
+
 	declare options: MusicPlayerConfig<T>;
 
 	// ── Type-only declarations for the methods composed in from the kit's

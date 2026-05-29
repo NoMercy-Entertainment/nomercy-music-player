@@ -41,7 +41,7 @@ interface LyricPayload {
  *  - `plugin:lyrics:lineEnter`   — same payload as `line`, mirrors tracker `enter`
  *  - `plugin:lyrics:lineExit`    — emitted when a line goes inactive
  */
-export class LyricsPlugin extends Plugin<NMMusicPlayer<any>, LyricsOptions> {
+export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends Plugin<NMMusicPlayer<T>, LyricsOptions> {
 	static override readonly id: string = 'lyrics';
 	static override readonly version: string = '2.0.0';
 	static override readonly description: string = 'Synced lyrics via cue parser registry + CueTracker';

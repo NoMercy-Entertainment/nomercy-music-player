@@ -20,7 +20,7 @@ export type { CastSenderEvents, CastSenderOptions } from '@nomercy-entertainment
  * Everything else — SDK probe, session lifecycle, RemotePlayer event
  * mirroring, forward* helpers, resume-on-disconnect — lives in the kit.
  */
-export class CastSenderPlugin extends BaseCastSenderPlugin<NMMusicPlayer<any>, MusicPlaylistItem> {
+export class CastSenderPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseCastSenderPlugin<NMMusicPlayer<T>, T> {
 	static override readonly id: string = 'cast-sender';
 	static override readonly description: string = 'Chromecast sender — full media bridge for music';
 	static override readonly translations: Translations = translationsFromGlob('./i18n/*.ts');
@@ -32,7 +32,7 @@ export class CastSenderPlugin extends BaseCastSenderPlugin<NMMusicPlayer<any>, M
 
 	/** Builds a `MusicTrackMediaMetadata` (or `GenericMediaMetadata` fallback) from the music item. */
 	protected override async buildMetadata(
-		item: MusicPlaylistItem,
+		item: T,
 		ctors: ChromeCastMediaCtors & { MusicTrackMediaMetadata?: new () => Record<string, unknown> },
 	): Promise<unknown> {
 		const Music = ctors.MusicTrackMediaMetadata ?? ctors.GenericMediaMetadata;

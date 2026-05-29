@@ -1,4 +1,5 @@
 import type { NMMusicPlayer } from '../../index';
+import type { MusicPlaylistItem } from '../../types';
 import { KeyHandlerPlugin as BaseKeyHandler } from '@nomercy-entertainment/nomercy-player-core/plugins/key-handler';
 import { RepeatState, ShuffleState } from '../../types';
 
@@ -11,7 +12,7 @@ import { RepeatState, ShuffleState } from '../../types';
  *  - `r` → cycle repeat state (off → all → one → off)
  *  - `s` → toggle shuffle
  */
-export class KeyHandlerPlugin extends BaseKeyHandler<NMMusicPlayer<any>> {
+export class KeyHandlerPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseKeyHandler<NMMusicPlayer<T>> {
 	static override readonly id: string = 'key-handler';
 
 	/** Only override `addMediaKeys` — kit's default playback / nav / volume groups carry over. */

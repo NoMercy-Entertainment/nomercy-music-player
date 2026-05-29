@@ -1,4 +1,5 @@
 import type { NMMusicPlayer } from '../../index';
+import type { MusicPlaylistItem } from '../../types';
 import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Options for the music {@link LiveTranscodingPlugin}. */
@@ -31,7 +32,7 @@ export interface LiveTranscodingEvents {
  * Shipping as an explicit stub in 2.0.0 so the public surface is reserved and
  * consumers can introspect the error rather than hitting a silent no-op.
  */
-export class LiveTranscodingPlugin extends Plugin<NMMusicPlayer<any>, LiveTranscodingOptions, LiveTranscodingEvents> {
+export class LiveTranscodingPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends Plugin<NMMusicPlayer<T>, LiveTranscodingOptions, LiveTranscodingEvents> {
 	static override readonly id: string = 'live-transcoding';
 	static override readonly version: string = '2.0.0';
 	static override readonly description: string = 'Server-coordinated live transcoding — segment-ready gating + loader backpressure';

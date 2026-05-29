@@ -1,4 +1,5 @@
 import type { NMMusicPlayer } from '../../index';
+import type { MusicPlaylistItem } from '../../types';
 import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Options for {@link GroupListeningPlugin}. */
@@ -33,7 +34,7 @@ export interface GroupListeningEvents {
  * Shipping as an explicit stub in 2.0.0 so the public surface is reserved and
  * consumers can introspect the error rather than hitting a silent no-op.
  */
-export class GroupListeningPlugin extends Plugin<NMMusicPlayer<any>, GroupListeningOptions, GroupListeningEvents> {
+export class GroupListeningPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends Plugin<NMMusicPlayer<T>, GroupListeningOptions, GroupListeningEvents> {
 	static override readonly id: string = 'group-listening';
 	static override readonly version: string = '2.0.0';
 	static override readonly description: string = 'Synchronised group listening — server-coordinated lockstep transport';
