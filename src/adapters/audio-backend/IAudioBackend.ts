@@ -1,5 +1,10 @@
+export const AUDIO_BACKEND_KIND = {
+	AUDIO_ELEMENT: 'audio-element',
+	WEBAUDIO: 'webaudio',
+} as const;
+
 /** Backend selection — which audio engine handles playback. */
-export type AudioBackendKind = 'audio-element' | 'webaudio';
+export type AudioBackendKind = typeof AUDIO_BACKEND_KIND[keyof typeof AUDIO_BACKEND_KIND];
 
 /** Backend-internal events forwarded to the player's eventTarget. */
 export type BackendEvent
@@ -43,11 +48,25 @@ export interface BackendEventPayload {
 	'backend:loaded': { url: string; kind: AudioBackendKind; duration: number };
 }
 
+export const BACKEND_STATE = {
+	IDLE: 'idle',
+	LOADING: 'loading',
+	READY: 'ready',
+	PLAYING: 'playing',
+	PAUSED: 'paused',
+	ERROR: 'error',
+} as const;
+
 /** Backend lifecycle state. Returned by `state()`. */
-export type BackendState = 'idle' | 'loading' | 'ready' | 'playing' | 'paused' | 'error';
+export type BackendState = typeof BACKEND_STATE[keyof typeof BACKEND_STATE];
+
+export const BACKEND_LOADER_STATE = {
+	RUNNING: 'running',
+	PAUSED: 'paused',
+} as const;
 
 /** Backend loader state — used for backpressure when an upstream encoder is gating output. */
-export type BackendLoaderState = 'running' | 'paused';
+export type BackendLoaderState = typeof BACKEND_LOADER_STATE[keyof typeof BACKEND_LOADER_STATE];
 
 /**
  * Concrete contract every audio backend implements. The Player calls these; plugins
