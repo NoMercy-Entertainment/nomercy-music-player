@@ -762,11 +762,11 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 	private applyCurrentTrack(item: MusicPlaylistItem | null): void {
 		this.infoRefs.titleEl.textContent = item?.name ?? '—';
 
-		const artists = item?.artist_track?.map(artist => artist.name).join(', ') ?? '';
+		const artists = item?.artistTracks?.map(artist => artist.name).join(', ') ?? '';
 		this.infoRefs.artistEl.textContent = artists;
 		this.infoRefs.artistEl.hidden = artists.length === 0;
 
-		const albums = item?.album_track?.map(album => album.name).join(', ') ?? '';
+		const albums = item?.albumTracks?.map(album => album.name).join(', ') ?? '';
 		this.infoRefs.albumEl.textContent = albums;
 		this.infoRefs.albumEl.hidden = albums.length === 0;
 

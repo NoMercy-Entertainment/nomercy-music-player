@@ -9,8 +9,8 @@ export type { CastSenderEvents, CastSenderOptions } from '@nomercy-entertainment
  * Music Cast sender — thin override of the kit's shared `CastSenderPlugin`.
  * Specializes only the bits that differ between music and video:
  *   - `'audio/mpeg'` default content type
- *   - `MusicTrackMediaMetadata` builder reading `name` / `artist_track` /
- *     `album_track` / `cover` from the music item shape.
+ *   - `MusicTrackMediaMetadata` builder reading `name` / `artistTracks` /
+ *     `albumTracks` / `cover` from the music item shape.
  *
  * Translations are auto-discovered from the `./i18n/*.ts` folder. Each file
  * default-exports its language bundle. Each plugin in the chain (kit base,
@@ -38,11 +38,11 @@ export class CastSenderPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> e
 		const Music = ctors.MusicTrackMediaMetadata ?? ctors.GenericMediaMetadata;
 		const meta = new Music();
 		meta['title'] = item.name ?? '';
-		const artists = item.artist_track?.map(a => a?.name).filter(Boolean)
+		const artists = item.artistTracks?.map(a => a?.name).filter(Boolean)
 			.join(', ') ?? '';
 		if (artists)
 			meta['artist'] = artists;
-		const album = item.album_track?.[0]?.name;
+		const album = item.albumTracks?.[0]?.name;
 		if (album)
 			meta['albumName'] = album;
 		if (item.cover) {

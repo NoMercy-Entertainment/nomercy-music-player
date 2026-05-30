@@ -24,8 +24,8 @@ export interface AlbumRef {
 export interface MusicPlaylistItem extends BasePlaylistItem {
 	name: string;
 	cover?: string;
-	artist_track?: ArtistRef[];
-	album_track?: AlbumRef[];
+	artistTracks?: ArtistRef[];
+	albumTracks?: AlbumRef[];
 	url?: string;
 	lyricsUrl?: string;
 	duration?: number;
@@ -85,7 +85,6 @@ export interface MusicEventMap extends BaseEventMap {
 	'trackEndingSoon': { remaining: number; currentTrack: BasePlaylistItem };
 	'crossfadeStart': { from: BasePlaylistItem | null; to: BasePlaylistItem; duration: number };
 	'crossfadeComplete': { track: BasePlaylistItem };
-	'eq:change': { band: number; gain: number };
 }
 
 export interface CrossfadeOptions {

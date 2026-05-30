@@ -693,6 +693,18 @@ export function nmMPlayer<T extends BasePlaylistItem = MusicPlaylistItem>(id?: s
 	return instance;
 }
 
+/**
+ * Canonical symmetric named export. Consumers can bind their own name via the
+ * default export; use this when you want an explicit import that mirrors the
+ * video package's `nmVideoPlayer` naming:
+ *
+ * ```ts
+ * import { nmMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
+ * const player = nmMusicPlayer('my-div');
+ * ```
+ */
+export const nmMusicPlayer = nmMPlayer;
+
 export default nmMPlayer;
 
 // interface MyTrack extends MusicPlaylistItem {

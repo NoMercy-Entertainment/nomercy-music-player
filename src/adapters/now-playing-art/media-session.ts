@@ -6,9 +6,9 @@ import { resolveNameList } from '../../utils/resolve-name-list';
 interface MusicMetadataSource extends BasePlaylistItem {
 	name?: string;
 	title?: string;
-	artist_track?: Array<{ name: string }> | string;
+	artistTracks?: Array<{ name: string }> | string;
 	artist?: string;
-	album_track?: Array<{ name: string }> | string;
+	albumTracks?: Array<{ name: string }> | string;
 	album?: string;
 }
 
@@ -33,8 +33,8 @@ implements INowPlayingArt<T> {
 
 		const source = item as MusicMetadataSource;
 		const title = source.name ?? source.title ?? '';
-		const artist = resolveNameList(source.artist_track) || (source.artist ?? '');
-		const album = resolveNameList(source.album_track) || (source.album ?? '');
+		const artist = resolveNameList(source.artistTracks) || (source.artist ?? '');
+		const album = resolveNameList(source.albumTracks) || (source.album ?? '');
 
 		navigator.mediaSession.metadata = new MediaMetadata({
 			title,

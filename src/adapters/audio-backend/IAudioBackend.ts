@@ -24,7 +24,9 @@ export type BackendEvent
 		| 'stalled'
 		| 'ratechange'
 		| 'encrypted'
-		| 'error';
+		| 'error'
+		| 'backend:loading'
+		| 'backend:loaded';
 
 /**
  * Typed payload map for backend events. All DOM-bridge events carry the
@@ -139,9 +141,10 @@ export interface IAudioBackend {
 	resumeLoader(): void;
 	loaderState(): BackendLoaderState;
 
-	// Events
-	on(event: BackendEvent, fn: (data?: any) => void): void;
-	off(event: BackendEvent, fn: (data?: any) => void): void;
+	// Events — generic on the event name so each listener receives the correct
+	// payload type automatically. No `any` at the call site.
+	on<E extends BackendEvent>(event: E, fn: (data?: BackendEventPayload[E]) => void): void;
+	off<E extends BackendEvent>(event: E, fn: (data?: BackendEventPayload[E]) => void): void;
 
 	// ── Crossfade ────────────────────────────────────────────────────────────
 

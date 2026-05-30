@@ -12,7 +12,7 @@ export interface MediaSessionOptions {
 
 /**
  * Music-specific MediaSession integration. Reads canonical `MusicPlaylistItem`
- * fields — `name`, `artist_track[]`, `album_track[]`, `cover` — and synthesizes
+ * fields — `name`, `artistTracks[]`, `albumTracks[]`, `cover` — and synthesizes
  * the OS-level MediaMetadata.
  *
  * Only canonical fields are accessed. Consumers that carry server-specific flat
@@ -26,12 +26,13 @@ export class MediaSessionPlugin<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	protected override getMetadata(item: T): MediaSessionMetadata {
 		const title = item.name ?? '';
-		const artist = resolveNameList(item.artist_track);
-		const album = resolveNameList(item.album_track);
+		const artist = resolveNameList(item.artistTracks);
+		const album = resolveNameList(item.albumTracks);
 		const base = this.opts?.artworkBaseUrl ?? '';
-		const coverSrc = item.cover
-			? (base ? `${base}${item.cover}` : item.cover)
-			: undefined;
+		let coverSrc: string | undefined;
+		if (item.cover) {
+			coverSrc = base ? `${base}${item.cover}` : item.cover;
+		}
 		return {
 			title,
 			artist,
