@@ -12,6 +12,7 @@ import type {
 	CurrentSubtitleSelection,
 	DeviceCapabilities,
 	ICueParser,
+	IPlatform,
 	IPlayer,
 	IPreloadStrategy,
 	IStreamFactory,
@@ -523,7 +524,8 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		(idx: number): void;
 	};
 
-	// ── Device capabilities ── composed in via `deviceMethods` mixin.
+	// ── Platform + device capabilities ── composed in via `lifecycle` / `deviceMethods` mixins.
+	declare platform: () => IPlatform;
 	declare isTv: () => boolean;
 	declare isMobile: () => boolean;
 	declare isDesktop: () => boolean;

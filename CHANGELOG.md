@@ -1,9 +1,20 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-beta.1] — 2026-05-30
+
+### Changed
+
+- Dependency on `@nomercy-entertainment/nomercy-player-core` changed from `file:` local
+  path to `^2.0.0-beta.0` semver range — resolves correctly from the npm registry.
+- Removed unused `audiomotion-analyzer` production dependency (zero imports in src).
+- `contributors` email updated to GitHub noreply address.
+
+---
+
 ## [2.0.0-beta.0] — 2026-05-16
 
-Stable release. Built on `@nomercy-entertainment/nomercy-player-core` 2.0.0 (the shared
-player kit). All API surface from alpha is stabilized.
+First public pre-release. Built on `@nomercy-entertainment/nomercy-player-core` 2.0.0-beta.0
+(the shared player kit). Public API surface is stabilized for the beta period.
 
 ### Added
 
