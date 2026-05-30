@@ -45,6 +45,18 @@ jobs:
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Typecheck
+        if: steps.version-check.outputs.skip != 'true'
+        run: npm run typecheck
+
+      - name: Lint
+        if: steps.version-check.outputs.skip != 'true'
+        run: npm run lint
+
+      - name: Test
+        if: steps.version-check.outputs.skip != 'true'
+        run: npm run test
+
       - name: Build package
         if: steps.version-check.outputs.skip != 'true'
         run: npm run build
@@ -52,3 +64,5 @@ jobs:
       - name: Publish package
         if: steps.version-check.outputs.skip != 'true'
         run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

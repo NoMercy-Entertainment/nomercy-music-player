@@ -2,6 +2,7 @@ name: Create Release
 
 on:
   push:
+    branches: [master]
     paths:
       - 'src/**'
       - 'dist/**'
@@ -53,11 +54,11 @@ jobs:
       # Step 6: Create GitHub release
       - name: Create GitHub Release
         if: steps.check_tag.outputs.exists != 'true'
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: "${{ env.PACKAGE_VERSION }}"
-          release_name: "Release ${{ env.PACKAGE_VERSION }}"
+          tag_name: ${{ env.PACKAGE_VERSION }}
+          name: Release ${{ env.PACKAGE_VERSION }}
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(env.PACKAGE_VERSION, '-') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
