@@ -19,9 +19,9 @@ import type {
 	MusicPlayerConfig,
 	MusicPlaylistItem,
 } from './types';
-import { applyKitV1Compat } from '@nomercy-entertainment/nomercy-player-core/compat';
-
 import { nmMusicPlayer } from './index';
+
+import { normalizeMusicConfig } from './player/v1-config-normalizer';
 
 export { default, nmMusicPlayer } from './index';
 export type { NMMusicPlayer } from './index';
@@ -88,5 +88,5 @@ export function normalizeMusicItem<T extends MusicPlaylistItemV1Compat>(item: T)
 export function applyMusicV1Compat<T extends BasePlaylistItem = MusicPlaylistItem>(
 	config: MusicPlayerConfig<T> & { accessToken?: string | (() => string); debug?: boolean },
 ): MusicPlayerConfig<T> {
-	return applyKitV1Compat(config) as MusicPlayerConfig<T>;
+	return normalizeMusicConfig(config);
 }

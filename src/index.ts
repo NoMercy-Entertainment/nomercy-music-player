@@ -62,6 +62,7 @@ import {
 import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from './adapters/audio-backend/web-audio';
 import { MusicPreloadStrategy } from './player/preload';
+import { normalizeMusicConfig } from './player/v1-config-normalizer';
 
 export { MusicPreloadStrategy } from './player/preload';
 
@@ -655,23 +656,28 @@ export function nmMPlayer<T extends BasePlaylistItem = MusicPlaylistItem>(id?: s
 
 	const originalSetup = instance.setup.bind(instance);
 	instance.setup = function (config: MusicPlayerConfig<T>): NMMusicPlayer<T> {
+		// Normalise v1 legacy fields (accessToken → auth.bearerToken,
+		// debug: true → logLevel: 'debug') at the library boundary so core
+		// never sees them and carries no compat knowledge.
+		const normalizedConfig = normalizeMusicConfig(config);
+
 		// Apply music-domain strategy defaults before delegating to the kit pipeline.
 		// Consumer-supplied strategies always win — only inject when absent.
-		const leadSeconds = config.preloadLeadSeconds ?? 10;
-		const crossfadeLeadSeconds = config.crossfadeLeadSeconds ?? 3;
-		const crossfadeTailSeconds = config.crossfadeTailSeconds ?? 3;
+		const leadSeconds = normalizedConfig.preloadLeadSeconds ?? 10;
+		const crossfadeLeadSeconds = normalizedConfig.crossfadeLeadSeconds ?? 3;
+		const crossfadeTailSeconds = normalizedConfig.crossfadeTailSeconds ?? 3;
 
 		const enrichedConfig: MusicPlayerConfig<T> = {
 			crossfadeEnabled: true,
-			...config,
+			...normalizedConfig,
 			preloadLeadSeconds: leadSeconds,
 			crossfadeLeadSeconds,
 			crossfadeTailSeconds,
-			preloadStrategy: config.preloadStrategy ?? new MusicPreloadStrategy(leadSeconds),
-			transitionStrategy: config.transitionStrategy ?? new CrossfadeTransitionStrategy({
+			preloadStrategy: normalizedConfig.preloadStrategy ?? new MusicPreloadStrategy(leadSeconds),
+			transitionStrategy: normalizedConfig.transitionStrategy ?? new CrossfadeTransitionStrategy({
 				leadSeconds: crossfadeLeadSeconds,
 				tailSeconds: crossfadeTailSeconds,
-				curve: config.crossfadeDefaults?.curve ?? 'equal-power',
+				curve: normalizedConfig.crossfadeDefaults?.curve ?? 'equal-power',
 			}),
 		};
 
