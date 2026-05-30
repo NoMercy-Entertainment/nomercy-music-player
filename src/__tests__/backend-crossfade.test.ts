@@ -14,15 +14,27 @@ import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 
 // ── Web Audio stubs ───────────────────────────────────────────────────────────
 
-class MockGainNode {
-	gain = {
-		value: 1,
-		setTargetAtTime: vi.fn(),
-		setValueAtTime: vi.fn(),
-		linearRampToValueAtTime: vi.fn(),
+function makeMockGain(initial = 1): {
+	value: number;
+	setTargetAtTime: ReturnType<typeof vi.fn>;
+	setValueAtTime: ReturnType<typeof vi.fn>;
+	linearRampToValueAtTime: ReturnType<typeof vi.fn>;
+	cancelScheduledValues: ReturnType<typeof vi.fn>;
+} {
+	let _v = initial;
+	const gain = {
+		get value(): number { return _v; },
+		set value(v: number) { _v = v; },
+		setTargetAtTime: vi.fn((target: number) => { _v = target; }),
+		setValueAtTime: vi.fn((target: number) => { _v = target; }),
+		linearRampToValueAtTime: vi.fn((target: number) => { _v = target; }),
 		cancelScheduledValues: vi.fn(),
 	};
+	return gain;
+}
 
+class MockGainNode {
+	gain = makeMockGain(1);
 	connect = vi.fn();
 	disconnect = vi.fn();
 }
@@ -318,6 +330,123 @@ describe('WebAudioBackend — crossfade contract', () => {
 
 			// After disposal gain is reported as 0.
 			expect(backend.secondaryGain()).toBe(0);
+		});
+	});
+
+	describe('WebAudio-specific: crossfade(0) promotes secondary → primary', () => {
+		it('mediaElement() returns the secondary element after crossfade(0)', async () => {
+			const loadPromise = backend.loadSecondary('http://test/next.mp3');
+			fireMetadata(container);
+			await loadPromise;
+
+			const primePromise = backend.primeSecondary();
+			fireCanPlay(container);
+			await primePromise;
+
+			// Capture the secondary element before the swap.
+			const raw = backend as any;
+			const secondaryElBefore: HTMLAudioElement = raw._secondaryEl;
+			expect(secondaryElBefore).toBeDefined();
+
+			const audios = container.querySelectorAll('audio');
+			audios.forEach(el => stubPlay(el as HTMLAudioElement));
+
+			await backend.crossfade(0);
+
+			// After swap: mediaElement() must be the old secondary.
+			expect(backend.mediaElement()).toBe(secondaryElBefore);
+		});
+
+		it('secondary slot is cleared after crossfade(0)', async () => {
+			const loadPromise = backend.loadSecondary('http://test/next.mp3');
+			fireMetadata(container);
+			await loadPromise;
+
+			const primePromise = backend.primeSecondary();
+			fireCanPlay(container);
+			await primePromise;
+
+			const audios = container.querySelectorAll('audio');
+			audios.forEach(el => stubPlay(el as HTMLAudioElement));
+
+			await backend.crossfade(0);
+
+			// _secondary* fields must all be undefined.
+			const raw = backend as any;
+			expect(raw._secondaryEl).toBeUndefined();
+			expect(raw._secondarySource).toBeUndefined();
+			expect(raw._secondaryGain).toBeUndefined();
+
+			// secondaryGain() reports 0.
+			expect(backend.secondaryGain()).toBe(0);
+		});
+
+		it('volume() after crossfade(0) targets the new primary GainNode, not the disposed one', async () => {
+			// Force primary Web Audio graph init so gainNode is defined before the swap.
+			const ctx = MockAudioContext.lastInstance!;
+			backend.outputNode(ctx as unknown as AudioContext);
+
+			const loadPromise = backend.loadSecondary('http://test/next.mp3');
+			fireMetadata(container);
+			await loadPromise;
+
+			const primePromise = backend.primeSecondary();
+			fireCanPlay(container);
+			await primePromise;
+
+			const raw = backend as any;
+			// Capture both GainNodes before the swap.
+			const oldGain: MockGainNode = raw.gainNode;
+			const newGain: MockGainNode = raw._secondaryGain;
+
+			const audios = container.querySelectorAll('audio');
+			audios.forEach(el => stubPlay(el as HTMLAudioElement));
+
+			await backend.crossfade(0);
+
+			// After swap, gainNode must be what was the secondary gain.
+			expect(raw.gainNode).toBe(newGain);
+
+			// Call volume() — must call setTargetAtTime on the NEW gain, not the old.
+			backend.volume(0.5);
+			expect((newGain.gain.setTargetAtTime as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(0);
+
+			// Old gain must NOT have received a new setTargetAtTime call after the swap
+			// (calls before crossfade from ramp scheduling are allowed; we check only
+			// that the call count doesn't increase after the swap).
+			const oldCallCount = (oldGain.gain.setTargetAtTime as ReturnType<typeof vi.fn>).mock.calls.length;
+			backend.volume(0.7);
+			expect((oldGain.gain.setTargetAtTime as ReturnType<typeof vi.fn>).mock.calls.length).toBe(oldCallCount);
+		});
+
+		it('pause() after crossfade(0) pauses the new primary element', async () => {
+			const loadPromise = backend.loadSecondary('http://test/next.mp3');
+			fireMetadata(container);
+			await loadPromise;
+
+			const primePromise = backend.primeSecondary();
+			fireCanPlay(container);
+			await primePromise;
+
+			const raw = backend as any;
+			const oldEl: HTMLAudioElement = raw.element;
+			const oldPauseSpy = vi.spyOn(oldEl, 'pause');
+
+			const audios = container.querySelectorAll('audio');
+			audios.forEach(el => stubPlay(el as HTMLAudioElement));
+
+			await backend.crossfade(0);
+
+			const newEl = backend.mediaElement();
+			const newPauseSpy = vi.spyOn(newEl, 'pause');
+
+			// Reset old pause spy call count after the crossfade-induced pause.
+			oldPauseSpy.mockClear();
+
+			backend.pause();
+
+			expect(newPauseSpy).toHaveBeenCalled();
+			expect(oldPauseSpy).not.toHaveBeenCalled();
 		});
 	});
 });

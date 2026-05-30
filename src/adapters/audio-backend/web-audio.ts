@@ -67,8 +67,8 @@ function resolveAudioContext(existing?: AudioContext): AudioContext {
 export class WebAudioBackend extends EventEmitter<BackendEventPayload> implements IAudioBackend {
 	readonly kind = 'webaudio' as const;
 
-	private readonly element: HTMLAudioElement;
-	private readonly ownsElement: boolean;
+	private element: HTMLAudioElement;
+	private ownsElement: boolean;
 	private readonly container?: HTMLElement;
 	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
 
@@ -692,6 +692,51 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		if (durationMs > 0) {
 			await new Promise<void>(resolve => setTimeout(resolve, durationMs));
 		}
+
+		// ── Promote secondary → primary ────────────────────────────────────────
+		// Contract (IAudioBackend): on completion the secondary becomes the
+		// primary; the old primary is disposed. Mirror the HTML5 backend swap.
+
+		// 1. Disconnect and clear the old primary's Web Audio graph.
+		const oldSource = this.sourceNode;
+		const oldGain = this.gainNode;
+		if (oldSource) {
+			try { oldSource.disconnect(); }
+			catch { /* ignore */ }
+		}
+		if (oldGain) {
+			try { oldGain.disconnect(); }
+			catch { /* ignore */ }
+		}
+
+		// 2. Detach DOM event bridges from the old primary.
+		const oldEl = this.element;
+		for (const { event, handler } of this.domHandlers) {
+			oldEl.removeEventListener(event, handler);
+		}
+		this.domHandlers = [];
+
+		// 3. Pause and release the old primary element.
+		try { oldEl.pause(); }
+		catch { /* ignore */ }
+		oldEl.removeAttribute('src');
+		if (this.ownsElement && oldEl.parentNode) {
+			oldEl.parentNode.removeChild(oldEl);
+		}
+
+		// 4. Promote secondary fields to primary.
+		this.element = secondaryEl;
+		this.sourceNode = this._secondarySource;
+		this.gainNode = this._secondaryGain;
+		this.ownsElement = true;
+
+		// 5. Clear secondary slots.
+		this._secondaryEl = undefined;
+		this._secondarySource = undefined;
+		this._secondaryGain = undefined;
+
+		// 6. Re-attach DOM bridges to the new primary element.
+		this.attachDomBridges();
 	}
 
 	secondaryGain(): number;
@@ -702,7 +747,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		}
 		const clamped = Math.max(0, Math.min(1, value));
 		if (this._secondaryGain) {
-			this._secondaryGain.gain.value = clamped;
+			const now = this.ctx.currentTime;
+			this._secondaryGain.gain.setTargetAtTime(clamped, now, 0.01);
 		}
 	}
 }
