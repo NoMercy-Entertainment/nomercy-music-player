@@ -49,7 +49,7 @@ implements IPlaylistGenerator<T> {
 		const scored = candidates.map((idx) => {
 			const item = items[idx] as TaggedItem;
 			const genres = this.toSet(item.genre);
-			const genreOverlap = [...genres].some(g => currentGenres.has(g));
+			const genreOverlap = [...genres].some(genre => currentGenres.has(genre));
 			const sameDecade = item.decade !== undefined && item.decade === currentDecade;
 			const penalty = (genreOverlap ? 1 : 0) + (sameDecade ? 1 : 0);
 			return {

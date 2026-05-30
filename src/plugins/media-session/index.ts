@@ -2,19 +2,12 @@ import type { MediaSessionMetadata } from '@nomercy-entertainment/nomercy-player
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
 import { MediaSessionPlugin as BaseMediaSession } from '@nomercy-entertainment/nomercy-player-core/plugins/media-session';
+import { resolveNameList } from '../../utils/resolve-name-list';
 
 /** Options for {@link MediaSessionPlugin}. */
 export interface MediaSessionOptions {
 	/** Base URL prepended to `item.cover` when constructing artwork `src`. */
 	artworkBaseUrl?: string;
-}
-
-/** Reduce an `ArtistRef[]` / `AlbumRef[]` list down to a single display string. */
-function resolveRefList(field: Array<{ name: string }> | undefined): string {
-	if (!field || field.length === 0)
-		return '';
-	return field.map(entry => entry?.name).filter(Boolean)
-		.join(', ');
 }
 
 /**
@@ -33,8 +26,8 @@ export class MediaSessionPlugin<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	protected override getMetadata(item: T): MediaSessionMetadata {
 		const title = item.name ?? '';
-		const artist = resolveRefList(item.artist_track);
-		const album = resolveRefList(item.album_track);
+		const artist = resolveNameList(item.artist_track);
+		const album = resolveNameList(item.album_track);
 		const base = this.opts?.artworkBaseUrl ?? '';
 		const coverSrc = item.cover
 			? (base ? `${base}${item.cover}` : item.cover)
