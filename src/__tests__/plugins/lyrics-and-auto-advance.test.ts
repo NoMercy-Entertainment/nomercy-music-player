@@ -6,8 +6,10 @@
  * present the plugin is a no-op.
  */
 
+import type { CueList, ICueParser } from '@nomercy-entertainment/nomercy-player-core';
+import { createCueList } from '@nomercy-entertainment/nomercy-player-core';
 import type { MusicPlaylistItem } from '../../types';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../../index';
 import { autoAdvancePlugin, AutoAdvancePlugin } from '../../plugins/auto-advance';
 import { lyricsPlugin, LyricsPlugin } from '../../plugins/lyrics';
@@ -46,6 +48,47 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			p.queue([track('a')]);
 			expect(instance?.current()).toBeUndefined();
 			expect(instance?.all().length).toBe(0);
+		});
+
+		it('emits plugin:lyrics:loaded with cue count after fetchLyrics() attaches a cue list', async () => {
+			const lrcText = '[00:01.00]Hello\n[00:02.00]World\n';
+
+			// Stub fetch so the kit auth pipeline returns the LRC text.
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+				new Response(lrcText, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
+			);
+
+			// Register a minimal cue parser that accepts *.lrc URLs.
+			const stubParser: ICueParser<{ text: string }> = {
+				id: 'stub-lrc',
+				canParse: (url: string) => url.endsWith('.lrc'),
+				parse: (raw: string): CueList<{ text: string }> => {
+					const cues = raw.trim().split('\n')
+						.map((line, index) => ({
+							id: String(index),
+							start: index,
+							end: index + 1,
+							payload: { text: line.replace(/^\[.*?\]/u, '').trim() },
+						}))
+						.filter(cue => cue.payload.text.length > 0);
+					return createCueList(cues);
+				},
+			};
+
+			const p = new NMMusicPlayer('test').setup({ cueParsers: [stubParser] });
+			p.addPlugin(lyricsPlugin);
+			await p.ready();
+
+			const loadedPayloads: Array<{ count: number }> = [];
+			p.on('plugin:lyrics:loaded' as any, (data: any) => loadedPayloads.push(data));
+
+			const instance = p.getPlugin(LyricsPlugin)!;
+			await instance.fetchLyrics('https://example.com/track.lrc');
+
+			expect(loadedPayloads).toHaveLength(1);
+			expect(loadedPayloads[0]!.count).toBe(2);
+
+			fetchSpy.mockRestore();
 		});
 	});
 

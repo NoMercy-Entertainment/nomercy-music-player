@@ -10,7 +10,7 @@ export interface LiveTranscodingOptions {
 	pollIntervalMs?: number;
 	/** How many seconds of buffer must exist beyond `currentTime` before resuming. */
 	resumeAheadSeconds?: number;
-	/** When seeking, max seconds we'll wait for the transcoder to reach the target. */
+	/** When seeking, max milliseconds we'll wait for the transcoder to reach the target. */
 	seekTimeoutMs?: number;
 }
 
@@ -21,10 +21,6 @@ export interface LiveTranscodingEvents {
 	'job:ready-to-play': { jobId: string };
 	'job:error': { jobId: string; error: Error };
 	'job:complete': { jobId: string };
-	'segment:ready': { time: number };
-	'backpressure:apply': { reason: 'buffer-full' | 'encoder-stall' };
-	'backpressure:release': void;
-	'unsupported': { reason: string };
 }
 
 /**

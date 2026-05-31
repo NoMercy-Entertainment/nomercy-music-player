@@ -8,7 +8,7 @@ export { drmPlugin, DrmPlugin } from './drm';
 export type { DrmEvents, DrmOptions } from './drm';
 
 export { embedPlugin, EmbedPlugin } from './embed';
-export type { EmbedCommand, EmbedEventMessage, EmbedOptions } from './embed';
+export type { EmbedCommand, EmbedEventMessage, EmbedForwardedEvent, EmbedOptions, EmbedSerializedError } from './embed';
 
 export { groupListeningPlugin, GroupListeningPlugin } from './group-listening';
 export type { GroupListeningEvents, GroupListeningOptions } from './group-listening';

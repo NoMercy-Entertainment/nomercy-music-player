@@ -60,7 +60,7 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 	});
 
 	describe('mediaSessionPlugin', () => {
-		it('getMetadata reads music-specific fields off a MusicPlaylistItem', async () => {
+		it('getMetadata returns music-specific text fields from a MusicPlaylistItem', async () => {
 			const p = setup();
 			p.addPlugin(MediaSessionPlugin);
 			await p.ready();
@@ -75,8 +75,9 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 			expect(meta.title).toBe('Track A');
 			expect(meta.artist).toBe('Artist One, Artist Two');
 			expect(meta.album).toBe('Album X');
-			expect(meta.artwork?.[0]?.src).toBe('https://example.com/a.jpg');
-			expect(meta.artwork?.[0]?.sizes).toBe('512x512');
+			// getMetadata() returns text fields only; artwork is resolved and
+			// injected by the base _pushMetadata() via the kit's urlResolver.
+			expect(meta.artwork).toBeUndefined();
 		});
 	});
 

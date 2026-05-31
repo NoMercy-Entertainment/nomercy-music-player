@@ -7,7 +7,7 @@ export interface AutoAdvanceOptions {
 	/** Master toggle. Default `true`. */
 	enabled?: boolean;
 	/** On `trackEndingSoon`, peek + load the next track into the next slot. Default `false`. */
-	preloadNext?: boolean;
+	preloadNextOnEnding?: boolean;
 	/** On `trackEndingSoon`, hand off to `player.crossfadeTo`. Default `false`. */
 	crossfade?: boolean;
 	/** Crossfade duration in seconds. Default `0` (hard cut). */
@@ -102,7 +102,7 @@ export class AutoAdvancePlugin extends Plugin<NMMusicPlayer, AutoAdvanceOptions>
 		const next = this.player.peekNext();
 		const duration = this.opts?.crossfadeDuration ?? 0;
 
-		if (this.opts?.preloadNext === true) {
+		if (this.opts?.preloadNextOnEnding === true) {
 			await this.preloadNext();
 		}
 
