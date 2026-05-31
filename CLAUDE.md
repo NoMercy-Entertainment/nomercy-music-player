@@ -4,7 +4,7 @@ Headless, plugin-driven, event-driven music player engine. Built on `@nomercy-en
 
 ## Tech stack
 
-- TypeScript (ES2022), Vite (library mode), outputs ESM (+ CJS + IIFE later)
+- TypeScript (ES2022), outputs ESM via `tsc` + IIFE CDN bundle via Vite (`build:iife`)
 - Testing: Vitest (unit) + Playwright (e2e)
 - Linting: `@antfu/eslint-config` (ESLint 9 flat config) + `@nomercy-entertainment/eslint-plugin-player` (planned)
 - Formatting: Prettier — tabs, width 4, single quotes, semis, printWidth 150

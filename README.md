@@ -6,95 +6,52 @@ Full documentation: https://docs.nomercy.tv/player/music/
 
 # nomercy-music-player
 
-Headless reference music player built on nomercy-player-core. Adapter-driven.
+The headless audio engine behind music on NoMercy TV. It is built around the hard part of a music player, the hand-off between two tracks: sample-accurate crossfade on the Web Audio backend, or a gapless transition when you want one track to run straight into the next. Lyric sync and a full EQ chain are here too. No UI is bundled, you wire your own to plain events and methods.
 
-> **Upgrading from v1?** See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list — renamed methods, changed event payloads, and the `item.path` → `item.url` field rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
+It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), which carries the generic engine (queue, auth, plugins, i18n, storage) shared with the video player.
 
 ```
 npm install @nomercy-entertainment/nomercy-music-player
 ```
 
----
+> **Upgrading from v1?** See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list, including renamed methods, changed event payloads, and the `item.path` to `item.url` rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
 
 ## Quick start
 
 ```ts
-import { nmMPlayer } from '@nomercy-entertainment/nomercy-music-player';
-import { LocalStorageBackend } from '@nomercy-entertainment/nomercy-player-core';
-import { AutoAdvancePlugin, LyricsPlugin, MediaSessionPlugin } from '@nomercy-entertainment/nomercy-music-player';
+import nmMPlayer from '@nomercy-entertainment/nomercy-music-player';
+import { AutoAdvancePlugin, MediaSessionPlugin } from '@nomercy-entertainment/nomercy-music-player/plugins';
 
-const player = nmMPlayer('player-1').setup({
-  accessToken: () => myAuth.getToken(),
-  storage: new LocalStorageBackend(),
-  backend: 'webaudio',
-  queue: [
-    {
-      id: '1',
-      url: 'https://cdn.example.com/track.m3u8',
-      title: 'My Track',
-      artist: 'Artist Name',
-    },
-  ],
-});
-
-player
+const player = nmMPlayer('main')
   .addPlugin(AutoAdvancePlugin)
-  .addPlugin(LyricsPlugin)
-  .addPlugin(MediaSessionPlugin);
+  .addPlugin(MediaSessionPlugin)
+  .setup({
+    baseUrl: 'https://raw.githubusercontent.com/NoMercy-Entertainment/nomercy-media/master/Music',
+    playlist: [
+      {
+        id: 'bent-wyre-01',
+        name: 'Ants Of The Beat',
+        url: '/B/bent%20wyre/%5B2025%5D%20If%20Only%20Life%20Was%20This%20Easy%20Volume%205%20-%20The%20Beat%20Misdirect/01%20Ants%20Of%20The%20Beat.mp3',
+        artistTracks: [{ id: 1, name: 'bent wyre' }],
+      },
+    ],
+  });
 
-await player.ready();
-await player.play();
+player.on('ready', () => {
+  player.current(0, { autoplay: true });
+});
 ```
 
----
+`AutoAdvancePlugin` advances the queue when a track ends, and `MediaSessionPlugin` wires the lock-screen and notification controls.
 
-## Adapter catalog
+## Documentation
 
-Six music-specific ports extend the 28 kit ports.
+The [docs site](https://docs.nomercy.tv/player/music/) is the full reference and the home for everything that used to live in the wiki:
 
-| Port | Interface | Default adapters | Description |
-|------|-----------|-----------------|-------------|
-| audio-backend | `IAudioBackend` | `WebAudioBackend` (default), `AudioElementBackend` (fallback) | Audio element management, HLS loading, crossfade dual-buffer, track events. Switch at runtime via `player.backend('webaudio')` or `player.backend('audio-element')` |
-| playlist-generator | `IPlaylistGenerator` | `linear` (sequential order), `smart-shuffle` (tag-aware shuffle) | Determines queue order — swap for server-driven ordering or weighted random |
-| similarity-engine | `ISimilarityEngine` | port only — consumer required | Drives radio-mode style "more like this" playlist extension; no default because similarity data is always server-specific |
-| scrobbler | `IScrobbler` | `noop` (default, silent) | Reports playback events to Last.fm, ListenBrainz, or a custom endpoint |
-| lyric-source | `ILyricSource` | `lrc-file` (fetches and parses an LRC file by URL) | Provides timed lyric cues to the `LyricsPlugin` |
-| now-playing-art | `INowPlayingArt` | `media-session` (reads artwork from the Media Session API) | Resolves album art for the current track — swap for a server API or a local cache |
-
----
-
-## Built-in plugins
-
-| Plugin | Class | Description |
-|--------|-------|-------------|
-| music-ui | `MusicUiPlugin` | Player chrome for music — progress, controls, queue panel |
-| auto-advance | `AutoAdvancePlugin` | Advances to the next track on `ended`; respects repeat and shuffle state |
-| cast-sender | `CastSenderPlugin` | Google Cast sender integration for Chromecast handoff |
-| drm | `DrmPlugin` | EME key-system and license server orchestration |
-| embed | `EmbedPlugin` | postMessage bridge for iframe-embedded players (via kit) |
-| group-listening | `GroupListeningPlugin` | Multi-user synchronized playback via the realtime adapter |
-| key-handler | `KeyHandlerPlugin` | Keyboard shortcut routing (via kit) |
-| live-transcoding | `LiveTranscodingPlugin` | Server-driven live transcode delivery |
-| lyrics | `LyricsPlugin` | Timed lyric display driven by `ILyricSource` and cue events |
-| media-session | `MediaSessionPlugin` | Media Session API integration — lock screen and notification controls (via kit) |
-| message | `MessagePlugin` | Cross-window event bridge (via kit) |
-| tab-leader | `TabLeaderPlugin` | Single-tab audio leadership — pauses in background tabs when another takes over (via kit) |
-| audio-graph | `AudioGraphPlugin` | Web Audio routing graph (via kit) — prerequisite for EQ, mixer, and spectrum |
-| equalizer | `EqualizerPlugin` | Parametric EQ with presets (via kit, requires `AudioGraphPlugin`) |
-| mixer | `MixerPlugin` | Per-track gain control (via kit, requires `AudioGraphPlugin`) |
-| spectrum | `SpectrumPlugin` | Frequency-domain analyser (via kit, requires `AudioGraphPlugin`) |
-| canvas | `CanvasPlugin` | Shared canvas surface for visualization (via kit) |
-| visualization | `VisualizationPlugin` | rAF-driven rendering callbacks for canvas visualizers (via kit) |
-
----
-
-## Server-as-player mode (post-v2 milestone M1)
-
-The music player's adapter architecture is designed to support a server-driven sync mode: a WebSocket audio backend that streams audio state from the server, a server-mirrored media list, a server-synced clock, and a server-driven playlist. In this mode the server is the source of truth for playback position, queue, and transitions — clients follow.
-
-This implementation lives in consumer plugins (`nomercy-plugins/nomercy-sync/`), not in this package. The music player itself has no knowledge of NoMercy server protocols. The adapter ports — `IAudioBackend`, `IPlaylistGenerator`, `IClock`, `IRealtimeChannel` — are the extension points that make it possible.
-
----
+- [Quick Start](https://docs.nomercy.tv/player/music/quickstart), install, first track, and the no-bundler CDN embed
+- [Configuration](https://docs.nomercy.tv/player/music/configuration), every option and default
+- [API Methods](https://docs.nomercy.tv/player/music/api-methods) and [Events](https://docs.nomercy.tv/player/music/events)
+- [Crossfade](https://docs.nomercy.tv/player/music/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference
 
 ## License
 
