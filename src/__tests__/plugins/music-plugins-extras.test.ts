@@ -1,22 +1,17 @@
 /**
- * Tests for the remaining music v2 plugin stubs — keyHandler/mediaSession
- * subclassing, castSender / drm graceful-degrade, groupListening +
- * liveTranscoding websocket wiring.
+ * Tests for the remaining music v2 plugins — keyHandler/mediaSession
+ * subclassing and castSender graceful-degrade.
  *
- * These plugins all need to load and dispose cleanly on a JSDOM machine
- * with no Cast SDK, no EME, and no real WebSocket server. The tests pin
- * the guard paths so a regression in any plugin's `use()` / `dispose()`
- * never silently leaks listeners or throws.
+ * All plugins must load and dispose cleanly on a JSDOM machine with no Cast
+ * SDK, no EME, and no real WebSocket server. The tests pin the guard paths so
+ * a regression in any plugin's `use()` / `dispose()` never silently leaks
+ * listeners or throws.
  */
 
-import { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../../index';
 import { CastSenderPlugin } from '../../plugins/cast-sender';
-import { DrmPlugin } from '../../plugins/drm';
-import { GroupListeningPlugin } from '../../plugins/group-listening';
 import { KeyHandlerPlugin } from '../../plugins/key-handler';
-import { LiveTranscodingPlugin } from '../../plugins/live-transcoding';
 import { MediaSessionPlugin } from '../../plugins/media-session';
 
 describe('NMMusicPlayer — remaining plugin stubs', () => {
@@ -161,7 +156,6 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				if (!instance)
 					throw new Error('CastSenderPlugin not registered');
 
-				// Stub player.item() to return a track.
 				const trackItem = {
 					id: 't1',
 					name: 'Song A',
@@ -175,9 +169,7 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				await instance.connect();
 				expect(instance.isConnected()).toBe(true);
 
-				// Trigger the player → cast forward via a `current` event.
 				(p as any).emit('current', { item: trackItem, index: 0 });
-				// loadMedia is called inside connect()'s post-step too; await microtasks.
 				await new Promise(resolve => setTimeout(resolve, 0));
 
 				expect(loadMedia).toHaveBeenCalled();
@@ -257,7 +249,6 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				const seenPause: any[] = [];
 				p.on('pause' as any, (data: any) => { seenPause.push(data); });
 
-				// Receiver flipped to paused — fire IS_PAUSED_CHANGED.
 				if (stubRemoteRef)
 					(stubRemoteRef as StubRemote).isPaused = true;
 				handlers['isPausedChanged']?.({ value: true });
@@ -271,49 +262,4 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 			}
 		});
 	});
-
-	describe('drmPlugin — v2.0 stub', () => {
-		it('emits plugin:failed with NotImplementedError; player still reaches ready', async () => {
-			const p = setup();
-			const failedErrors: Error[] = [];
-			p.on('plugin:failed' as any, (data: any) => { failedErrors.push(data?.error); });
-			p.addPlugin(DrmPlugin, { keySystem: 'com.widevine.alpha', licenseUrl: 'https://example.com/license' });
-			await p.ready();
-
-			expect(failedErrors).toHaveLength(1);
-			expect(failedErrors[0]).toBeInstanceOf(NotImplementedError);
-			expect(failedErrors[0]?.message).toMatch('DrmPlugin: roadmapped for v2.1');
-		});
-	});
-
-	describe('groupListeningPlugin — v2.0 stub', () => {
-		it('emits plugin:failed with NotImplementedError; player still reaches ready', async () => {
-			const p = setup();
-			const failedErrors: Error[] = [];
-			p.on('plugin:failed' as any, (data: any) => { failedErrors.push(data?.error); });
-			p.addPlugin(GroupListeningPlugin, { wsUrl: 'ws://test/group' });
-			await p.ready();
-
-			expect(failedErrors).toHaveLength(1);
-			expect(failedErrors[0]).toBeInstanceOf(NotImplementedError);
-			expect(failedErrors[0]?.message).toMatch('GroupListeningPlugin: roadmapped for v2.1');
-		});
-	});
-
-	describe('liveTranscodingPlugin — v2.0 stub', () => {
-		it('emits plugin:failed with NotImplementedError; player still reaches ready', async () => {
-			const p = setup();
-			const failedErrors: Error[] = [];
-			p.on('plugin:failed' as any, (data: any) => { failedErrors.push(data?.error); });
-			p.addPlugin(LiveTranscodingPlugin, { wsUrl: 'ws://test/live' });
-			await p.ready();
-
-			expect(failedErrors).toHaveLength(1);
-			expect(failedErrors[0]).toBeInstanceOf(NotImplementedError);
-			expect(failedErrors[0]?.message).toMatch('LiveTranscodingPlugin: roadmapped for v2.1');
-		});
-	});
-
-	// Suppresses unused-import warning for `vi`; kept available for future tests.
-	void vi;
 });

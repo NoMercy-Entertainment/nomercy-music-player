@@ -1,43 +1,44 @@
-import type { NMMusicPlayer } from '../../index';
-import type { MusicPlaylistItem } from '../../types';
 import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
-/** Options for the music {@link LiveTranscodingPlugin}. */
+import type { NMMusicPlayer } from '../../index';
+
+/** Reserved options interface for {@link LiveTranscodingPlugin} v2.1. Not consumed in v2.0. */
 export interface LiveTranscodingOptions {
 	/** Server endpoint that owns the transcoding job lifecycle. */
 	wsUrl: string;
-	/** Optional polling fallback for environments without WS. */
+	/** Optional polling fallback for environments without WebSocket support. */
 	pollIntervalMs?: number;
-	/** How many seconds of buffer must exist beyond `currentTime` before resuming. */
+	/** Seconds of buffer that must exist beyond `time` before resuming. */
 	resumeAheadSeconds?: number;
-	/** When seeking, max milliseconds we'll wait for the transcoder to reach the target. */
+	/** When seeking, maximum milliseconds to wait for the transcoder to reach the target position. */
 	seekTimeoutMs?: number;
 }
 
-/** Events emitted by the music {@link LiveTranscodingPlugin}. */
+/** Reserved events interface for {@link LiveTranscodingPlugin} v2.1. No events fire in v2.0. */
 export interface LiveTranscodingEvents {
-	'job:started': { jobId: string; sourceUrl: string };
-	'job:progress': { jobId: string; transcodedSeconds: number; totalSeconds?: number };
+	'job:started': { jobId: string };
+	'job:progress': { jobId: string; bufferedSeconds: number };
 	'job:ready-to-play': { jobId: string };
 	'job:error': { jobId: string; error: Error };
 	'job:complete': { jobId: string };
+	'segment:ready': { segmentUrl: string; durationSeconds: number };
+	unsupported: { reason: string };
 }
 
 /**
- * TODO(v2.1): server-coordinated live transcoding — segment-ready gating + loader backpressure.
- * Shipping as an explicit stub in 2.0.0 so the public surface is reserved and
- * consumers can introspect the error rather than hitting a silent no-op.
+ * Forward-reserved stub for server-coordinated live transcoding in the music player.
+ * `use()` throws {@link NotImplementedError} internally; the core catches it,
+ * calls `dispose()`, and emits `plugin:failed` and `plugin:live-transcoding:failed`.
+ * No exception surfaces to caller code.
+ * Full implementation ships in v2.1.
+ *
+ * Plugin id: `'live-transcoding'`
  */
-export class LiveTranscodingPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends Plugin<NMMusicPlayer<T>, LiveTranscodingOptions, LiveTranscodingEvents> {
+export class LiveTranscodingPlugin extends Plugin<NMMusicPlayer, LiveTranscodingOptions> {
 	static override readonly id: string = 'live-transcoding';
 	static override readonly version: string = '2.0.0';
-	static override readonly description: string = 'Server-coordinated live transcoding — segment-ready gating + loader backpressure';
+	static override readonly description: string = 'Server-side live transcoding — roadmapped for v2.1';
 
-	/**
-	 * Stub — throws `NotImplementedError`. Live transcoding is roadmapped for v2.1.
-	 *
-	 * @throws {NotImplementedError} Always.
-	 */
 	override use(): void {
 		throw new NotImplementedError(
 			'LiveTranscodingPlugin: roadmapped for v2.1. Not available in v2.0.',
@@ -46,9 +47,9 @@ export class LiveTranscodingPlugin<T extends MusicPlaylistItem = MusicPlaylistIt
 	}
 
 	override dispose(): void {
-		// Nothing to tear down in the stub.
+		// No-op: stub has no resources to release.
 	}
 }
 
-/** Plugin alias for the music {@link LiveTranscodingPlugin}. Pass to `addPlugin(liveTranscodingPlugin)`. */
+/** Plugin alias for {@link LiveTranscodingPlugin}. Pass to `addPlugin(liveTranscodingPlugin)`. */
 export const liveTranscodingPlugin = LiveTranscodingPlugin;
