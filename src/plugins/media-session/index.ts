@@ -16,7 +16,7 @@ import { MediaSessionPlugin as BaseMediaSession } from '@nomercy-entertainment/n
  * Consumers that need to derive `artist`/`album` from linked-entity arrays
  * should subclass and override `getMetadata()`.
  */
-export class MediaSessionPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseMediaSession<NMMusicPlayer<T>, T> {
+export class MediaSessionPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseMediaSession<T, NMMusicPlayer<T>> {
 	static override readonly id: string = 'media-session';
 
 	protected override getMetadata(item: T): MediaSessionMetadata {
