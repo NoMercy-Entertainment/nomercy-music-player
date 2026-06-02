@@ -1,14 +1,11 @@
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 import type { INowPlayingArt } from './INowPlayingArt';
-import { resolveNameList } from '../../utils/resolve-name-list';
 
 /** Loose shape covering music item fields used for Media Session metadata. */
 interface MusicMetadataSource extends BasePlaylistItem {
 	name?: string;
 	title?: string;
-	artistTracks?: Array<{ name: string }> | string;
 	artist?: string;
-	albumTracks?: Array<{ name: string }> | string;
 	album?: string;
 }
 
@@ -33,8 +30,8 @@ implements INowPlayingArt<T> {
 
 		const source = item as MusicMetadataSource;
 		const title = source.name ?? source.title ?? '';
-		const artist = resolveNameList(source.artistTracks) || (source.artist ?? '');
-		const album = resolveNameList(source.albumTracks) || (source.album ?? '');
+		const artist = source.artist ?? '';
+		const album = source.album ?? '';
 
 		navigator.mediaSession.metadata = new MediaMetadata({
 			title,

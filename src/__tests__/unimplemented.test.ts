@@ -110,15 +110,15 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 	});
 
 	describe('music-specific state enums (now implemented)', () => {
-		it('qualityState() defaults to "auto"', async () => {
+		it('qualityMode() defaults to "auto"', async () => {
 			const p = player();
 			await p.ready();
-			expect(p.qualityState()).toBe('auto');
+			expect(p.qualityMode()).toBe('auto');
 		});
-		it('audioTrackState() defaults to "default"', async () => {
+		it('audioTrackMode() defaults to "default"', async () => {
 			const p = player();
 			await p.ready();
-			expect(p.audioTrackState()).toBe('default');
+			expect(p.audioTrackMode()).toBe('default');
 		});
 		it('bufferState() returns idle on a fresh player', async () => {
 			const p = player();
@@ -213,12 +213,12 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await p.ready();
 			expect(() => p.subtitles()).toThrow('Music backends don\'t expose subtitle tracks');
 		});
-		it('currentSubtitle is a no-op on audio (no backend track support); emits subtitle event', async () => {
+		it('subtitle is a no-op on audio (no backend track support); emits subtitle event', async () => {
 			const p = player();
 			await p.ready();
 			let emittedTrack: unknown;
 			p.on('subtitle' as any, (data: any) => { emittedTrack = data?.track; });
-			expect(() => p.currentSubtitle(null)).not.toThrow();
+			expect(() => p.subtitle(null)).not.toThrow();
 			expect(emittedTrack).toBeNull();
 		});
 		it('audioTracks returns [] — single-stream audio has no track variants', async () => {
@@ -226,12 +226,12 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await p.ready();
 			expect(p.audioTracks()).toEqual([]);
 		});
-		it('currentAudioTrack is a no-op on audio backend; emits audioTrack event', async () => {
+		it('audioTrack is a no-op on audio backend; emits audioTrack event', async () => {
 			const p = player();
 			await p.ready();
 			let emittedId: unknown;
 			p.on('audioTrack' as any, (data: any) => { emittedId = data?.id; });
-			expect(() => p.currentAudioTrack(0)).not.toThrow();
+			expect(() => p.audioTrack(0)).not.toThrow();
 			expect(emittedId).toBe(0);
 		});
 		it('qualityLevels returns [] — no HLS variants on audio backend', async () => {
@@ -239,11 +239,11 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await p.ready();
 			expect(p.qualityLevels()).toEqual([]);
 		});
-		it('currentQuality is a no-op on audio backend (no HLS variants)', async () => {
+		it('quality is a no-op on audio backend (no HLS variants)', async () => {
 			const p = player();
 			await p.ready();
-			expect(() => p.currentQuality('auto')).not.toThrow();
-			expect(() => p.currentQuality(0)).not.toThrow();
+			expect(() => p.quality('auto')).not.toThrow();
+			expect(() => p.quality(0)).not.toThrow();
 		});
 		it('chapters returns [] — no chapter wiring on audio yet', async () => {
 			const p = player();

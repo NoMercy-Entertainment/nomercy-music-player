@@ -12,7 +12,7 @@
  *
  * The kit's contract (see `BaseEventMap` in player-core/types) declares which
  * actions are cancellable. Stop is direct (no `beforeStop`). Restart is a
- * compound (currentTime → 0 + play).
+ * compound (time → 0 + play).
  */
 
 import { PlayerError, StateError } from '@nomercy-entertainment/nomercy-player-core';

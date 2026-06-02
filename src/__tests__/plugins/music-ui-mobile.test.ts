@@ -54,7 +54,7 @@ describe('MusicUiPlugin — mobile UX fixes', () => {
 			expect(seekBar!.style.touchAction).toBe('none');
 		});
 
-		it('dispatches currentTime on touchstart with a clientX inside the bar', async () => {
+		it('dispatches time on touchstart with a clientX inside the bar', async () => {
 			const { player } = setupPlayer();
 			await player.ready();
 
@@ -74,7 +74,7 @@ describe('MusicUiPlugin — mobile UX fixes', () => {
 				toJSON: () => ({}),
 			});
 
-			const seekSpy = vi.spyOn(player, 'currentTime');
+			const seekSpy = vi.spyOn(player, 'time');
 
 			seekBar.dispatchEvent(new TouchEvent('touchstart', {
 				touches: [new Touch({ identifier: 1, target: seekBar, clientX: 100, clientY: 5 })],

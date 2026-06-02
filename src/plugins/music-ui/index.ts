@@ -431,7 +431,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 		const seekToRatio = (ratio: number): void => {
 			const clamped = Math.min(1, Math.max(0, ratio));
 			const time = clamped * this.cachedDuration;
-			void this.player.currentTime(time);
+			void this.player.time(time);
 			this.updateSeekPosition(clamped, seekFill, seekThumb, this.progressRefs.seekBar);
 			this.emit('seek', { time });
 		};
@@ -490,7 +490,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 	private currentSeekRatio(): number {
 		if (this.cachedDuration <= 0)
 			return 0;
-		return this.player.currentTime() / this.cachedDuration;
+		return this.player.time() / this.cachedDuration;
 	}
 
 	private updateSeekPosition(
@@ -536,7 +536,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 		});
 
 		this.listen(repeatBtn, 'click', () => {
-			const order: ReadonlyArray<RepeatState> = [RepeatState.OFF, RepeatState.ONE, RepeatState.ALL];
+			const order: ReadonlyArray<RepeatState> = [RepeatState.OFF, RepeatState.ALL, RepeatState.ONE];
 			const nextRepeat = order[(order.indexOf(this.currentRepeat) + 1) % order.length] ?? RepeatState.OFF;
 			this.player.repeatState(nextRepeat);
 		});
@@ -762,11 +762,11 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 	private applyCurrentTrack(item: MusicPlaylistItem | null): void {
 		this.infoRefs.titleEl.textContent = item?.name ?? '—';
 
-		const artists = item?.artistTracks?.map(artist => artist.name).join(', ') ?? '';
+		const artists = item?.artist ?? '';
 		this.infoRefs.artistEl.textContent = artists;
 		this.infoRefs.artistEl.hidden = artists.length === 0;
 
-		const albums = item?.albumTracks?.map(album => album.name).join(', ') ?? '';
+		const albums = item?.album ?? '';
 		this.infoRefs.albumEl.textContent = albums;
 		this.infoRefs.albumEl.hidden = albums.length === 0;
 
@@ -808,7 +808,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 	// ── Initial state sync ─────────────────────────────────────────────────────
 
 	private syncInitialState(): void {
-		const current = this.player.current();
+		const current = this.player.item();
 		if (isMusicItem(current)) {
 			this.applyCurrentTrack(current);
 		}
@@ -819,7 +819,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 			this.progressRefs.durationTimeEl.textContent = fmt(duration);
 		}
 
-		const currentTime = this.player.currentTime();
+		const currentTime = this.player.time();
 		if (currentTime > 0) {
 			const ratio = this.cachedDuration > 0 ? currentTime / this.cachedDuration : 0;
 			this.progressRefs.currentTimeEl.textContent = fmt(currentTime);

@@ -34,12 +34,12 @@ describe('NMMusicPlayer — queue', () => {
 			expect(setup().queueLength()).toBe(0);
 		});
 
-		it('current() is undefined initially', () => {
-			expect(setup().current()).toBeUndefined();
+		it('item() is undefined initially', () => {
+			expect(setup().item()).toBeUndefined();
 		});
 
-		it('currentIndex() is -1 initially', () => {
-			expect(setup().currentIndex()).toBe(-1);
+		it('index() is -1 initially', () => {
+			expect(setup().index()).toBe(-1);
 		});
 	});
 
@@ -61,8 +61,8 @@ describe('NMMusicPlayer — queue', () => {
 		it('cursor jumps to first item on a fresh queue', () => {
 			const p = setup();
 			p.queue([track('a'), track('b')]);
-			expect(p.currentIndex()).toBe(0);
-			expect(p.current()?.id).toBe('a');
+			expect(p.index()).toBe(0);
+			expect(p.item()?.id).toBe('a');
 		});
 	});
 
@@ -187,23 +187,23 @@ describe('NMMusicPlayer — queue', () => {
 		});
 	});
 
-	describe('cursor — current / currentIndex', () => {
-		it('current(id) moves the cursor and emits "current"', () => {
+	describe('cursor — item / index', () => {
+		it('item(id) moves the cursor and emits "current"', () => {
 			const p = setup();
 			p.queue([track('a'), track('b')]);
 			let payload: { item: MusicPlaylistItem | undefined; index: number } | undefined;
 			p.on('current' as any, (data: any) => { payload = data; });
-			p.current('b');
-			expect(p.current()?.id).toBe('b');
-			expect(p.currentIndex()).toBe(1);
+			p.item('b');
+			expect(p.item()?.id).toBe('b');
+			expect(p.index()).toBe(1);
 			expect(payload?.index).toBe(1);
 		});
 
-		it('current() accepts a numeric index', () => {
+		it('item() accepts a numeric index', () => {
 			const p = setup();
 			p.queue([track('a'), track('b'), track('c')]);
-			p.current(2);
-			expect(p.current()?.id).toBe('c');
+			p.item(2);
+			expect(p.item()?.id).toBe('c');
 		});
 	});
 });

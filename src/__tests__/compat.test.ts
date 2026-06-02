@@ -4,34 +4,34 @@ import { applyMusicV1Compat, nmMPlayer, nmMusicPlayer, normalizeMusicItem } from
 import { nmMusicPlayer as canonicalNmMusicPlayer, nmMPlayer as mainNmMPlayer, NMMusicPlayer } from '../index';
 
 describe('normalizeMusicItem', () => {
-	it('renames artist_track to artistTracks', () => {
+	it('maps artist_track array to plain artist string', () => {
 		const result = normalizeMusicItem({
 			id: '1',
 			name: 'Track',
 			artist_track: [{ id: 1, name: 'A' }],
 		});
-		expect(result.artistTracks).toEqual([{ id: 1, name: 'A' }]);
+		expect(result.artist).toBe('A');
 		expect('artist_track' in result).toBe(false);
 	});
 
-	it('renames album_track to albumTracks', () => {
+	it('maps album_track array to plain album string', () => {
 		const result = normalizeMusicItem({
 			id: '1',
 			name: 'Track',
 			album_track: [{ id: 2, name: 'B' }],
 		});
-		expect(result.albumTracks).toEqual([{ id: 2, name: 'B' }]);
+		expect(result.album).toBe('B');
 		expect('album_track' in result).toBe(false);
 	});
 
-	it('does not overwrite existing artistTracks / albumTracks', () => {
+	it('does not overwrite existing artist when artist_track also present', () => {
 		const result = normalizeMusicItem({
 			id: '1',
 			name: 'Track',
 			artist_track: [{ id: 99, name: 'Old' }],
-			artistTracks: [{ id: 1, name: 'Winner' }],
+			artist: 'Winner',
 		});
-		expect(result.artistTracks).toEqual([{ id: 1, name: 'Winner' }]);
+		expect(result.artist).toBe('Winner');
 	});
 
 	it('passes through items that are already v2-clean', () => {

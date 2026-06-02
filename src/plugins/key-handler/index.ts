@@ -23,20 +23,10 @@ export class KeyHandlerPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> e
 		this.bind('p', () => { void this.player.previous?.(); });
 
 		this.bind('r', () => {
+			const order: ReadonlyArray<RepeatState> = [RepeatState.OFF, RepeatState.ALL, RepeatState.ONE];
 			const current = this.player.repeatState?.();
-			let next: RepeatState;
-			switch (current) {
-				case RepeatState.OFF:
-					next = RepeatState.ALL;
-					break;
-				case RepeatState.ALL:
-					next = RepeatState.ONE;
-					break;
-				default:
-					next = RepeatState.OFF;
-					break;
-			}
-			this.player.repeatState?.(next);
+			const nextRepeat = order[(order.indexOf(current ?? RepeatState.OFF) + 1) % order.length] ?? RepeatState.OFF;
+			this.player.repeatState?.(nextRepeat);
 		});
 
 		this.bind('s', () => {

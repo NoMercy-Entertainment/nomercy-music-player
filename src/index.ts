@@ -1,11 +1,13 @@
 import type {
 	ActionOptions,
+	AriaLiveLevel,
 	AudioTrack,
 	AuthConfig,
 	BasePlaylistItem,
 	BufferState,
 	CanPlayResult,
 	CastState,
+	CastTarget,
 	Chapter,
 	CurrentAudioTrackSelection,
 	CurrentQualitySelection,
@@ -69,6 +71,7 @@ export { MusicPreloadStrategy } from './player/preload';
 
 export type {
 	AudioBackendKind,
+	CrossfadeCurve,
 	CrossfadeOptions,
 	IMusicPlayer,
 	MusicEventMap,
@@ -103,7 +106,7 @@ const _instances = new Map<string, NMMusicPlayer<any>>();
  *    the kit's internal string token — the runtime impl comes from the mixin)
  *  - Music-specific stubs (backends, crossfade, audio output devices, etc.)
  */
-export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
+export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	extends EventEmitter<MusicEventMap>
 	implements IPlayer<MusicEventMap>, IMusicPlayer<T> {
 	readonly playerId: string = '';
@@ -174,7 +177,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	declare forward: (seconds?: number, opts?: ActionOptions) => Promise<void>;
 	declare restart: (opts?: ActionOptions) => Promise<void>;
 
-	declare currentTime: {
+	declare time: {
 		(): number;
 		(t: number, opts?: ActionOptions): Promise<void>;
 	};
@@ -236,12 +239,12 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	declare queueLength: () => number;
 	declare queueIndexOf: (id: string | number) => number;
 
-	declare current: {
+	declare item: {
 		(): T | undefined;
 		(target: T | string | number, opts?: ActionOptions): void;
 	};
 
-	declare currentIndex: () => number;
+	declare index: () => number;
 	declare seekToIndex: (position: number, opts?: ActionOptions) => void;
 
 	declare backlog: {
@@ -416,7 +419,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 				const threshold = this.options?.trackEndingSoonThreshold ?? 10;
 				if (duration > 0 && currentTime >= duration - threshold) {
 					this._trackEndingSoonEmitted = true;
-					const currentTrack = this.current?.();
+					const currentTrack = this.item?.();
 					if (currentTrack) {
 						this.emit('trackEndingSoon', {
 							remaining: duration - currentTime,
@@ -436,7 +439,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 				this.emit('duration', { duration: backendDuration });
 				return;
 			}
-			const itemDuration = (this.current?.() as (MusicPlaylistItem & { duration?: number }) | undefined)?.duration;
+			const itemDuration = (this.item?.() as (MusicPlaylistItem & { duration?: number }) | undefined)?.duration;
 			if (typeof itemDuration === 'number' && itemDuration > 0) {
 				this.emit('duration', { duration: itemDuration });
 			}
@@ -476,7 +479,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 		}
 
 		const backend = this.backend();
-		const fromTrack = this.current?.() ?? null;
+		const fromTrack = this.item?.() ?? null;
 
 		this._isTransitioning = true;
 		this.emit('crossfadeStart', {
@@ -496,10 +499,10 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 			throw err;
 		}
 
-		// Advance the cursor so `current()` reflects the new track. The setter
+		// Advance the cursor so `item()` reflects the new track. The setter
 		// overload emits the `current` event, which downstream plugins
 		// (mediaSession, lyrics, autoAdvance) listen to.
-		this.current?.(track.id ?? track);
+		this.item?.(track.id ?? track);
 
 		this._isTransitioning = false;
 		this.emit('crossfadeComplete', { track });
@@ -514,12 +517,12 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	declare networkState: () => NetworkState;
 	declare streamState: () => string;
 	declare visibilityState: () => VisibilityState;
-	declare qualityState: {
+	declare qualityMode: {
 		(): QualityState;
 		(target: number | 'auto'): void;
 	};
 
-	declare audioTrackState: {
+	declare audioTrackMode: {
 		(): AudioTrackState;
 		(idx: number): void;
 	};
@@ -542,32 +545,32 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	// ── Audio output device ── composed in via `audioOutputMethods` mixin.
 	declare audioOutputs: () => Promise<MediaDeviceInfo[]>;
 	declare selectAudioOutput: () => Promise<MediaDeviceInfo | null>;
-	declare currentAudioOutput: {
+	declare audioOutput: {
 		(): Promise<string | null>;
 		(deviceId: string): Promise<void>;
 	};
 
 	// ── Tracks / chapters / quality ── composed in via `mediaTracksMethods` mixin.
 	declare subtitles: () => SubtitleTrack[];
-	declare currentSubtitle: {
+	declare subtitle: {
 		(): CurrentSubtitleSelection | null;
 		(idx: number | null): void;
 	};
 
 	declare audioTracks: () => AudioTrack[];
-	declare currentAudioTrack: {
+	declare audioTrack: {
 		(): CurrentAudioTrackSelection | null;
 		(idx: number): void;
 	};
 
 	declare qualityLevels: () => QualityLevel[];
-	declare currentQuality: {
+	declare quality: {
 		(): CurrentQualitySelection | 'auto';
 		(idx: number | 'auto'): void;
 	};
 
 	declare chapters: () => Chapter[];
-	declare currentChapter: {
+	declare chapter: {
 		(): Chapter | null;
 		(idx: number): void;
 	};
@@ -578,13 +581,14 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 
 	// ── Cast / handoff ── composed in via `castMethods` mixin.
 	declare castState: () => CastState;
-	declare transferTo: (target: 'cast' | 'airplay' | 'remote-playback') => Promise<void>;
+	declare transferTo: (target: CastTarget) => Promise<void>;
 
 	// ── Auth runtime mutation ── composed in via `authMethods` mixin.
 	declare auth: {
 		(): Readonly<AuthConfig> | undefined;
 		(config: AuthConfig): void;
 		(partial: Partial<AuthConfig>): void;
+		(clear: null): void;
 	};
 
 	declare refreshAuth: () => Promise<void>;
@@ -598,7 +602,7 @@ export class NMMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
 	declare metrics: () => PlaybackMetrics;
 	declare recordMetric: (name: string, value: number) => void;
 	declare now: () => number;
-	declare announce: (text: string, level?: 'polite' | 'assertive') => void;
+	declare announce: (text: string, level?: AriaLiveLevel) => void;
 
 	// ── Preload + transition strategies ── composed via `preloadStrategyMethods` mixin.
 	declare setPreloadStrategy: (strategy: IPreloadStrategy) => void;
@@ -629,7 +633,7 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 
 {
 	const composedDispose = NMMusicPlayer.prototype.dispose as () => void;
-	NMMusicPlayer.prototype.dispose = function (this: NMMusicPlayer<BasePlaylistItem>): void {
+	NMMusicPlayer.prototype.dispose = function (this: NMMusicPlayer<MusicPlaylistItem>): void {
 		const self = this as unknown as { _backend?: { dispose?: () => void } };
 		try { self._backend?.dispose?.(); }
 		catch { /* defensive — kit must still finish disposing */ }
@@ -653,7 +657,7 @@ NMMusicPlayer.prototype.subtitles = function (): never {
  *   .addPlugin(equalizerPlugin);
  * ```
  */
-export function nmMPlayer<T extends BasePlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
+export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
 	const instance = new NMMusicPlayer<T>(id);
 
 	const originalSetup = instance.setup.bind(instance);

@@ -1,8 +1,8 @@
 /**
- * Time / position tests for NMMusicPlayer. Locks the overloaded `currentTime()`
+ * Time / position tests for NMMusicPlayer. Locks the overloaded `time()`
  * accessor and the BeforeSeek contract on the writer path.
  *
- * `currentTime(t)` is the canonical seek API — there is no separate `seek(t)`.
+ * `time(t)` is the canonical seek API — there is no separate `seek(t)`.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -23,50 +23,50 @@ describe('NMMusicPlayer — time', () => {
 
 	const setup = (): NMMusicPlayer => new NMMusicPlayer('test').setup({});
 
-	describe('currentTime() — read', () => {
+	describe('time() — read', () => {
 		it('returns 0 initially', () => {
-			expect(setup().currentTime()).toBe(0);
+			expect(setup().time()).toBe(0);
 		});
 	});
 
-	describe('currentTime(t) — write', () => {
+	describe('time(t) — write', () => {
 		it('emits beforeSeek with the requested time', () => {
 			const p = setup();
 			let beforeTime: number | undefined;
 			p.on('beforeSeek' as any, (e: any) => { beforeTime = e.data.time; });
-			p.currentTime(42);
+			p.time(42);
 			expect(beforeTime).toBe(42);
 		});
 
 		it('updates the read value when not prevented', async () => {
 			const p = setup();
-			await p.currentTime(7);
-			expect(p.currentTime()).toBe(7);
+			await p.time(7);
+			expect(p.time()).toBe(7);
 		});
 
 		it('emits seek with the new time', async () => {
 			const p = setup();
 			let seekTime: number | undefined;
 			p.on('seek' as any, (data: any) => { seekTime = data.time; });
-			await p.currentTime(15);
+			await p.time(15);
 			expect(seekTime).toBe(15);
 		});
 
 		it('preventDefault → emits seekPrevented, value unchanged', async () => {
 			const p = setup();
-			await p.currentTime(10);
+			await p.time(10);
 			let preventedReason: string | undefined;
 			p.on('beforeSeek' as any, (e: any) => { e.preventDefault(); });
 			p.on('seekPrevented' as any, (data: any) => { preventedReason = data.reason; });
-			await p.currentTime(99);
-			expect(p.currentTime()).toBe(10);
+			await p.time(99);
+			expect(p.time()).toBe(10);
 			expect(preventedReason).toBe('listener-prevented');
 		});
 
 		it('clamps negative values to 0', () => {
 			const p = setup();
-			p.currentTime(-5);
-			expect(p.currentTime()).toBe(0);
+			p.time(-5);
+			expect(p.time()).toBe(0);
 		});
 	});
 
@@ -111,7 +111,7 @@ describe('NMMusicPlayer — time', () => {
 	describe('timeData()', () => {
 		it('returns the aggregated TimeState shape', async () => {
 			const p = setup();
-			await p.currentTime(5);
+			await p.time(5);
 			const data = p.timeData();
 			expect(data).toHaveProperty('position');
 			expect(data).toHaveProperty('duration');

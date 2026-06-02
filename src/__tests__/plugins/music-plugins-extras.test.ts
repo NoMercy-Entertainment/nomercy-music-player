@@ -69,8 +69,8 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				id: 'a',
 				name: 'Track A',
 				cover: 'https://example.com/a.jpg',
-				artistTracks: [{ id: 1, name: 'Artist One' }, { id: 2, name: 'Artist Two' }],
-				albumTracks: [{ id: 9, name: 'Album X' }],
+				artist: 'Artist One, Artist Two',
+				album: 'Album X',
 			});
 			expect(meta.title).toBe('Track A');
 			expect(meta.artist).toBe('Artist One, Artist Two');
@@ -161,16 +161,16 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				if (!instance)
 					throw new Error('CastSenderPlugin not registered');
 
-				// Stub player.current() to return a track.
+				// Stub player.item() to return a track.
 				const trackItem = {
 					id: 't1',
 					name: 'Song A',
 					url: 'https://cdn/song-a.mp3',
 					cover: 'https://cdn/cover.jpg',
-					artistTracks: [{ id: 1, name: 'Artist X' }],
-					albumTracks: [{ id: 9, name: 'Album Y' }],
+					artist: 'Artist X',
+					album: 'Album Y',
 				};
-				(p as any).current = (): unknown => trackItem;
+				(p as any).item = (): unknown => trackItem;
 
 				await instance.connect();
 				expect(instance.isConnected()).toBe(true);
@@ -250,7 +250,7 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				const instance = p.getPlugin(CastSenderPlugin);
 				if (!instance)
 					throw new Error('CastSenderPlugin not registered');
-				(p as any).current = (): unknown => undefined;
+				(p as any).item = (): unknown => undefined;
 
 				await instance.connect();
 

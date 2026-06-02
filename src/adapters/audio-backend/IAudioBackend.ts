@@ -76,7 +76,7 @@ export type BackendLoaderState = typeof BACKEND_LOADER_STATE[keyof typeof BACKEN
  *
  * Two built-in implementations:
  *   - `AudioElementBackend` (html5-audio) — `<audio>` + lazy MediaElementSource
- *   - `WebAudioBackend` (web-audio) — decoded buffer + AudioBufferSourceNode (HLS falls back to MediaElementSource)
+ *   - `WebAudioBackend` (web-audio) — `<audio>` + `MediaElementAudioSourceNode` routed through an `AudioContext` gain/analyser graph
  *
  * Method conventions:
  *   - **Stateful = overloaded function:** `volume()` / `volume(v)`

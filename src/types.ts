@@ -3,19 +3,10 @@ import type {
 	BaseEventMap,
 	BasePlayerConfig,
 	BasePlaylistItem,
+	CrossfadeCurve,
 	IPlayer,
 } from '@nomercy-entertainment/nomercy-player-core';
 import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/IAudioBackend';
-
-export interface ArtistRef {
-	id: string | number;
-	name: string;
-}
-
-export interface AlbumRef {
-	id: string | number;
-	name: string;
-}
 
 /**
  * Default music playlist item shape. Consumers extend with their own
@@ -24,8 +15,10 @@ export interface AlbumRef {
 export interface MusicPlaylistItem extends BasePlaylistItem {
 	name: string;
 	cover?: string;
-	artistTracks?: ArtistRef[];
-	albumTracks?: AlbumRef[];
+	/** Plain artist name string. Consumers with linked-entity data join or pick the primary. */
+	artist?: string;
+	/** Plain album name string. Consumers with linked-entity data join or pick the primary. */
+	album?: string;
 	url?: string;
 	lyricsUrl?: string;
 	duration?: number;
@@ -82,14 +75,16 @@ export interface MusicEventMap extends BaseEventMap {
 	'backend:changed': { kind: AudioBackendKind };
 	'repeat': { state: RepeatState };
 	'shuffle': { state: ShuffleState };
-	'trackEndingSoon': { remaining: number; currentTrack: BasePlaylistItem };
-	'crossfadeStart': { from: BasePlaylistItem | null; to: BasePlaylistItem; duration: number };
-	'crossfadeComplete': { track: BasePlaylistItem };
+	'trackEndingSoon': { remaining: number; currentTrack: MusicPlaylistItem };
+	'crossfadeStart': { from: MusicPlaylistItem | null; to: MusicPlaylistItem; duration: number };
+	'crossfadeComplete': { track: MusicPlaylistItem };
 }
+
+export type { CrossfadeCurve };
 
 export interface CrossfadeOptions {
 	duration: number;
-	curve?: 'linear' | 'equal-power';
+	curve?: CrossfadeCurve;
 	/** Start position of the incoming track in milliseconds (default 0). */
 	startAt?: number;
 }
@@ -128,7 +123,7 @@ export interface MusicPlayerConfig<T extends BasePlaylistItem = MusicPlaylistIte
 	 */
 	backendFactory?: AudioBackendFactory;
 	/** Default crossfade applied to every `crossfadeTo` unless overridden per-call. */
-	crossfadeDefaults?: { duration: number; curve?: 'linear' | 'equal-power' };
+	crossfadeDefaults?: { duration: number; curve?: CrossfadeCurve };
 	/** Initial playlist — items inline, or a URL fetched and parsed at setup. */
 	playlist?: T[] | string;
 	/**

@@ -14,8 +14,6 @@
 
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 import type {
-	AlbumRef,
-	ArtistRef,
 	MusicPlayerConfig,
 	MusicPlaylistItem,
 } from './types';
@@ -34,22 +32,36 @@ export type { NMMusicPlayer } from './index';
  */
 export const nmMPlayer = nmMusicPlayer;
 
+// ── v1 linked-entity ref types (NoMercy-specific) ────────────────────────────
+
+/** @deprecated NoMercy-specific linked entity. Use the plain `artist` string on `MusicPlaylistItem`. */
+export interface ArtistRef {
+	id: string | number;
+	name: string;
+}
+
+/** @deprecated NoMercy-specific linked entity. Use the plain `album` string on `MusicPlaylistItem`. */
+export interface AlbumRef {
+	id: string | number;
+	name: string;
+}
+
 // ── Deprecated item field shapes ──────────────────────────────────────────────
 
 /**
- * v1 `MusicPlaylistItem` shape with deprecated `artist_track` / `album_track`
- * field names. Pass items through `normalizeMusicItem` before handing to the
- * v2 player.
+ * v1 `MusicPlaylistItem` shape with deprecated snake_case `artist_track` /
+ * `album_track` field names (NoMercy server format). Pass items through
+ * `normalizeMusicItem` before handing to the v2 player.
  */
 export interface MusicPlaylistItemV1Compat extends BasePlaylistItem {
 	name: string;
 	cover?: string;
 	/**
-	 * @deprecated Use `artistTracks` instead.
+	 * @deprecated Use the plain `artist` string on `MusicPlaylistItem` instead.
 	 */
 	artist_track?: ArtistRef[];
 	/**
-	 * @deprecated Use `albumTracks` instead.
+	 * @deprecated Use the plain `album` string on `MusicPlaylistItem` instead.
 	 */
 	album_track?: AlbumRef[];
 	url?: string;
@@ -58,19 +70,21 @@ export interface MusicPlaylistItemV1Compat extends BasePlaylistItem {
 }
 
 /**
- * Normalise a v1 `MusicPlaylistItem` (with `artist_track` / `album_track`)
- * to the v2 canonical shape (`artistTracks` / `albumTracks`). Safe on
- * already-normalised items — existing v2 fields win.
+ * Normalise a v1 `MusicPlaylistItem` (with `artist_track` / `album_track`
+ * arrays) to the v2 canonical shape (`artist` / `album` plain strings).
+ * Safe on already-normalised items — existing v2 fields win.
  */
 export function normalizeMusicItem<T extends MusicPlaylistItemV1Compat>(item: T): Omit<T, 'artist_track' | 'album_track'> & MusicPlaylistItem {
 	const result = { ...item } as Record<string, unknown>;
 
-	if (result['artist_track'] !== undefined && result['artistTracks'] === undefined) {
-		result['artistTracks'] = result['artist_track'];
+	if (result['artist_track'] !== undefined && result['artist'] === undefined) {
+		const refs = result['artist_track'] as ArtistRef[];
+		result['artist'] = refs.map(ref => ref.name).filter(Boolean).join(', ');
 	}
 
-	if (result['album_track'] !== undefined && result['albumTracks'] === undefined) {
-		result['albumTracks'] = result['album_track'];
+	if (result['album_track'] !== undefined && result['album'] === undefined) {
+		const refs = result['album_track'] as AlbumRef[];
+		result['album'] = refs.map(ref => ref.name).filter(Boolean).join(', ');
 	}
 
 	delete result['artist_track'];

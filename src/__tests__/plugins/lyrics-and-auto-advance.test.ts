@@ -98,7 +98,7 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			p.addPlugin(autoAdvancePlugin);
 			await p.ready();
 			p.queue([track('a'), track('b')]);
-			expect(p.current()?.id).toBe('a');
+			expect(p.item()?.id).toBe('a');
 
 			let nextFired = false;
 			p.on('next' as any, () => { nextFired = true; });
