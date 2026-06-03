@@ -1,5 +1,4 @@
 import {ConstructorOptions} from "audiomotion-analyzer";
-import PlayerCore from "./index";
 
 export interface PlayerOptions {
   // The base URL of the resources
@@ -94,13 +93,6 @@ export interface EQBand {
 export interface EqualizerPreset {
   name: string;
   values: { frequency: number, gain: number }[];
-}
-
-declare global {
-  // noinspection JSUnusedGlobalSymbols
-  interface Window {
-	musicPlayer: PlayerCore<BasePlaylistItem>;
-  }
 }
 
 export interface BasePlaylistItem {

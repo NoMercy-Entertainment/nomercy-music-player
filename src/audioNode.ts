@@ -1,4 +1,4 @@
-import Helpers from "./helpers";
+import type Helpers from "./helpers";
 
 import type { AudioOptions, EQBand, BasePlaylistItem } from "./types";
 import HLS from "hls.js";

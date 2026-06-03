@@ -9,6 +9,12 @@ import {PlayerState, VolumeState} from "./state";
 export type { BasePlaylistItem, PlayerOptions, TimeState, RepeatState, EQBand, EqualizerPreset, EQSliderValues } from './types';
 export type { PlayerState, VolumeState } from './state';
 
+declare global {
+  interface Window {
+    musicPlayer: PlayerCore<BasePlaylistItem>;
+  }
+}
+
 export class PlayerCore<S extends BasePlaylistItem> extends Queue<S> {
   mediaSession: MediaSession;
   actions?: {

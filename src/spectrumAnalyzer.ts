@@ -27,7 +27,6 @@ const spectrumAnalyser = async (audio: HTMLAudioElement, config?: ConstructorOpt
 };
 
 export {
-    AudioMotionAnalyzer,
     type ConstructorOptions,
     spectrumAnalyser,
 };
