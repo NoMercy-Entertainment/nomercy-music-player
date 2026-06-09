@@ -1,6 +1,6 @@
-import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
-
 import type { NMMusicPlayer } from '../../index';
+
+import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Reserved options interface for {@link GroupListeningPlugin} v2.1. Not consumed in v2.0. */
 export interface GroupListeningOptions {
@@ -26,7 +26,7 @@ export interface GroupListeningEvents {
 	'sync:participants': { count: number };
 	'role:dj-acquired': { id: string };
 	'role:dj-lost': void;
-	unsupported: { reason: string };
+	'unsupported': { reason: string };
 }
 
 /**

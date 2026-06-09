@@ -1,6 +1,6 @@
-import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
-
 import type { NMMusicPlayer } from '../../index';
+
+import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Reserved options interface for {@link DrmPlugin} v2.1. Not consumed in v2.0. */
 export interface DrmOptions {
@@ -26,7 +26,7 @@ export interface DrmEvents {
 	'key:revoked': { sessionId: string };
 	'key:error': { sessionId: string; error: Error };
 	'output:restricted': { reason: string };
-	unsupported: { reason: string };
+	'unsupported': { reason: string };
 }
 
 /**

@@ -1,6 +1,6 @@
-import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
-
 import type { NMMusicPlayer } from '../../index';
+
+import { NotImplementedError, Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 /** Reserved options interface for {@link LiveTranscodingPlugin} v2.1. Not consumed in v2.0. */
 export interface LiveTranscodingOptions {
@@ -22,7 +22,7 @@ export interface LiveTranscodingEvents {
 	'job:error': { jobId: string; error: Error };
 	'job:complete': { jobId: string };
 	'segment:ready': { segmentUrl: string; durationSeconds: number };
-	unsupported: { reason: string };
+	'unsupported': { reason: string };
 }
 
 /**

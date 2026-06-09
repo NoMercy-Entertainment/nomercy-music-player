@@ -5,8 +5,8 @@
  *   - have dispose() as a no-op (no throw)
  */
 
-import { describe, expect, it } from 'vitest';
 import { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core';
+import { describe, expect, it } from 'vitest';
 import { DrmPlugin } from '../../plugins/drm';
 import { GroupListeningPlugin } from '../../plugins/group-listening';
 import { LiveTranscodingPlugin } from '../../plugins/live-transcoding';

@@ -23,7 +23,11 @@ export class MediaSessionPlugin<T extends MusicPlaylistItem = MusicPlaylistItem>
 		const title = item.name ?? '';
 		const artist = item.artist ?? '';
 		const album = item.album ?? '';
-		return { title, artist, album };
+		return {
+			title,
+			artist,
+			album,
+		};
 	}
 }
 

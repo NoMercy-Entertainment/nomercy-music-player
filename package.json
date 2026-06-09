@@ -68,6 +68,10 @@
 			"types": "./dist/plugins/index.d.ts",
 			"import": "./dist/plugins/index.js"
 		},
+		"./plugins/v1-compat": {
+			"types": "./dist/plugins/v1-compat/index.d.ts",
+			"import": "./dist/plugins/v1-compat/index.js"
+		},
 		"./plugins/auto-advance": {
 			"types": "./dist/plugins/auto-advance/index.d.ts",
 			"import": "./dist/plugins/auto-advance/index.js"
@@ -132,9 +136,9 @@
 	},
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
-	"types": "./dist/index.d.ts",
 	"unpkg": "./dist/nomercy-music-player.iife.js",
 	"jsdelivr": "./dist/nomercy-music-player.iife.js",
+	"types": "./dist/index.d.ts",
 	"files": [
 		"CHANGELOG.md",
 		"CODE_OF_CONDUCT.md",

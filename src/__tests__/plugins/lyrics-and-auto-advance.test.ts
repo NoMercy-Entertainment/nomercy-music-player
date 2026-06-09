@@ -7,8 +7,8 @@
  */
 
 import type { CueList, ICueParser } from '@nomercy-entertainment/nomercy-player-core';
-import { createCueList } from '@nomercy-entertainment/nomercy-player-core';
 import type { MusicPlaylistItem } from '../../types';
+import { createCueList } from '@nomercy-entertainment/nomercy-player-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../../index';
 import { autoAdvancePlugin, AutoAdvancePlugin } from '../../plugins/auto-advance';

@@ -79,12 +79,14 @@ export function normalizeMusicItem<T extends MusicPlaylistItemV1Compat>(item: T)
 
 	if (result['artist_track'] !== undefined && result['artist'] === undefined) {
 		const refs = result['artist_track'] as ArtistRef[];
-		result['artist'] = refs.map(ref => ref.name).filter(Boolean).join(', ');
+		result['artist'] = refs.map(ref => ref.name).filter(Boolean)
+			.join(', ');
 	}
 
 	if (result['album_track'] !== undefined && result['album'] === undefined) {
 		const refs = result['album_track'] as AlbumRef[];
-		result['album'] = refs.map(ref => ref.name).filter(Boolean).join(', ');
+		result['album'] = refs.map(ref => ref.name).filter(Boolean)
+			.join(', ');
 	}
 
 	delete result['artist_track'];

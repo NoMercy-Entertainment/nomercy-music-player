@@ -1,26 +1,30 @@
 export { autoAdvancePlugin, AutoAdvancePlugin } from './auto-advance';
 export type { AutoAdvanceOptions } from './auto-advance';
 
+export { castSenderPlugin, CastSenderPlugin } from './cast-sender';
+export type { CastSenderEvents, CastSenderOptions } from './cast-sender';
+
 export { drmPlugin, DrmPlugin } from './drm';
 export type { DrmEvents, DrmOptions } from './drm';
 
 export { groupListeningPlugin, GroupListeningPlugin } from './group-listening';
 export type { GroupListeningEvents, GroupListeningOptions } from './group-listening';
 
-export { liveTranscodingPlugin, LiveTranscodingPlugin } from './live-transcoding';
-export type { LiveTranscodingEvents, LiveTranscodingOptions } from './live-transcoding';
-
-export { castSenderPlugin, CastSenderPlugin } from './cast-sender';
-export type { CastSenderEvents, CastSenderOptions } from './cast-sender';
-
 // Cross-library plugins (from core, with music-specific defaults where applicable)
 export { keyHandlerPlugin, KeyHandlerPlugin } from './key-handler';
+export { liveTranscodingPlugin, LiveTranscodingPlugin } from './live-transcoding';
+
+export type { LiveTranscodingEvents, LiveTranscodingOptions } from './live-transcoding';
 export { lyricsPlugin, LyricsPlugin } from './lyrics';
+
 export type { LyricsEvents, LyricsOptions } from './lyrics';
 export { mediaSessionPlugin, MediaSessionPlugin } from './media-session';
 // Music-specific plugins
 export { musicUiPlugin, MusicUiPlugin } from './music-ui';
 export type { MusicUiEvents, MusicUiOptions } from './music-ui';
+// Migration shim — TEMPORARY, remove after v1→v2 migration window closes
+export { v1MusicCompatPlugin, V1MusicCompatPlugin } from './v1-compat';
+export type { V1MusicCompatEvents } from './v1-compat';
 
 // Audio-graph plugins re-exported from core for ergonomic imports.
 // Layered composition: addPlugin(audioGraphPlugin) → addPlugin(equalizerPlugin / mixerPlugin / spectrumPlugin / canvasPlugin / visualizers).
