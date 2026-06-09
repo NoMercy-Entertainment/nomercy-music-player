@@ -165,6 +165,22 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 			'plugin.music-ui.tooltip.mute': 'Mute',
 			'plugin.music-ui.tooltip.unmute': 'Unmute',
 			'plugin.music-ui.tooltip.speed': 'Playback speed',
+			'plugin.music-ui.a11y.seek': 'Seek',
+			'plugin.music-ui.a11y.volume': 'Volume',
+		},
+		nl: {
+			'plugin.music-ui.tooltip.play': 'Afspelen',
+			'plugin.music-ui.tooltip.pause': 'Pauzeren',
+			'plugin.music-ui.tooltip.previous': 'Vorige',
+			'plugin.music-ui.tooltip.next': 'Volgende',
+			'plugin.music-ui.tooltip.shuffle': 'Willekeurig',
+			'plugin.music-ui.tooltip.repeat': 'Herhalen',
+			'plugin.music-ui.tooltip.repeatOne': 'Eén herhalen',
+			'plugin.music-ui.tooltip.mute': 'Dempen',
+			'plugin.music-ui.tooltip.unmute': 'Dempen opheffen',
+			'plugin.music-ui.tooltip.speed': 'Afspeelsnelheid',
+			'plugin.music-ui.a11y.seek': 'Doorspoelen',
+			'plugin.music-ui.a11y.volume': 'Volume',
 		},
 	};
 
@@ -279,7 +295,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 		const seekBar = document.createElement('div');
 		seekBar.className = 'nmmusic-seek-bar';
 		seekBar.setAttribute('role', 'slider');
-		seekBar.setAttribute('aria-label', 'Seek');
+		seekBar.setAttribute('aria-label', this.t('a11y.seek'));
 		seekBar.setAttribute('aria-valuemin', '0');
 		seekBar.setAttribute('aria-valuemax', '100');
 		seekBar.setAttribute('aria-valuenow', '0');
@@ -344,7 +360,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 		volSlider.max = '100';
 		volSlider.step = '1';
 		volSlider.value = '100';
-		volSlider.setAttribute('aria-label', 'Volume');
+		volSlider.setAttribute('aria-label', this.t('a11y.volume'));
 
 		const volSliderVertical = document.createElement('div');
 		volSliderVertical.className = 'nmmusic-vol-slider-vertical';
@@ -356,7 +372,7 @@ export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUi
 		volSliderVerticalInput.max = '100';
 		volSliderVerticalInput.step = '1';
 		volSliderVerticalInput.value = '100';
-		volSliderVerticalInput.setAttribute('aria-label', 'Volume');
+		volSliderVerticalInput.setAttribute('aria-label', this.t('a11y.volume'));
 		volSliderVerticalInput.setAttribute('orient', 'vertical');
 
 		const volPopupMuteBtn = document.createElement('button');
