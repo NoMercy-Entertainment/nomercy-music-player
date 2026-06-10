@@ -14,14 +14,25 @@ import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/I
  */
 export interface MusicPlaylistItem extends BasePlaylistItem {
 	name: string;
-	cover?: string;
+	/**
+	 * Cover art URL. `null` is accepted as a sentinel for "no art available"
+	 * so that consumers that store `cover: string | null` (common with database
+	 * nullable columns) compile without changes.
+	 */
+	cover?: string | null;
 	/** Plain artist name string. Consumers with linked-entity data join or pick the primary. */
 	artist?: string;
 	/** Plain album name string. Consumers with linked-entity data join or pick the primary. */
 	album?: string;
 	url?: string;
 	lyricsUrl?: string;
-	duration?: number;
+	/**
+	 * Track duration. v1 consumer code often stored this as a human-readable
+	 * string (e.g. `'3:42'`); v2 uses seconds as a number. Both are accepted
+	 * so consumer item types that declare `duration: string` satisfy this
+	 * constraint without source changes.
+	 */
+	duration?: number | string;
 }
 
 /** Volume gain stage. Returned by `player.volumeState()`. */
@@ -78,6 +89,24 @@ export interface MusicEventMap extends BaseEventMap {
 	'trackEndingSoon': { remaining: number; currentTrack: MusicPlaylistItem };
 	'crossfadeStart': { from: MusicPlaylistItem | null; to: MusicPlaylistItem; duration: number };
 	'crossfadeComplete': { track: MusicPlaylistItem };
+	/**
+	 * Extends the kit `BaseEventMap['time']` payload with v1-era convenience
+	 * fields so consumer code that reads `data.percentage` / `data.position` /
+	 * `data.duration` / `data.remaining` compiles without changes.
+	 *
+	 * - `time` — elapsed seconds (canonical v2 field, always present)
+	 * - `percentage` — elapsed time as 0–100 percent of total duration
+	 * - `position` — alias for `time` in seconds (v1-era name)
+	 * - `duration` — total duration in seconds (v1-era convenience field)
+	 * - `remaining` — remaining seconds (v1-era convenience field)
+	 */
+	'time': {
+		time: number;
+		percentage: number;
+		position: number;
+		duration: number;
+		remaining: number;
+	};
 }
 
 export type { CrossfadeCurve };
@@ -132,4 +161,55 @@ export interface MusicPlayerConfig<T extends BasePlaylistItem = MusicPlaylistIte
 	 * Default `10`.
 	 */
 	trackEndingSoonThreshold?: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v1 compatibility types
+//
+// Exported from the `/types` and `/dist/types` subpaths so v1 consumer code
+// that imported these from `@nomercy-entertainment/nomercy-music-player/dist/types`
+// continues to compile without source changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Single equalizer band.
+ * @deprecated Use the EqualizerPlugin API in new code.
+ */
+export interface EQBand {
+	/** Frequency in Hz, or `'Pre'` for the pre-amplifier gain band. */
+	frequency: number | 'Pre';
+	/** Gain in dB. */
+	gain: number;
+}
+
+/**
+ * Slider range config for each equalizer control.
+ * @deprecated Use the EqualizerPlugin API in new code.
+ */
+export interface EQSliderValues {
+	pan: { min: number; max: number; step: number; default: number };
+	pre: { min: number; max: number; step: number; default: number };
+	band: { min: number; max: number; step: number; default: number };
+}
+
+/**
+ * Named equalizer preset.
+ * @deprecated Use the EqualizerPlugin API in new code.
+ */
+export interface EqualizerPreset {
+	name: string;
+	values: Array<{ frequency: number; gain: number }>;
+}
+
+/**
+ * Simple id + name item used by server list endpoints (genres, directors, etc.).
+ * Imported by the app from `@nomercy-entertainment/nomercy-music-player/types`
+ * because the v1 player package happened to export it.
+ *
+ * @deprecated Declare this interface in your own app types.
+ */
+export interface Item {
+	id: number | string;
+	name: string;
+	[key: string]: unknown;
 }

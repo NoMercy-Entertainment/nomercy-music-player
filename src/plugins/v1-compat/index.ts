@@ -76,16 +76,23 @@ interface V1TimeState {
 }
 
 function _toV1TimeState(v2Data: unknown): V1TimeState {
-	const v2 = v2Data as { time?: number } | undefined;
-	const position = v2?.time ?? 0;
+	const v2 = v2Data as { time?: number; percentage?: number; position?: number } | undefined;
+	const position = v2?.time ?? v2?.position ?? 0;
+	const duration = _currentDuration;
+	const safeD = Number.isFinite(duration) && duration > 0 ? duration : 0;
+	const percentage = v2?.percentage ?? (safeD > 0 ? (position / safeD) * 100 : 0);
+	const remaining = safeD > 0 ? safeD - position : 0;
 	return {
 		buffered: 0,
-		duration: 0,
-		percentage: 0,
+		duration: safeD,
+		percentage,
 		position,
-		remaining: 0,
+		remaining,
 	};
 }
+
+/** Module-level mutable duration tracker — updated by each plugin instance's duration listener. */
+let _currentDuration = 0;
 
 /**
  * Build the v1→v2 event bridge table. Constructed lazily per plugin instance.
@@ -226,6 +233,11 @@ export class V1MusicCompatPlugin extends Plugin<
 	override use(): void {
 		this._installOnInterceptor();
 		this._attachMethodShims();
+
+		// Track current duration so the time event reshaper can include remaining/percentage.
+		this.player.on('duration', (data: { duration: number }) => {
+			_currentDuration = data.duration;
+		});
 	}
 
 	override dispose(): void {

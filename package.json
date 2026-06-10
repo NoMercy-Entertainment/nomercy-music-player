@@ -132,6 +132,18 @@
 			"types": "./dist/compat.d.ts",
 			"import": "./dist/compat.js"
 		},
+		"./dist/types": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/types.js"
+		},
+		"./types": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/types.js"
+		},
+		"./src/types": {
+			"types": "./dist/types.d.ts",
+			"import": "./dist/types.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"main": "./dist/index.js",

@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { applyMusicV1Compat, nmMPlayer, nmMusicPlayer, normalizeMusicItem } from '../compat';
-import { nmMusicPlayer as canonicalNmMusicPlayer, nmMPlayer as mainNmMPlayer, NMMusicPlayer } from '../index';
+import { nmMusicPlayer as canonicalNmMusicPlayer, nmMPlayer as mainNmMPlayer, NMMusicPlayer, PlayerCore } from '../index';
 
 describe('normalizeMusicItem', () => {
 	it('maps artist_track array to plain artist string', () => {
@@ -96,5 +96,55 @@ describe('factory aliases', () => {
 		const player = mainNmMPlayer('compat-music');
 		expect(player).toBeInstanceOf(NMMusicPlayer);
 		player.dispose();
+	});
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// v1 PlayerCore compatibility
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('PlayerCore v1 compatibility wrapper', () => {
+	beforeEach(() => {
+		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+	});
+
+	afterEach(() => {
+		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+	});
+
+	it('PlayerCore is exported as a constructor', () => {
+		expect(PlayerCore).toBeDefined();
+		expect(typeof PlayerCore).toBe('function');
+	});
+
+	it('new PlayerCore({}) constructs without throwing', () => {
+		expect(() => new PlayerCore({})).not.toThrow();
+	});
+
+	it('new PlayerCore returns an NMMusicPlayer instance', () => {
+		const instance = new PlayerCore({});
+		expect(instance).toBeInstanceOf(NMMusicPlayer);
+	});
+
+	it('PlayerCore instance exposes play/pause/stop/next/previous methods', () => {
+		const player = new PlayerCore({}) as unknown as NMMusicPlayer;
+		expect(typeof player.play).toBe('function');
+		expect(typeof player.pause).toBe('function');
+		expect(typeof player.stop).toBe('function');
+		expect(typeof player.next).toBe('function');
+		expect(typeof player.previous).toBe('function');
+	});
+
+	it('PlayerCore expose:true sets window.musicPlayer', () => {
+		new PlayerCore({ expose: true });
+		expect((window as unknown as Record<string, unknown>)['musicPlayer']).toBeDefined();
+		expect((window as unknown as Record<string, unknown>)['musicPlayer']).toBeInstanceOf(NMMusicPlayer);
+		delete (window as unknown as Record<string, unknown>)['musicPlayer'];
+	});
+
+	it('PlayerCore expose:false does not set window.musicPlayer', () => {
+		delete (window as unknown as Record<string, unknown>)['musicPlayer'];
+		new PlayerCore({ expose: false });
+		expect((window as unknown as Record<string, unknown>)['musicPlayer']).toBeUndefined();
 	});
 });
