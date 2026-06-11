@@ -479,7 +479,9 @@ describe('V1MusicCompatPlugin', () => {
 			player.addPlugin(V1MusicCompatPlugin);
 			await player.ready();
 
-			const repeatKey = '"on(\'crossfadeStart\')';
+			// 'crossfadeStart' keeps its name in v2 but its payload is reshaped,
+			// so the once-guard applies to the payload-bridged message.
+			const repeatKey = `on('crossfadeStart') is delivered with its v1 payload shape`;
 			const countBefore = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
 				.filter((args: unknown[]) => String(args[0]).includes(repeatKey)).length;
 
@@ -490,6 +492,29 @@ describe('V1MusicCompatPlugin', () => {
 				.filter((args: unknown[]) => String(args[0]).includes(repeatKey)).length;
 
 			expect(countAfter - countBefore).toBe(1);
+			player.dispose();
+		});
+
+		it('same-name reshaped event never says "use X instead of X"; renamed event names the v2 target; passthrough stays silent', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const warnsFor = (needle: string): number =>
+				(console.warn as ReturnType<typeof vi.spyOn>).mock.calls.filter((args: unknown[]) => String(args[0]).includes(needle)).length;
+
+			// 'pause' and 'queue' are untouched by the rest of this suite — the
+			// module-level once-guard swallows warnings for already-used names.
+			shimOn(player, 'pause', () => undefined);
+			expect(warnsFor(`use "on('pause')" instead`)).toBe(0);
+			expect(warnsFor(`on('pause') is delivered with its v1 payload shape`)).toBe(1);
+
+			shimOn(player, 'queue', () => undefined);
+			expect(warnsFor(`DEPRECATED "on('queue')" — use "on('ready')"`)).toBe(1);
+
+			const readyBefore = warnsFor(`on('ready')`);
+			shimOn(player, 'ready', () => undefined);
+			expect(warnsFor(`on('ready')`)).toBe(readyBefore);
 			player.dispose();
 		});
 	});

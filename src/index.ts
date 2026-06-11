@@ -656,14 +656,15 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 }
 
 /**
- * Factory entry point.
+ * @deprecated Use `nmMusicPlayer` instead. This factory name is the v1
+ * migration alias. New code should call `nmMusicPlayer(id)`.
  *
  * When `setup({ expose: true })` is called on the returned instance,
  * `window.nmMPlayer` is set to this factory for console access alongside
  * `window.player` (wired by the kit). Cleaned up on `dispose()`.
  *
  * ```ts
- * const player = nmMPlayer<MyTrack>('player')
+ * const player = nmMusicPlayer<MyTrack>('player')
  *   .setup({ ... })
  *   .addPlugin(audioGraphPlugin)
  *   .addPlugin(equalizerPlugin);
@@ -718,14 +719,14 @@ export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: 
 }
 
 /**
- * Canonical symmetric named export. Consumers can bind their own name via the
- * default export; use this when you want an explicit import that mirrors the
- * video package's `nmVideoPlayer` naming:
+ * Canonical v2 entry point. Use this name in all new code.
  *
  * ```ts
  * import { nmMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
  * const player = nmMusicPlayer('my-div');
  * ```
+ *
+ * `nmMPlayer` is the deprecated v1-compat alias; it exists only for migration.
  */
 export const nmMusicPlayer = nmMPlayer;
 
