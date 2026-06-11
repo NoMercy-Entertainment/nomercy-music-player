@@ -6,6 +6,7 @@ import type {
 } from './IAudioBackend';
 
 import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
+import HlsDefault from 'hls.js';
 
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
@@ -174,23 +175,19 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs) {
-				import('hls.js')
-					.then((mod) => {
-						const Hls = (mod.default ?? mod) as unknown as HlsCtor;
-						if (!Hls.isSupported()) {
-							this.element.src = url;
-							this.element.load();
-							return;
-						}
-						const hls = new Hls();
-						hls.attachMedia(this.element);
-						hls.loadSource(url);
-						this.hlsInstance = hls;
-					})
-					.catch((err: unknown) => {
-						cleanup();
-						reject(err);
-					});
+				// hls.js is the primary engine for NoMercy audio streams —
+				// statically imported so it is ready before the first load.
+				const Hls = HlsDefault as unknown as HlsCtor;
+				if (!Hls.isSupported()) {
+					this.element.src = url;
+					this.element.load();
+				}
+				else {
+					const hls = new Hls();
+					hls.attachMedia(this.element);
+					hls.loadSource(url);
+					this.hlsInstance = hls;
+				}
 			}
 			else {
 				this.element.src = url;
