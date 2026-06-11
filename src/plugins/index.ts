@@ -12,6 +12,7 @@ export type { GroupListeningEvents, GroupListeningOptions } from './group-listen
 
 // Cross-library plugins (from core, with music-specific defaults where applicable)
 export { keyHandlerPlugin, KeyHandlerPlugin } from './key-handler';
+export type { KeyBindings, KeyHandlerOptions } from '@nomercy-entertainment/nomercy-player-core/plugins/key-handler';
 export { liveTranscodingPlugin, LiveTranscodingPlugin } from './live-transcoding';
 
 export type { LiveTranscodingEvents, LiveTranscodingOptions } from './live-transcoding';
@@ -19,6 +20,7 @@ export { lyricsPlugin, LyricsPlugin } from './lyrics';
 
 export type { LyricsEvents, LyricsOptions } from './lyrics';
 export { mediaSessionPlugin, MediaSessionPlugin } from './media-session';
+export type { MediaSessionMetadata, MediaSessionOptions } from '@nomercy-entertainment/nomercy-player-core/plugins/media-session';
 // Music-specific plugins
 export { musicUiPlugin, MusicUiPlugin } from './music-ui';
 export type { MusicUiEvents, MusicUiOptions } from './music-ui';

@@ -194,7 +194,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare bufferedRanges: () => TimeRanges;
 	declare seekable: () => TimeRanges;
 	declare timeData: () => KitTimeState;
-	/** Seek to a position expressed as a percentage (0–100) of total duration. V1 parity. */
+	/** Seek to a position expressed as a percentage (0–100) of total duration. */
 	declare seekByPercentage: (pct: number, opts?: ActionOptions) => void;
 
 	declare playbackRate: {
@@ -721,14 +721,17 @@ export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: 
 /**
  * Canonical v2 entry point. Use this name in all new code.
  *
+ * Returns a clean `NMMusicPlayer` instance — no shims, no compat plugin,
+ * the fully typed v2 surface and nothing else.
+ *
  * ```ts
  * import { nmMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
  * const player = nmMusicPlayer('my-div');
  * ```
- *
- * `nmMPlayer` is the deprecated v1-compat alias; it exists only for migration.
  */
-export const nmMusicPlayer = nmMPlayer;
+export function nmMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
+	return new NMMusicPlayer<T>(id);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v1 compatibility — PlayerCore
@@ -1003,29 +1006,29 @@ export interface PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> ext
 	// The v1-compat plugin reshapes these at runtime; these overloads give
 	// consumer TypeScript the correct types.
 
-	/** v1 time event — payload includes position, duration, remaining, percentage. */
+	/** Compat overload: `time` event — payload includes `time`, `position`, `duration`, `remaining`, `percentage`. */
 	on(event: 'time', fn: (data: { time: number; position: number; duration: number; remaining: number; percentage: number }) => void): void;
-	/** v1 song / current-item event — payload is the current track item or null. */
+	/** Compat overload: `song` event — payload is the current track item or `null`. */
 	on(event: 'song', fn: (item: T | null) => void): void;
-	/** v1 queue event — payload is the current queue array. */
+	/** Compat overload: `queue` event — payload is the current queue array. */
 	on(event: 'queue', fn: (data: T[]) => void): void;
-	/** v1 backlog event — payload is the current backlog array. */
+	/** Compat overload: `backlog` event — payload is the current backlog array. */
 	on(event: 'backlog', fn: (data: T[]) => void): void;
-	/** v1 play event — no payload. */
+	/** Compat overload: `play` event — no payload. */
 	on(event: 'play', fn: () => void): void;
-	/** v1 pause event — no payload. */
+	/** Compat overload: `pause` event — no payload. */
 	on(event: 'pause', fn: () => void): void;
-	/** v1 stop event — no payload. */
+	/** Compat overload: `stop` event — no payload. */
 	on(event: 'stop', fn: () => void): void;
-	/** v1 seeked event — payload includes position. */
+	/** Compat overload: `seeked` event — payload is `{ position, time }`. */
 	on(event: 'seeked', fn: (data: { position: number; time: number }) => void): void;
-	/** v1 mute event — payload is the boolean directly (v2 wraps in `{ muted }`). */
+	/** Compat overload: `mute` event — payload is the boolean directly (canonical: `{ muted }`). */
 	on(event: 'mute', fn: (muted: boolean) => void): void;
-	/** v1 shuffle event — payload is the boolean directly (v2 wraps in `{ state }`). */
+	/** Compat overload: `shuffle` event — payload is the boolean directly (canonical: `{ state }`). */
 	on(event: 'shuffle', fn: (enabled: boolean) => void): void;
-	/** v1 repeat event — payload is the RepeatState string directly (v2 wraps in `{ state }`). */
+	/** Compat overload: `repeat` event — payload is the `RepeatState` string directly (canonical: `{ state }`). */
 	on(event: 'repeat', fn: (state: RepeatState) => void): void;
-	/** v1 volume event — payload is the number directly (v2 wraps in `{ level }`). */
+	/** Compat overload: `volume` event — payload is the number directly (canonical: `{ level }`). */
 	on(event: 'volume', fn: (level: number) => void): void;
 
 	// ── v1 equalizer stubs ──
@@ -1107,10 +1110,9 @@ export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 }
 
 /**
- * Default export is `PlayerCore` so that:
- *   `import type PlayerCore from '@nomercy-entertainment/nomercy-music-player'`
- * resolves to the v1 compat wrapper type (which extends `NMMusicPlayer<T>`).
- *
- * New code should use `nmMPlayer` or `nmMusicPlayer` named exports instead.
+ * @deprecated Default-importing `PlayerCore` is the migration pattern — it
+ * resolves to the v1 compat wrapper type (which extends `NMMusicPlayer<T>`)
+ * so existing `import PlayerCore from '...'` consumers keep working unchanged
+ * during the 2.x beta window. New code imports the named `nmMusicPlayer`.
  */
 export default PlayerCore;

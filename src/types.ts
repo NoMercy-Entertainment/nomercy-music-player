@@ -27,10 +27,9 @@ export interface MusicPlaylistItem extends BasePlaylistItem {
 	url?: string;
 	lyricsUrl?: string;
 	/**
-	 * Track duration. v1 consumer code often stored this as a human-readable
-	 * string (e.g. `'3:42'`); v2 uses seconds as a number. Both are accepted
-	 * so consumer item types that declare `duration: string` satisfy this
-	 * constraint without source changes.
+	 * Track duration in seconds. Also accepts a human-readable string
+	 * (e.g. `'3:42'`) so consumer item types that declare `duration: string`
+	 * satisfy this constraint without source changes.
 	 */
 	duration?: number | string;
 }
@@ -90,15 +89,14 @@ export interface MusicEventMap extends BaseEventMap {
 	'crossfadeStart': { from: MusicPlaylistItem | null; to: MusicPlaylistItem; duration: number };
 	'crossfadeComplete': { track: MusicPlaylistItem };
 	/**
-	 * Extends the kit `BaseEventMap['time']` payload with v1-era convenience
-	 * fields so consumer code that reads `data.percentage` / `data.position` /
-	 * `data.duration` / `data.remaining` compiles without changes.
+	 * Time event payload. Extends the kit `BaseEventMap['time']` with extra
+	 * convenience fields:
 	 *
-	 * - `time` — elapsed seconds (canonical v2 field, always present)
+	 * - `time` — elapsed seconds (always present)
 	 * - `percentage` — elapsed time as 0–100 percent of total duration
-	 * - `position` — alias for `time` in seconds (v1-era name)
-	 * - `duration` — total duration in seconds (v1-era convenience field)
-	 * - `remaining` — remaining seconds (v1-era convenience field)
+	 * - `position` — alias for `time` in seconds
+	 * - `duration` — total duration in seconds
+	 * - `remaining` — remaining seconds
 	 */
 	'time': {
 		time: number;
@@ -203,8 +201,6 @@ export interface EqualizerPreset {
 
 /**
  * Simple id + name item used by server list endpoints (genres, directors, etc.).
- * Imported by the app from `@nomercy-entertainment/nomercy-music-player/types`
- * because the v1 player package happened to export it.
  *
  * @deprecated Declare this interface in your own app types.
  */

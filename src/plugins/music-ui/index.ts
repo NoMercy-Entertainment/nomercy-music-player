@@ -146,8 +146,12 @@ const PLACEHOLDER_SVG = `<svg viewBox="0 0 24 24" fill="currentColor" width="48"
 
 const SPEED_STEPS: ReadonlyArray<number> = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-// ── Plugin class ───────────────────────────────────────────────────────────────
-
+/**
+ * Music UI plugin — self-contained transport overlay for {@link NMMusicPlayer}.
+ * Renders album art, track info, a seek bar, and transport controls inside
+ * the kit-managed `.nomercymusicplayer` container.
+ * Add via `player.addPlugin(musicUiPlugin)`.
+ */
 export class MusicUiPlugin extends Plugin<NMMusicPlayer, MusicUiOptions, MusicUiEvents> {
 	static override readonly id: string = 'music-ui';
 	static override readonly version: string = '2.0.0';
