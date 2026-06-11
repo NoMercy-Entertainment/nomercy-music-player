@@ -10,8 +10,11 @@ import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertain
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
 function supportsNativeHls(audio: HTMLAudioElement): boolean {
+	// Chromium answers 'maybe' for HLS but cannot actually demux it. Trust
+	// 'maybe' only where MSE is absent (iOS Safari) — hls.js cannot run there
+	// anyway, so native is the only option.
 	const can = audio.canPlayType('application/vnd.apple.mpegurl');
-	return can === 'probably' || can === 'maybe';
+	return can === 'probably' || (can === 'maybe' && typeof MediaSource === 'undefined');
 }
 
 interface HlsCtor {
@@ -228,7 +231,7 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs) {
-				import(/* @vite-ignore */ 'hls.js')
+				import('hls.js')
 					.then((mod) => {
 						const Hls = (mod.default ?? mod) as unknown as HlsCtor;
 						if (!Hls.isSupported()) {
