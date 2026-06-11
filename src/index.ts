@@ -655,6 +655,41 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 	};
 }
 
+// Wrap the kit-composed `setup` with the music-domain defaults every entry
+// point must get. This lives on the class, not in a factory, so
+// `nmMusicPlayer()`, `new NMMusicPlayer()` and the compat `nmMPlayer()` all
+// behave identically.
+{
+	type _KitSetupFn = (config: MusicPlayerConfig<MusicPlaylistItem>) => NMMusicPlayer<MusicPlaylistItem>;
+	const kitSetup: _KitSetupFn = NMMusicPlayer.prototype.setup as _KitSetupFn;
+	const wrappedSetup: _KitSetupFn = function (this: NMMusicPlayer<MusicPlaylistItem>, config: MusicPlayerConfig<MusicPlaylistItem>): NMMusicPlayer<MusicPlaylistItem> {
+		// Music defaults to crossfading between tracks. Consumer-supplied
+		// strategies always win — only inject when absent.
+		const leadSeconds = config.preloadLeadSeconds ?? 10;
+		const crossfadeLeadSeconds = config.crossfadeLeadSeconds ?? 3;
+		const crossfadeTailSeconds = config.crossfadeTailSeconds ?? 3;
+		const enrichedConfig: MusicPlayerConfig<MusicPlaylistItem> = {
+			crossfadeEnabled: true,
+			...config,
+			preloadLeadSeconds: leadSeconds,
+			crossfadeLeadSeconds,
+			crossfadeTailSeconds,
+			preloadStrategy: config.preloadStrategy ?? new MusicPreloadStrategy(leadSeconds),
+			transitionStrategy: config.transitionStrategy ?? new CrossfadeTransitionStrategy({
+				leadSeconds: crossfadeLeadSeconds,
+				tailSeconds: crossfadeTailSeconds,
+				curve: config.crossfadeDefaults?.curve ?? 'equal-power',
+			}),
+		};
+		return kitSetup.call(this, enrichedConfig);
+	};
+	Object.defineProperty(NMMusicPlayer.prototype, 'setup', {
+		value: wrappedSetup,
+		writable: true,
+		configurable: true,
+	});
+}
+
 /**
  * @deprecated Use `nmMusicPlayer` instead. This factory name is the v1
  * migration alias. New code should call `nmMusicPlayer(id)`.
@@ -677,30 +712,12 @@ export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: 
 	instance.setup = function (config: MusicPlayerConfig<T>): NMMusicPlayer<T> {
 		// Normalise v1 legacy fields (accessToken → auth.bearerToken,
 		// debug: true → logLevel: 'debug') at the library boundary so core
-		// never sees them and carries no compat knowledge.
+		// never sees them and carries no compat knowledge. Strategy defaults
+		// are applied by the class setup wrapper — shared with the clean
+		// factory, never duplicated here.
 		const normalizedConfig = normalizeMusicConfig(config);
 
-		// Apply music-domain strategy defaults before delegating to the kit pipeline.
-		// Consumer-supplied strategies always win — only inject when absent.
-		const leadSeconds = normalizedConfig.preloadLeadSeconds ?? 10;
-		const crossfadeLeadSeconds = normalizedConfig.crossfadeLeadSeconds ?? 3;
-		const crossfadeTailSeconds = normalizedConfig.crossfadeTailSeconds ?? 3;
-
-		const enrichedConfig: MusicPlayerConfig<T> = {
-			crossfadeEnabled: true,
-			...normalizedConfig,
-			preloadLeadSeconds: leadSeconds,
-			crossfadeLeadSeconds,
-			crossfadeTailSeconds,
-			preloadStrategy: normalizedConfig.preloadStrategy ?? new MusicPreloadStrategy(leadSeconds),
-			transitionStrategy: normalizedConfig.transitionStrategy ?? new CrossfadeTransitionStrategy({
-				leadSeconds: crossfadeLeadSeconds,
-				tailSeconds: crossfadeTailSeconds,
-				curve: normalizedConfig.crossfadeDefaults?.curve ?? 'equal-power',
-			}),
-		};
-
-		const result = originalSetup(enrichedConfig);
+		const result = originalSetup(normalizedConfig);
 
 		if (config.expose === true && typeof window !== 'undefined') {
 			Object.assign(window, { nmMPlayer });
