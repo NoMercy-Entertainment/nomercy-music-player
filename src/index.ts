@@ -347,6 +347,17 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		this._firstFrameEmitted = false;
 		this._trackEndingSoonEmitted = false;
 
+		// Authenticated media servers need the Authorization header on every
+		// hls.js manifest/segment request. The provider reads the auth config
+		// lazily so getter-style tokens (Vue refs, stores) stay live.
+		instance.setAuthHeaderProvider?.(async () => {
+			const bearer = this.options?.auth?.bearerToken;
+			if (!bearer)
+				return undefined;
+			const token = typeof bearer === 'function' ? await bearer() : bearer;
+			return token ? `Bearer ${token}` : undefined;
+		});
+
 		/**
 		 * Narrow view of the composed kit internals needed by this method only.
 		 *  These fields are written onto the instance by playerCoreMethods via

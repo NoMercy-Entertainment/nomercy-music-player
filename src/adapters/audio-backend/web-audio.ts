@@ -76,6 +76,18 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	private readonly container?: HTMLElement;
 	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
 
+	/** Resolves the full `Authorization` header value, or undefined when unauthenticated. */
+	private _authHeaderProvider: (() => string | undefined | Promise<string | undefined>) | undefined;
+
+	/**
+	 * Wire the provider whose return value goes into the `Authorization`
+	 * header of every hls.js manifest/segment request. Called by the player
+	 * at backend init from the `auth` config.
+	 */
+	setAuthHeaderProvider(provider: () => string | undefined | Promise<string | undefined>): void {
+		this._authHeaderProvider = provider;
+	}
+
 	private ctx: AudioContext;
 	private sourceNode?: MediaElementAudioSourceNode;
 	private analyserNode?: AnalyserNode;
@@ -240,7 +252,14 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 					this.element.load();
 				}
 				else {
-					const hls = new Hls();
+					const hls = new Hls({
+						xhrSetup: async (xhr: XMLHttpRequest) => {
+							const headerValue = await this._authHeaderProvider?.();
+							if (headerValue) {
+								xhr.setRequestHeader('Authorization', headerValue);
+							}
+						},
+					});
 					hls.attachMedia(this.element);
 					hls.loadSource(url);
 					this.hlsInstance = hls;

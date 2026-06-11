@@ -48,6 +48,18 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	private readonly container?: HTMLElement;
 	private hlsInstance?: { destroy: () => void; startLoad?: () => void; stopLoad?: () => void };
 	private currentState: BackendState = 'idle';
+
+	/** Resolves the full `Authorization` header value, or undefined when unauthenticated. */
+	private _authHeaderProvider: (() => string | undefined | Promise<string | undefined>) | undefined;
+
+	/**
+	 * Wire the provider whose return value goes into the `Authorization`
+	 * header of every hls.js manifest/segment request. Called by the player
+	 * at backend init from the `auth` config.
+	 */
+	setAuthHeaderProvider(provider: () => string | undefined | Promise<string | undefined>): void {
+		this._authHeaderProvider = provider;
+	}
 	private prevVolume: number = 1;
 	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
 	private disposed = false;
@@ -183,7 +195,14 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 					this.element.load();
 				}
 				else {
-					const hls = new Hls();
+					const hls = new Hls({
+						xhrSetup: async (xhr: XMLHttpRequest) => {
+							const headerValue = await this._authHeaderProvider?.();
+							if (headerValue) {
+								xhr.setRequestHeader('Authorization', headerValue);
+							}
+						},
+					});
 					hls.attachMedia(this.element);
 					hls.loadSource(url);
 					this.hlsInstance = hls;
