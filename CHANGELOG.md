@@ -1,5 +1,23 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.1] — 2026-06-14
+
+### Changed
+
+- v1 compatibility now lives entirely in `V1MusicCompatPlugin`. The deprecated
+  `PlayerCore` entry installs that plugin instead of patching the instance in
+  core, so the clean `NMMusicPlayer` path carries no v1 shims and v1 callers keep
+  their full surface with deprecation warnings.
+- The WebAudio backend keeps a single shared `AudioContext` across a crossfade,
+  and the secondary load carries auth.
+
+### Removed
+
+- The `music-ui` plugin.
+- Stale `./plugins/embed`, `./plugins/message`, and `./plugins/tab-leader`
+  subpath exports that pointed at unbuilt files. These kit plugins remain
+  available through the `./plugins` aggregate or directly from the core package.
+
 ## [2.0.0-beta.1] — 2026-05-30
 
 ### Changed

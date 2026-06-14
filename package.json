@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.0.0-beta.1",
+	"version": "2.0.0-rc.1",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
 		"name": "NoMercy Entertainment",
@@ -84,10 +84,6 @@
 			"types": "./dist/plugins/drm/index.d.ts",
 			"import": "./dist/plugins/drm/index.js"
 		},
-		"./plugins/embed": {
-			"types": "./dist/plugins/embed/index.d.ts",
-			"import": "./dist/plugins/embed/index.js"
-		},
 		"./plugins/group-listening": {
 			"types": "./dist/plugins/group-listening/index.d.ts",
 			"import": "./dist/plugins/group-listening/index.js"
@@ -107,14 +103,6 @@
 		"./plugins/media-session": {
 			"types": "./dist/plugins/media-session/index.d.ts",
 			"import": "./dist/plugins/media-session/index.js"
-		},
-		"./plugins/message": {
-			"types": "./dist/plugins/message/index.d.ts",
-			"import": "./dist/plugins/message/index.js"
-		},
-		"./plugins/tab-leader": {
-			"types": "./dist/plugins/tab-leader/index.d.ts",
-			"import": "./dist/plugins/tab-leader/index.js"
 		},
 		"./streams/native": {
 			"types": "./dist/streams/native.d.ts",
@@ -174,7 +162,7 @@
 		"prepublishOnly": "npm run build:all"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-beta.0",
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.1",
 		"hls.js": "^1.6.0"
 	},
 	"devDependencies": {
@@ -192,6 +180,6 @@
 	},
 	"publishConfig": {
 		"access": "public",
-		"tag": "beta"
+		"tag": "rc"
 	}
 }
