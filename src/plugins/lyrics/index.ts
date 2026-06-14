@@ -1,8 +1,10 @@
 import type {
+	BasePlaylistItem,
 	Cue,
 	CueList,
 	ICueParser,
 } from '@nomercy-entertainment/nomercy-player-core';
+
 import type { NMMusicPlayer } from '../../index';
 import type { MusicPlaylistItem } from '../../types';
 import { CueTracker, Plugin } from '@nomercy-entertainment/nomercy-player-core';
@@ -49,16 +51,18 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 	private cueList?: CueList<LyricPayload>;
 	private activeCue?: Cue<LyricPayload>;
 
-	/** Attaches the `current` listener to auto-fetch lyrics when a new track loads. */
+	/** Attaches the `item` listener to auto-fetch lyrics when a new track loads. */
 	override use(): void {
-		this.on('current', (payload) => {
+		this.on('item', (payload) => {
 			if (this.opts?.autoFetch === false)
 				return;
+
 			const item = payload?.item;
-			if (!item) {
+			if (!item || !this.isMusicItem(item)) {
 				this.clear();
 				return;
 			}
+
 			const url = this.resolveLyricsUrl(item);
 			if (!url) {
 				this.clear();
@@ -102,7 +106,17 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 		return this.fetchAndAttach(url);
 	}
 
-	private resolveLyricsUrl(item: MusicPlaylistItem): string | undefined {
+	/**
+	 * Type predicate: narrows a TS generic intersection to `T` by checking
+	 * that the required `name` field (from `MusicPlaylistItem`) is present.
+	 * Needed because `Plugin.on('item', ...)` infers the payload item as a
+	 * distributive intersection when `T` is a free generic parameter.
+	 */
+	private isMusicItem(item: BasePlaylistItem): item is T {
+		return 'name' in item;
+	}
+
+	private resolveLyricsUrl(item: T): string | undefined {
 		const resolver = this.opts?.getLyricsUrl;
 		if (typeof resolver === 'function')
 			return resolver(item);
