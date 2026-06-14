@@ -50,10 +50,10 @@ export enum PlayState {
 	ERROR = 'error',
 }
 
+export type { AudioBackendKind } from './adapters/audio-backend/IAudioBackend';
+
 /** Re-exported from kit — canonical definition lives in nomercy-player-core. */
 export { RepeatState, ShuffleState } from '@nomercy-entertainment/nomercy-player-core';
-
-export type { AudioBackendKind } from './adapters/audio-backend/IAudioBackend';
 
 /** Re-exported from kit — canonical definition lives in nomercy-player-core. */
 export { AudioTrackState, QualityState } from '@nomercy-entertainment/nomercy-player-core';

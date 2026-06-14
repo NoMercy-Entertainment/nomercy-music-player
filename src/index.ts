@@ -1016,6 +1016,7 @@ export interface PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> ext
  * resolved instance type includes every `NMMusicPlayer<T>` method and every
  * v1 compat alias — no casts required at call sites.
  */
+// eslint-disable-next-line ts/no-unsafe-declaration-merging -- intentional v1 compat merge: interface above extends the class type so call sites get full NMMusicPlayer<T> + v1 aliases without casts
 export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 	constructor(config: V1MusicPlayerOptions) {
 		// Map v1 config to v2 config shape.

@@ -30,8 +30,8 @@ import type {
 	EqualizerPreset,
 	MusicPlaylistItem,
 } from '../../types';
-import { PlayState, VolumeState } from '../../types';
 import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
+import { PlayState, VolumeState } from '../../types';
 
 // ---------------------------------------------------------------------------
 // Deprecation accounting
@@ -306,36 +306,58 @@ export class V1MusicCompatPlugin extends Plugin<
 			return;
 		}
 
-		const { play: onPlay, pause: onPause, stop: onStop, previous: onPrevious, next: onNext, seek: onSeek } = actions;
+		const {
+			play: onPlay,
+			pause: onPause,
+			stop: onStop,
+			previous: onPrevious,
+			next: onNext,
+			seek: onSeek,
+		} = actions;
 
 		if (onPlay) {
 			const listener = (): void => onPlay();
 			this.player.on('play' as never, listener as never);
-			this._eventBridges.push({ v2Event: 'play', listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event: 'play',
+				listener: listener as (d: unknown) => void,
+			});
 		}
 
 		if (onPause) {
 			const listener = (): void => onPause();
 			this.player.on('pause' as never, listener as never);
-			this._eventBridges.push({ v2Event: 'pause', listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event: 'pause',
+				listener: listener as (d: unknown) => void,
+			});
 		}
 
 		if (onStop) {
 			const listener = (): void => onStop();
 			this.player.on('stop' as never, listener as never);
-			this._eventBridges.push({ v2Event: 'stop', listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event: 'stop',
+				listener: listener as (d: unknown) => void,
+			});
 		}
 
 		if (onPrevious) {
 			const listener = (): void => onPrevious();
 			this.player.on('previous' as never, listener as never);
-			this._eventBridges.push({ v2Event: 'previous', listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event: 'previous',
+				listener: listener as (d: unknown) => void,
+			});
 		}
 
 		if (onNext) {
 			const listener = (): void => onNext();
 			this.player.on('next' as never, listener as never);
-			this._eventBridges.push({ v2Event: 'next', listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event: 'next',
+				listener: listener as (d: unknown) => void,
+			});
 		}
 
 		if (onSeek) {
@@ -344,7 +366,10 @@ export class V1MusicCompatPlugin extends Plugin<
 				onSeek(position);
 			};
 			this.player.on('time' as never, listener as never);
-			this._eventBridges.push({ v2Event: 'time', listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event: 'time',
+				listener: listener as (d: unknown) => void,
+			});
 		}
 	}
 
@@ -1238,7 +1263,7 @@ export class V1MusicCompatPlugin extends Plugin<
 		if (!('isRepeating' in propTarget)) {
 			Object.defineProperty(propTarget, 'isRepeating', {
 				get: (): boolean => {
-					_warnDeprecated('isRepeating', "repeatState() !== 'off'");
+					_warnDeprecated('isRepeating', 'repeatState() !== \'off\'');
 					return player.repeatState() !== 'off';
 				},
 				configurable: true,
@@ -1254,7 +1279,7 @@ export class V1MusicCompatPlugin extends Plugin<
 		if (!('isShuffling' in propTarget)) {
 			Object.defineProperty(propTarget, 'isShuffling', {
 				get: (): boolean => {
-					_warnDeprecated('isShuffling', "shuffleState() === 'on'");
+					_warnDeprecated('isShuffling', 'shuffleState() === \'on\'');
 					return player.shuffleState() === 'on';
 				},
 				configurable: true,

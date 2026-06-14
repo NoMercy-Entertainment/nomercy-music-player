@@ -5,7 +5,13 @@ import type {
 	IAudioBackend,
 } from './IAudioBackend';
 
-import { appendAuthTokenParam, BrowserPolicyError, EventEmitter, HLS_EXT_RE, perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
+import {
+	appendAuthTokenParam,
+	BrowserPolicyError,
+	EventEmitter,
+	HLS_EXT_RE,
+	perceptualGain,
+} from '@nomercy-entertainment/nomercy-player-core';
 import HlsDefault from 'hls.js';
 
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);

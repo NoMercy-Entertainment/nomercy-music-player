@@ -24,8 +24,8 @@
  * it, and its gain.value reflects what player.volume() last set.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioGraphPlugin, perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 import { NMMusicPlayer } from '../index';
 
@@ -75,6 +75,7 @@ class MockAudioContext {
 		connect: vi.fn(),
 		disconnect: vi.fn(),
 	}));
+
 	createStereoPanner = vi.fn(() => ({
 		pan: {
 			value: 0,
@@ -83,6 +84,7 @@ class MockAudioContext {
 		connect: vi.fn(),
 		disconnect: vi.fn(),
 	}));
+
 	resume = vi.fn((): Promise<void> => Promise.resolve());
 
 	constructor() {

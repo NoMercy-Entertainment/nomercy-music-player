@@ -5,7 +5,13 @@ import type {
 	IAudioBackend,
 } from './IAudioBackend';
 
-import { appendAuthTokenParam, BrowserPolicyError, EventEmitter, HLS_EXT_RE, perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
+import {
+	appendAuthTokenParam,
+	BrowserPolicyError,
+	EventEmitter,
+	HLS_EXT_RE,
+	perceptualGain,
+} from '@nomercy-entertainment/nomercy-player-core';
 import Hls from 'hls.js';
 
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
@@ -16,15 +22,6 @@ function supportsNativeHls(audio: HTMLAudioElement): boolean {
 	// anyway, so native is the only option.
 	const can = audio.canPlayType('application/vnd.apple.mpegurl');
 	return can === 'probably' || (can === 'maybe' && typeof MediaSource === 'undefined');
-}
-
-interface HlsCtor {
-	new (cfg?: unknown): {
-		loadSource: (url: string) => void;
-		attachMedia: (el: HTMLMediaElement) => void;
-		destroy: () => void;
-	};
-	isSupported: () => boolean;
 }
 
 /**
@@ -164,7 +161,10 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		const useHlsJs = isHls(url) && !supportsNativeHls(this.element);
 
-		await new Promise<void>(async (resolve, reject) => {
+		// Resolve auth header before entering the Promise so the executor stays synchronous.
+		const headerValue = await this._authHeaderProvider?.();
+
+		await new Promise<void>((resolve, reject) => {
 			const onLoaded = (): void => {
 				cleanup();
 				resolve();
@@ -180,8 +180,6 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 			this.element.addEventListener('loadedmetadata', onLoaded, { once: true });
 			this.element.addEventListener('error', onError, { once: true });
-
-			const headerValue = await this._authHeaderProvider?.();
 
 			if (useHlsJs) {
 				if (!Hls.isSupported()) {

@@ -20,10 +20,10 @@
  *      — cross-context connect is structurally impossible.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 import { AudioGraphPlugin } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../index';
-import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 
 // ── AudioContext stub ──────────────────────────────────────────────────────────
 

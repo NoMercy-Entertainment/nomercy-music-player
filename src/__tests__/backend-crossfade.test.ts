@@ -8,8 +8,8 @@
  */
 
 import type { IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 

@@ -136,7 +136,8 @@ describe('PlayerCore v1 compatibility wrapper', () => {
 	});
 
 	it('PlayerCore expose:true sets window.musicPlayer', () => {
-		new PlayerCore({ expose: true });
+		const _player = new PlayerCore({ expose: true });
+		expect(_player).toBeDefined();
 		expect((window as unknown as Record<string, unknown>)['musicPlayer']).toBeDefined();
 		expect((window as unknown as Record<string, unknown>)['musicPlayer']).toBeInstanceOf(NMMusicPlayer);
 		delete (window as unknown as Record<string, unknown>)['musicPlayer'];
@@ -144,7 +145,8 @@ describe('PlayerCore v1 compatibility wrapper', () => {
 
 	it('PlayerCore expose:false does not set window.musicPlayer', () => {
 		delete (window as unknown as Record<string, unknown>)['musicPlayer'];
-		new PlayerCore({ expose: false });
+		const _player = new PlayerCore({ expose: false });
+		expect(_player).toBeDefined();
 		expect((window as unknown as Record<string, unknown>)['musicPlayer']).toBeUndefined();
 	});
 });
