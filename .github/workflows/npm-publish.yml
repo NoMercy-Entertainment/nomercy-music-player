@@ -22,6 +22,9 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
+
       - name: Install dependencies
         run: npm install --legacy-peer-deps
 
@@ -30,12 +33,12 @@ jobs:
         run: |
           PACKAGE_NAME=$(node -p "require('./package.json').name")
           LOCAL_VERSION=$(node -p "require('./package.json').version")
-          PUBLISHED_VERSION=$(npm view "$PACKAGE_NAME" version 2>/dev/null || echo "0.0.0")
+          PUBLISHED_VERSION=$(npm view "$PACKAGE_NAME@$LOCAL_VERSION" version 2>/dev/null || echo "")
           if [ "$LOCAL_VERSION" = "$PUBLISHED_VERSION" ]; then
             echo "Version $LOCAL_VERSION is already published. Skipping."
             echo "skip=true" >> "$GITHUB_OUTPUT"
           else
-            echo "Publishing $LOCAL_VERSION (current on npm: $PUBLISHED_VERSION)"
+            echo "Publishing $LOCAL_VERSION (not yet on npm)"
             echo "skip=false" >> "$GITHUB_OUTPUT"
           fi
 
@@ -58,5 +61,3 @@ jobs:
       - name: Publish package
         if: steps.version-check.outputs.skip != 'true'
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
