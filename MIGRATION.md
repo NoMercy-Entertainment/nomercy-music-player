@@ -1,5 +1,33 @@
 # Migration
 
+## v1 (1.x `PlayerCore`) → v2 (2.0)
+
+v2 is a rewrite on the shared player core. The `PlayerCore` entry stays for
+migration and installs `V1MusicCompatPlugin`, which restores the v1 method API
+(`getVolume()`, `getCurrentTime()`, `setQueue()`, `playTrack()`, …) and the v1
+property reads (`currentTime`, `muted`, `isPlaying`, `isPaused`, `isStopped`,
+`isRepeating`, `isShuffling`, `state`, `currentSong`, …) with deprecation
+warnings. New code should construct `NMMusicPlayer` directly.
+
+These v1 reads cannot be restored as properties because v2 owns the name as a
+method. Call the method instead:
+
+| v1 property read | v2 |
+| --- | --- |
+| `player.volume` | `player.volume()` (or `player.getVolume()`) |
+| `player.duration` | `player.duration()` (or `player.getDuration()`) |
+| `player.buffered` | `player.buffered()` (or `player.getBuffer()`) |
+| `player.playbackRate` | `player.playbackRate()` |
+| `player.volumeState` | `player.volumeState()` (values are now `muted`/`unmuted`) |
+| `player.isTransitioning` | `player.isTransitioning()` |
+| `player.baseUrl` | `player.baseUrl()` (or `player.setBaseUrl()`) |
+
+Two members have no runtime shim:
+
+- `player.mediaSession` (raw instance) is gone. Use the media-session plugin.
+- The `PlayerState` enum is now `PlayState`. Import `PlayState` and map values
+  (`BUFFERING`/`ENDED` are not part of `PlayState`).
+
 ## beta.0 → beta.1 breaking change
 
 `currentSubtitle()`, `currentAudioTrack()`, and `currentQuality()` now return

@@ -30,6 +30,7 @@ import type {
 	EqualizerPreset,
 	MusicPlaylistItem,
 } from '../../types';
+import { PlayState, VolumeState } from '../../types';
 import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 // ---------------------------------------------------------------------------
@@ -1099,6 +1100,266 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnDeprecated('getPlaybackRate()', 'playbackRate()');
 			return player.playbackRate();
 		});
+
+		// ── v1 Helpers data-property shims ───────────────────────────────────
+		//
+		// v1 exposed many playback state values as plain mutable data properties on
+		// the Helpers class (e.g. `player.isPlaying`, `player.currentTime`). v2
+		// exposes these as method calls (`player.playState()`, `player.time()`).
+		// The property getter stubs below let v1 code that reads these properties
+		// continue to work without calling a method.
+		//
+		// Note: `volume`, `duration`, `buffered`, `playbackRate`, `volumeState`,
+		// `baseUrl`, and `isTransitioning` share their name with a v2 method —
+		// those are intentionally NOT shimmed here because overriding the method
+		// with a property would silently break v2 call-style usage (`player.volume()`
+		// would stop working). Consumers relying on these as data properties must
+		// migrate. These are documented as HARD PARITY GAPs below.
+
+		const propTarget = this.player as unknown as Record<string, unknown>;
+
+		/**
+		 * @deprecated Data-property read of current playhead position.
+		 * Use `player.time()` in v2.
+		 */
+		if (!('currentTime' in propTarget)) {
+			Object.defineProperty(propTarget, 'currentTime', {
+				get: (): number => {
+					_warnDeprecated('currentTime', 'time()');
+					return player.time();
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('currentTime');
+		}
+
+		/**
+		 * @deprecated Data-property read of muted state (boolean).
+		 * Use `player.volumeState() === VolumeState.MUTED` in v2.
+		 */
+		if (!('muted' in propTarget)) {
+			Object.defineProperty(propTarget, 'muted', {
+				get: (): boolean => {
+					_warnDeprecated('muted', 'volumeState()');
+					return player.volumeState() === VolumeState.MUTED;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('muted');
+		}
+
+		/**
+		 * @deprecated Data-property read of muted state (boolean).
+		 * Use `player.volumeState() === VolumeState.MUTED` in v2.
+		 */
+		if (!('isMuted' in propTarget)) {
+			Object.defineProperty(propTarget, 'isMuted', {
+				get: (): boolean => {
+					_warnDeprecated('isMuted', 'volumeState()');
+					return player.volumeState() === VolumeState.MUTED;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isMuted');
+		}
+
+		/**
+		 * @deprecated Data-property read of playing state (boolean).
+		 * Use `player.playState() === PlayState.PLAYING` in v2.
+		 */
+		if (!('isPlaying' in propTarget)) {
+			Object.defineProperty(propTarget, 'isPlaying', {
+				get: (): boolean => {
+					_warnDeprecated('isPlaying', 'playState()');
+					return player.playState() === PlayState.PLAYING;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isPlaying');
+		}
+
+		/**
+		 * @deprecated Data-property read of paused state (boolean).
+		 * Use `player.playState() === PlayState.PAUSED` in v2.
+		 */
+		if (!('isPaused' in propTarget)) {
+			Object.defineProperty(propTarget, 'isPaused', {
+				get: (): boolean => {
+					_warnDeprecated('isPaused', 'playState()');
+					return player.playState() === PlayState.PAUSED;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isPaused');
+		}
+
+		/**
+		 * @deprecated Data-property read of stopped state (boolean).
+		 * Use `player.playState() === PlayState.STOPPED` in v2.
+		 */
+		if (!('isStopped' in propTarget)) {
+			Object.defineProperty(propTarget, 'isStopped', {
+				get: (): boolean => {
+					_warnDeprecated('isStopped', 'playState()');
+					return player.playState() === PlayState.STOPPED;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isStopped');
+		}
+
+		/**
+		 * @deprecated v1 indicated seeking in progress via this boolean.
+		 * v2 has no distinct 'seeking' phase — always returns false.
+		 * Use backend seek events if you need seek completion signals.
+		 */
+		if (!('isSeeking' in propTarget)) {
+			Object.defineProperty(propTarget, 'isSeeking', {
+				get: (): boolean => {
+					_warnRemoved('isSeeking', 'v2 has no seeking-phase boolean; listen to time events instead');
+					return false;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isSeeking');
+		}
+
+		/**
+		 * @deprecated Data-property read of repeat active state (boolean).
+		 * Use `player.repeatState() !== 'off'` in v2.
+		 */
+		if (!('isRepeating' in propTarget)) {
+			Object.defineProperty(propTarget, 'isRepeating', {
+				get: (): boolean => {
+					_warnDeprecated('isRepeating', "repeatState() !== 'off'");
+					return player.repeatState() !== 'off';
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isRepeating');
+		}
+
+		/**
+		 * @deprecated Data-property read of shuffle active state (boolean).
+		 * Use `player.shuffleState() === 'on'` in v2.
+		 */
+		if (!('isShuffling' in propTarget)) {
+			Object.defineProperty(propTarget, 'isShuffling', {
+				get: (): boolean => {
+					_warnDeprecated('isShuffling', "shuffleState() === 'on'");
+					return player.shuffleState() === 'on';
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('isShuffling');
+		}
+
+		/**
+		 * @deprecated Data-property read of player state as a v1 PlayerState enum string.
+		 * Use `player.playState()` in v2 — returns `PlayState` enum values.
+		 *
+		 * Maps v2 PlayState to v1 PlayerState strings. `BUFFERING` and `ENDED` are
+		 * approximated: BUFFERING uses the buffer state, ENDED is not tracked
+		 * separately in v2 and falls through to STOPPED.
+		 */
+		if (!('state' in propTarget)) {
+			Object.defineProperty(propTarget, 'state', {
+				get: (): string => {
+					_warnDeprecated('state', 'playState()');
+					const ps = player.playState();
+
+					// Map v2 PlayState → v1 PlayerState string values.
+					switch (ps) {
+						case PlayState.PLAYING: return 'PLAYING';
+						case PlayState.PAUSED: return 'PAUSED';
+						case PlayState.STOPPED: return 'STOPPED';
+						case PlayState.LOADING: return 'LOADING';
+						case PlayState.ERROR: return 'ERROR';
+						case PlayState.IDLE:
+						default: return 'IDLE';
+					}
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('state');
+		}
+
+		/**
+		 * @deprecated `fadeDuration` was a protected property on Helpers controlling
+		 * the crossfade ramp duration in milliseconds. v2 configures this at setup
+		 * via `crossfadeDefaults.duration`. Always returns 0 in v2.
+		 */
+		if (!('fadeDuration' in propTarget)) {
+			Object.defineProperty(propTarget, 'fadeDuration', {
+				get: (): number => {
+					_warnRemoved('fadeDuration', 'configure via crossfadeDefaults.duration in setup()');
+					return 0;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('fadeDuration');
+		}
+
+		/**
+		 * @deprecated `newSourceLoaded` was an internal flag on Helpers. No v2
+		 * equivalent. Always returns false.
+		 */
+		if (!('newSourceLoaded' in propTarget)) {
+			Object.defineProperty(propTarget, 'newSourceLoaded', {
+				get: (): boolean => {
+					_warnRemoved('newSourceLoaded', 'no equivalent in v2; listen to the item event instead');
+					return false;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('newSourceLoaded');
+		}
+
+		/**
+		 * @deprecated `context` was a public AudioContext property on Helpers.
+		 * Use `player.audioContext()` in v2.
+		 */
+		if (!('context' in propTarget)) {
+			Object.defineProperty(propTarget, 'context', {
+				get: (): AudioContext | undefined => {
+					_warnDeprecated('context', 'audioContext()');
+					return player.audioContext();
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('context');
+		}
+
+		/**
+		 * @deprecated `accessToken` was a public getter on Helpers returning the
+		 * raw token string. Use `player.auth()?.bearerToken` in v2.
+		 */
+		if (!('accessToken' in propTarget)) {
+			Object.defineProperty(propTarget, 'accessToken', {
+				get: (): string | undefined => {
+					_warnDeprecated('accessToken', 'auth()?.bearerToken');
+					const authCfg = player.auth();
+					const token = authCfg?.bearerToken;
+					return typeof token === 'string' ? token : undefined;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('accessToken');
+		}
 	}
 }
 

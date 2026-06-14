@@ -970,6 +970,39 @@ export interface PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> ext
 	setFilter(band: EQBand): void;
 	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
 	saveEqualizerSettings(): void;
+
+	// ── v1 Helpers data-property shims ──
+	// These were plain readable properties on v1's Helpers class.
+	// v2 exposes equivalent values as method calls. The V1MusicCompatPlugin
+	// installs property getters at runtime; these declarations let consumer
+	// TypeScript see them on `PlayerCore<T>` without a cast.
+
+	/** @deprecated Use `player.time()` in v2. */
+	readonly currentTime: number;
+	/** @deprecated Use `player.volumeState() === VolumeState.MUTED` in v2. */
+	readonly muted: boolean;
+	/** @deprecated Use `player.volumeState() === VolumeState.MUTED` in v2. */
+	readonly isMuted: boolean;
+	/** @deprecated Use `player.playState() === PlayState.PLAYING` in v2. */
+	readonly isPlaying: boolean;
+	/** @deprecated Use `player.playState() === PlayState.PAUSED` in v2. */
+	readonly isPaused: boolean;
+	/** @deprecated Use `player.playState() === PlayState.STOPPED` in v2. */
+	readonly isStopped: boolean;
+	/** @deprecated No v2 equivalent — always false. Listen to time events instead. */
+	readonly isSeeking: boolean;
+	/** @deprecated Use `player.repeatState() !== 'off'` in v2. */
+	readonly isRepeating: boolean;
+	/** @deprecated Use `player.shuffleState() === 'on'` in v2. */
+	readonly isShuffling: boolean;
+	/** @deprecated Use `player.playState()` in v2 (returns PlayState enum). */
+	readonly state: string;
+	/** @deprecated Always 0 in v2. Configure via `crossfadeDefaults.duration` in setup(). */
+	readonly fadeDuration: number;
+	/** @deprecated No v2 equivalent — always false. Listen to the `item` event instead. */
+	readonly newSourceLoaded: boolean;
+	/** @deprecated Use `player.audioContext()` in v2. */
+	readonly context: AudioContext | undefined;
 }
 
 /**
