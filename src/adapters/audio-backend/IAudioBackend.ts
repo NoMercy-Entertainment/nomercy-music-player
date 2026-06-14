@@ -26,7 +26,14 @@ export type BackendEvent
 		| 'encrypted'
 		| 'error'
 		| 'backend:loading'
-		| 'backend:loaded';
+		| 'backend:loaded'
+	/**
+	 * Fired by backends that own a Web Audio graph when the active source node
+	 * changes — e.g. after a crossfade promotes the secondary element to primary.
+	 * Plugins that hold a reference to the source node (e.g. `AudioGraphPlugin`)
+	 * must re-mount after this event.
+	 */
+		| 'backend:sourceswap';
 
 /**
  * Typed payload map for backend events. All DOM-bridge events carry the
@@ -48,6 +55,13 @@ export interface BackendEventPayload {
 	'error': Event;
 	'backend:loading': { url: string; kind: AudioBackendKind };
 	'backend:loaded': { url: string; kind: AudioBackendKind; duration: number };
+	/**
+	 * Emitted after a crossfade swap — the active source node changed.
+	 * `sourceNode` is the new volume GainNode (chain entry point).
+	 * `analysisNode` is the new pre-volume raw source node when the backend
+	 * exposes one; omitted by backends that don't maintain a separate analysis tap.
+	 */
+	'backend:sourceswap': { sourceNode: AudioNode; analysisNode?: AudioNode };
 }
 
 export const BACKEND_STATE = {
@@ -126,6 +140,28 @@ export interface IAudioBackend {
 	// Effect-chain mount points — audio-graph plugins tap these
 	outputNode(ctx: AudioContext): AudioNode;
 	analyserSource(ctx: AudioContext): AudioNode;
+
+	/**
+	 * Returns the raw audio source node BEFORE the volume GainNode.
+	 *
+	 * AudioGraphPlugin uses this to tap the AnalyserNode upstream of the volume
+	 * control, so spectrum/FFT magnitudes are volume-independent. Optional —
+	 * backends that do not maintain an explicit pre-volume source node omit this;
+	 * AudioGraphPlugin falls back to `outputNode` when it is absent.
+	 *
+	 * The returned node must be in the same `AudioContext` as `outputNode`.
+	 */
+	analysisNode?(ctx: AudioContext): AudioNode;
+
+	/**
+	 * Returns the `AudioContext` this backend owns, if any. Optional — only
+	 * `WebAudioBackend` implements this. The player calls this immediately after
+	 * backend construction to register the context via `setPlayerAudioContext`
+	 * so the shared kit context and the backend context are always the same
+	 * object. Backends without an `AudioContext` (e.g. `AudioElementBackend`)
+	 * omit this method.
+	 */
+	audioContext?(): AudioContext;
 
 	// Raw element access — cast SDKs and other low-level integrations bind here
 	mediaElement(): HTMLMediaElement;

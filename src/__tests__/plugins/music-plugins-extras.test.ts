@@ -164,12 +164,12 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 					artist: 'Artist X',
 					album: 'Album Y',
 				};
-				(p as any).item = (): unknown => trackItem;
+				(p as unknown as { item(): typeof trackItem }).item = () => trackItem;
 
 				await instance.connect();
 				expect(instance.isConnected()).toBe(true);
 
-				(p as any).emit('current', { item: trackItem, index: 0 });
+				p.emit('item', { item: trackItem, index: 0 });
 				await new Promise(resolve => setTimeout(resolve, 0));
 
 				expect(loadMedia).toHaveBeenCalled();
@@ -242,12 +242,12 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				const instance = p.getPlugin(CastSenderPlugin);
 				if (!instance)
 					throw new Error('CastSenderPlugin not registered');
-				(p as any).item = (): unknown => undefined;
+				(p as unknown as { item(): undefined }).item = () => undefined;
 
 				await instance.connect();
 
-				const seenPause: any[] = [];
-				p.on('pause' as any, (data: any) => { seenPause.push(data); });
+				const seenPause: unknown[] = [];
+				p.on('pause', (data: unknown) => { seenPause.push(data); });
 
 				if (stubRemoteRef)
 					(stubRemoteRef as StubRemote).isPaused = true;

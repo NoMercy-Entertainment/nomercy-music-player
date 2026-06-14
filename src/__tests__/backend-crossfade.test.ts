@@ -9,6 +9,7 @@
 
 import type { IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 
@@ -144,7 +145,8 @@ function runCrossfadeContractSuite(
 				await loadPromise;
 
 				b.secondaryGain(0.6);
-				expect(b.secondaryGain()).toBeCloseTo(0.6, 5);
+				// secondaryGain() returns the curved gain for position 0.6, not the raw position.
+				expect(b.secondaryGain()).toBeCloseTo(perceptualGain(0.6), 5);
 			});
 
 			it('clamps values outside [0, 1]', async () => {
@@ -312,13 +314,14 @@ describe('WebAudioBackend — crossfade contract', () => {
 			expect(createGainCallsAfter).toBeGreaterThan(createGainCallsBefore);
 		});
 
-		it('secondaryGain() reads from the secondary GainNode value', async () => {
+		it('secondaryGain() reads from the secondary GainNode value (curved)', async () => {
 			const loadPromise = backend.loadSecondary('http://test/track.mp3');
 			fireMetadata(container);
 			await loadPromise;
 
 			backend.secondaryGain(0.42);
-			expect(backend.secondaryGain()).toBeCloseTo(0.42, 5);
+			// secondaryGain() returns the curved gain for position 0.42, not the raw position.
+			expect(backend.secondaryGain()).toBeCloseTo(perceptualGain(0.42), 5);
 		});
 
 		it('disposeSecondary disconnects the secondary GainNode', async () => {

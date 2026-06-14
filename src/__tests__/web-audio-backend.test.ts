@@ -143,10 +143,10 @@ describe('WebAudioBackend', () => {
 		});
 	});
 
-	// ── 3. outputNode() returns an AudioNode after init ──────────────────────
+	// ── 3. outputNode() returns the volume GainNode ──────────────────────────
 
 	describe('outputNode()', () => {
-		it('returns a MediaElementAudioSourceNode after construction', () => {
+		it('returns the GainNode (volume tap), not the raw MediaElementAudioSourceNode', () => {
 			installAudioContext();
 			const container = makeContainer();
 			const backend = new WebAudioBackend(container);
@@ -154,11 +154,15 @@ describe('WebAudioBackend', () => {
 
 			const node = backend.outputNode(ctx as unknown as AudioContext);
 
+			// createMediaElementSource IS called — graph is still initialised.
 			expect(ctx.createMediaElementSource).toHaveBeenCalledWith(backend.mediaElement());
-			expect(node).toBe(ctx.sourceNode);
+			// But outputNode returns gainNode, not sourceNode, so volume()
+			// stays in the signal path when AudioGraphPlugin takes ownership.
+			expect(node).toBe(ctx.gainNode);
+			expect(node).not.toBe(ctx.sourceNode);
 		});
 
-		it('is idempotent — second call returns the same node without re-creating', () => {
+		it('is idempotent — second call returns the same GainNode without re-creating', () => {
 			installAudioContext();
 			const container = makeContainer();
 			const backend = new WebAudioBackend(container);
@@ -168,6 +172,7 @@ describe('WebAudioBackend', () => {
 			const b = backend.outputNode(ctx as unknown as AudioContext);
 
 			expect(a).toBe(b);
+			expect(a).toBe(ctx.gainNode);
 			expect(ctx.createMediaElementSource).toHaveBeenCalledTimes(1);
 		});
 	});

@@ -5,8 +5,8 @@ import type {
 	IAudioBackend,
 } from './IAudioBackend';
 
-import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
-import HlsDefault from 'hls.js';
+import { appendAuthTokenParam, BrowserPolicyError, EventEmitter, HLS_EXT_RE, perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
+import Hls from 'hls.js';
 
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
 
@@ -60,6 +60,7 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	setAuthHeaderProvider(provider: () => string | undefined | Promise<string | undefined>): void {
 		this._authHeaderProvider = provider;
 	}
+
 	private prevVolume: number = 1;
 	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
 	private disposed = false;
@@ -92,13 +93,6 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			else {
 				this.element = document.createElement('audio');
 				this.element.preload = 'metadata';
-				// crossOrigin is required for AudioGraph's createMediaElementSource()
-				// to draw real samples on cross-origin sources. Without it, Web Audio
-				// taints the element and outputs zeroes on any track served from a
-				// different origin — every FMA / nomercy-media track silently dies.
-				// `anonymous` triggers a CORS preflight on the audio fetch; origins
-				// that respond with `Access-Control-Allow-Origin: *` (GitHub raw,
-				// most CDNs) deliver real samples. Same-origin tracks are unaffected.
 				this.element.crossOrigin = 'anonymous';
 				this.ownsElement = true;
 				if (container)
@@ -170,7 +164,7 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		const useHlsJs = isHls(url) && !supportsNativeHls(this.element);
 
-		await new Promise<void>((resolve, reject) => {
+		await new Promise<void>(async (resolve, reject) => {
 			const onLoaded = (): void => {
 				cleanup();
 				resolve();
@@ -183,33 +177,36 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 				this.element.removeEventListener('loadedmetadata', onLoaded);
 				this.element.removeEventListener('error', onError);
 			};
+
 			this.element.addEventListener('loadedmetadata', onLoaded, { once: true });
 			this.element.addEventListener('error', onError, { once: true });
 
+			const headerValue = await this._authHeaderProvider?.();
+
 			if (useHlsJs) {
-				// hls.js is the primary engine for NoMercy audio streams —
-				// statically imported so it is ready before the first load.
-				const Hls = HlsDefault as unknown as HlsCtor;
 				if (!Hls.isSupported()) {
-					this.element.src = url;
+					this.element.src = appendAuthTokenParam(url, headerValue);
 					this.element.load();
 				}
 				else {
-					const hls = new Hls({
-						xhrSetup: async (xhr: XMLHttpRequest) => {
-							const headerValue = await this._authHeaderProvider?.();
+					const hlsInstance = new Hls({
+						autoStartLoad: true,
+						enableWorker: true,
+						lowLatencyMode: false,
+						enableCEA708Captions: true,
+						xhrSetup: (xhr: XMLHttpRequest) => {
 							if (headerValue) {
 								xhr.setRequestHeader('Authorization', headerValue);
 							}
 						},
 					});
-					hls.attachMedia(this.element);
-					hls.loadSource(url);
-					this.hlsInstance = hls;
+					hlsInstance.attachMedia(this.element);
+					hlsInstance.loadSource(url);
+					this.hlsInstance = hlsInstance;
 				}
 			}
 			else {
-				this.element.src = url;
+				this.element.src = appendAuthTokenParam(url, headerValue);
 				this.element.load();
 			}
 		});
@@ -305,12 +302,20 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	volume(): number;
 	volume(v: number): void;
 	volume(v?: number): number | void {
-		if (v === undefined)
+		if (v === undefined) {
+			// Returns the curved gain amplitude on element.volume — NOT the 0..1
+			// slider position. The player mixin owns the position in _internalVolume.
 			return this.element.volume;
+		}
+
 		const clamped = Math.max(0, Math.min(1, v));
-		this.element.volume = clamped;
-		if (clamped > 0)
-			this.prevVolume = clamped;
+		const gain = perceptualGain(clamped);
+
+		this.element.volume = gain;
+
+		if (clamped > 0) {
+			this.prevVolume = gain;
+		}
 	}
 
 	mute(): void {
@@ -609,12 +614,17 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	secondaryGain(value: number): void;
 	secondaryGain(value?: number): number | void {
 		if (value === undefined) {
+			// Returns the curved gain currently on the secondary element.
 			return this._secondary ? this._secondary.volume : 0;
 		}
+
 		const clamped = Math.max(0, Math.min(1, value));
-		this._secondaryVol = clamped;
+		const gain = perceptualGain(clamped);
+
+		this._secondaryVol = gain;
+
 		if (this._secondary) {
-			this._secondary.volume = clamped;
+			this._secondary.volume = gain;
 		}
 	}
 }

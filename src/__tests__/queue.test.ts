@@ -188,11 +188,11 @@ describe('NMMusicPlayer — queue', () => {
 	});
 
 	describe('cursor — item / index', () => {
-		it('item(id) moves the cursor and emits "current"', () => {
+		it('item(id) moves the cursor and emits "item"', () => {
 			const p = setup();
 			p.queue([track('a'), track('b')]);
 			let payload: { item: MusicPlaylistItem | undefined; index: number } | undefined;
-			p.on('current' as any, (data: any) => { payload = data; });
+			p.on('item' as any, (data: any) => { payload = data; });
 			p.item('b');
 			expect(p.item()?.id).toBe('b');
 			expect(p.index()).toBe(1);

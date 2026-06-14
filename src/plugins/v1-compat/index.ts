@@ -12,6 +12,9 @@
  *    receives the corresponding v2 event with its payload reshaped to the v1 shape.
  *  - Logs a `console.warn` deprecation notice ONCE per distinct v1 API used
  *    (never once-per-call).
+ *  - Provides safe no-op / sensible-default stubs for v1 surface that has no v2
+ *    core equivalent (EQ state, audiomotion-analyzer accessors, siteTitle). These
+ *    stubs never throw — external v1 code keeps running with deprecation warnings.
  *
  * Registration:
  * ```ts
@@ -21,7 +24,12 @@
  */
 
 import type { NMMusicPlayer } from '../../index';
-import type { MusicPlaylistItem } from '../../types';
+import type {
+	EQBand,
+	EQSliderValues,
+	EqualizerPreset,
+	MusicPlaylistItem,
+} from '../../types';
 import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 // ---------------------------------------------------------------------------
@@ -126,9 +134,9 @@ function _buildEventMap(): Record<string, V1EventMapping> {
 			v2Event: 'time',
 			reshape: data => _toV1TimeState(data),
 		},
-		// v1 'song' fired with BasePlaylistItem | null; v2 uses 'current' with { item, index }.
+		// v1 'song' fired with BasePlaylistItem | null; v2 uses 'item' with { item, index }.
 		song: {
-			v2Event: 'current',
+			v2Event: 'item',
 			reshape: (data) => {
 				const v2 = data as { item?: MusicPlaylistItem; index?: number } | undefined;
 				return v2?.item ?? null;
@@ -200,6 +208,12 @@ function _buildEventMap(): Record<string, V1EventMapping> {
 				return v2?.track;
 			},
 		},
+		// v1 'stop' fired with no payload; v2 fires 'stop' with undefined.
+		stop: { v2Event: 'stop' },
+		// v1 'fatalError' passthrough.
+		fatalError: { v2Event: 'error' },
+		// v1 'setCurrentAudio' was an internal event; bridge to ready as best approximation.
+		setCurrentAudio: { v2Event: 'ready' },
 	};
 }
 
@@ -209,6 +223,30 @@ function _buildEventMap(): Record<string, V1EventMapping> {
 
 /** Events emitted by {@link V1MusicCompatPlugin} (none — pure shim). */
 export type V1MusicCompatEvents = Record<string, never>;
+
+/**
+ * Options accepted by {@link V1MusicCompatPlugin}.
+ *
+ * Pass as the second argument to `player.addPlugin(V1MusicCompatPlugin, opts)`.
+ * All fields are optional — the plugin is fully functional without them.
+ */
+export interface V1MusicCompatOptions {
+	/**
+	 * v1-era `config.actions` callbacks. When provided, each callback is wired
+	 * to the corresponding v2 player event so that v1 consumer code that passed
+	 * inline handlers via the config object continues to fire.
+	 *
+	 * @deprecated Wire event listeners via `player.on(...)` in v2 instead.
+	 */
+	actions?: {
+		play?: () => void;
+		pause?: () => void;
+		stop?: () => void;
+		previous?: () => void;
+		next?: () => void;
+		seek?: (position: number) => void;
+	};
+}
 
 // ---------------------------------------------------------------------------
 // Plugin
@@ -223,7 +261,7 @@ export type V1MusicCompatEvents = Record<string, never>;
  */
 export class V1MusicCompatPlugin extends Plugin<
 	NMMusicPlayer<MusicPlaylistItem>,
-	Record<string, never>,
+	V1MusicCompatOptions,
 	V1MusicCompatEvents
 > {
 	static override readonly id: string = 'v1-compat';
@@ -250,6 +288,63 @@ export class V1MusicCompatPlugin extends Plugin<
 		this.player.on('duration', (data: { duration: number }) => {
 			_currentDuration = data.duration;
 		});
+
+		// Wire v1 config.actions callbacks — these fire in addition to normal v2 event
+		// listeners so both the v1 actions object AND v2 on() listeners work simultaneously.
+		this._wireActions();
+	}
+
+	/**
+	 * Wire any v1 `actions` callbacks from the plugin options.
+	 * Each callback is registered as a plain v2 event listener so the plugin's
+	 * own `dispose()` removes them automatically via `_eventBridges`.
+	 */
+	private _wireActions(): void {
+		const actions = this.opts?.actions;
+		if (!actions) {
+			return;
+		}
+
+		const { play: onPlay, pause: onPause, stop: onStop, previous: onPrevious, next: onNext, seek: onSeek } = actions;
+
+		if (onPlay) {
+			const listener = (): void => onPlay();
+			this.player.on('play' as never, listener as never);
+			this._eventBridges.push({ v2Event: 'play', listener: listener as (d: unknown) => void });
+		}
+
+		if (onPause) {
+			const listener = (): void => onPause();
+			this.player.on('pause' as never, listener as never);
+			this._eventBridges.push({ v2Event: 'pause', listener: listener as (d: unknown) => void });
+		}
+
+		if (onStop) {
+			const listener = (): void => onStop();
+			this.player.on('stop' as never, listener as never);
+			this._eventBridges.push({ v2Event: 'stop', listener: listener as (d: unknown) => void });
+		}
+
+		if (onPrevious) {
+			const listener = (): void => onPrevious();
+			this.player.on('previous' as never, listener as never);
+			this._eventBridges.push({ v2Event: 'previous', listener: listener as (d: unknown) => void });
+		}
+
+		if (onNext) {
+			const listener = (): void => onNext();
+			this.player.on('next' as never, listener as never);
+			this._eventBridges.push({ v2Event: 'next', listener: listener as (d: unknown) => void });
+		}
+
+		if (onSeek) {
+			const listener = (state: unknown): void => {
+				const position = (state as { position?: number } | undefined)?.position ?? 0;
+				onSeek(position);
+			};
+			this.player.on('time' as never, listener as never);
+			this._eventBridges.push({ v2Event: 'time', listener: listener as (d: unknown) => void });
+		}
 	}
 
 	override dispose(): void {
@@ -532,23 +627,36 @@ export class V1MusicCompatPlugin extends Plugin<
 
 		/**
 		 * @deprecated Use `player.item()` instead.
+		 * Installed as a property getter (not a method) so v1 code accessing
+		 * `player.currentSong` without parentheses continues to work.
 		 */
-		this._patchMethod('currentSong', () => {
-			_warnDeprecated('currentSong', 'item()');
-			return player.item();
-		});
+		const currentSongTarget = this.player as unknown as Record<string, unknown>;
+		if (!('currentSong' in currentSongTarget)) {
+			Object.defineProperty(currentSongTarget, 'currentSong', {
+				get: (): MusicPlaylistItem | undefined => {
+					_warnDeprecated('currentSong', 'item()');
+					return player.item();
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('currentSong');
+		}
 
 		/**
-		 * @deprecated Use `player.item(track)` and pass `tracks` as `player.queue(tracks)`.
+		 * @deprecated Use `player.queue(tracks)` + `player.item(track)` + `player.play()` in v2.
+		 * v1 `playTrack(item, queue?)` loaded the queue, seeked to the item, and started
+		 * playback immediately. This shim replicates that three-step sequence.
 		 */
 		this._patchMethod('playTrack', (trackItem: unknown, tracksArray?: unknown) => {
-			_warnDeprecated('playTrack(track, tracks?)', 'item(track) and queue(tracks)');
+			_warnDeprecated('playTrack(track, tracks?)', 'queue(tracks) + item(track) + play()');
 			if (tracksArray !== undefined) {
 				player.queue(tracksArray as MusicPlaylistItem[]);
 			}
 			if (trackItem !== null && trackItem !== undefined) {
 				player.item(trackItem as MusicPlaylistItem);
 			}
+			void player.play();
 		});
 
 		// ── Repeat / Shuffle ──────────────────────────────────────────────
@@ -699,6 +807,297 @@ export class V1MusicCompatPlugin extends Plugin<
 				return /iphone|ipad|ipod/.test(ua);
 			}
 			return false;
+		});
+
+		// ── getCurrentSong ────────────────────────────────────────────────
+
+		/**
+		 * @deprecated Use `player.item()` instead.
+		 * v1 exposed `getCurrentSong()` as a method alias for the `currentSong`
+		 * property. v2 uses the bare-noun `item()` getter.
+		 */
+		this._patchMethod('getCurrentSong', () => {
+			_warnDeprecated('getCurrentSong()', 'item()');
+			return player.item();
+		});
+
+		// ── EQ state stubs ────────────────────────────────────────────────
+		//
+		// v1 exposed equalizerBands, equalizerPresets, equalizerPanning, and
+		// equalizerSliderValues as mutable public properties on the player class
+		// (Helpers). v2 removed all EQ logic from the core player — EQ is
+		// entirely owned by EqualizerPlugin. These stubs return the same
+		// default values v1 initialised with so v1 code that reads them can
+		// continue functioning without crashing.
+
+		const target = this.player as unknown as Record<string, unknown>;
+
+		/**
+		 * @deprecated Removed in v2 — EQ band state is owned by EqualizerPlugin.
+		 * Use `player.getPlugin(EqualizerPlugin)?.bands` instead.
+		 * Stub returns the v1 default 10-band configuration.
+		 */
+		if (!('equalizerBands' in target)) {
+			const defaultBands: EQBand[] = [
+				{
+					frequency: 'Pre',
+					gain: 0,
+				},
+				{
+					frequency: 70,
+					gain: 0,
+				},
+				{
+					frequency: 180,
+					gain: 0,
+				},
+				{
+					frequency: 320,
+					gain: 0,
+				},
+				{
+					frequency: 600,
+					gain: 0,
+				},
+				{
+					frequency: 1000,
+					gain: 0,
+				},
+				{
+					frequency: 3000,
+					gain: 0,
+				},
+				{
+					frequency: 6000,
+					gain: 0,
+				},
+				{
+					frequency: 12000,
+					gain: 0,
+				},
+				{
+					frequency: 14000,
+					gain: 0,
+				},
+				{
+					frequency: 16000,
+					gain: 0,
+				},
+			];
+			Object.defineProperty(target, 'equalizerBands', {
+				get: () => {
+					_warnRemoved('equalizerBands', 'use EqualizerPlugin.bands instead');
+					return defaultBands;
+				},
+				set: (_value: EQBand[]) => {
+					_warnRemoved('equalizerBands = bands', 'use EqualizerPlugin.setBands() instead');
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('equalizerBands');
+		}
+
+		/**
+		 * @deprecated Removed in v2 — EQ presets are owned by EqualizerPlugin.
+		 * Use `player.getPlugin(EqualizerPlugin)?.presets` instead.
+		 * Stub returns an empty array so iteration-based v1 code does not crash.
+		 */
+		if (!('equalizerPresets' in target)) {
+			const defaultPresets: EqualizerPreset[] = [];
+			Object.defineProperty(target, 'equalizerPresets', {
+				get: () => {
+					_warnRemoved('equalizerPresets', 'use EqualizerPlugin.presets instead');
+					return defaultPresets;
+				},
+				set: (_value: EqualizerPreset[]) => {
+					_warnRemoved('equalizerPresets = presets', 'use EqualizerPlugin instead');
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('equalizerPresets');
+		}
+
+		/**
+		 * @deprecated Removed in v2 — stereo panning is owned by MixerPlugin.
+		 * Use `player.getPlugin(MixerPlugin)?.panning` instead.
+		 * Stub returns 0 (center) so v1 code that reads this property continues.
+		 */
+		if (!('equalizerPanning' in target)) {
+			let panValue = 0;
+			Object.defineProperty(target, 'equalizerPanning', {
+				get: () => {
+					_warnRemoved('equalizerPanning', 'use MixerPlugin.panning instead');
+					return panValue;
+				},
+				set: (value: number) => {
+					_warnRemoved('equalizerPanning = pan', 'use MixerPlugin.setPanning() instead');
+					panValue = value;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('equalizerPanning');
+		}
+
+		/**
+		 * @deprecated Removed in v2 — EQ slider ranges are owned by EqualizerPlugin.
+		 * Use `player.getPlugin(EqualizerPlugin)?.sliderValues` instead.
+		 * Stub returns the v1 default slider configuration.
+		 */
+		if (!('equalizerSliderValues' in target)) {
+			const defaultSliderValues: EQSliderValues = {
+				pan: {
+					min: -1,
+					max: 1,
+					step: 0.01,
+					default: 0,
+				},
+				pre: {
+					min: -1,
+					max: 3,
+					step: 1,
+					default: 0,
+				},
+				band: {
+					min: -12,
+					max: 12,
+					step: 0.01,
+					default: 0,
+				},
+			};
+			Object.defineProperty(target, 'equalizerSliderValues', {
+				get: () => {
+					_warnRemoved('equalizerSliderValues', 'use EqualizerPlugin.sliderValues instead');
+					return defaultSliderValues;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('equalizerSliderValues');
+		}
+
+		// ── Audio element / visualizer stubs ──────────────────────────────
+		//
+		// v1 exposed `_audioElement1` and `_audioElement2` as public class fields
+		// on Helpers. Each had a `.motion` property (audiomotion-analyzer instance)
+		// that visualizer consumers read directly. v2 does not expose raw audio
+		// elements or analyzer instances from the player core. Return a frozen stub
+		// object with `motion: null` so destructuring reads never throw.
+
+		/** Shape of a stub AudioNode returned for v1 `_audioElement1` / `_audioElement2` access. */
+		const audioNodeStub: Readonly<{ motion: null; _audioElement: null }> = Object.freeze({
+			motion: null,
+			_audioElement: null,
+		});
+
+		/**
+		 * @deprecated Removed in v2 — direct audio element access is not exposed.
+		 * For visualizer integration use a SpectrumPlugin / VisualizerPlugin once
+		 * those are available, or wire `AudioContext` via the `audioContext()` method.
+		 * The `.motion` property on this stub is always `null`.
+		 */
+		if (!('_audioElement1' in target)) {
+			Object.defineProperty(target, '_audioElement1', {
+				get: () => {
+					_warnRemoved(
+						'_audioElement1',
+						'raw audio element access removed; for visualizer use audioContext() + AnalyserNode',
+					);
+					return audioNodeStub;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('_audioElement1');
+		}
+
+		/**
+		 * @deprecated Removed in v2 — see `_audioElement1` stub above.
+		 */
+		if (!('_audioElement2' in target)) {
+			Object.defineProperty(target, '_audioElement2', {
+				get: () => {
+					_warnRemoved(
+						'_audioElement2',
+						'raw audio element access removed; for visualizer use audioContext() + AnalyserNode',
+					);
+					return audioNodeStub;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('_audioElement2');
+		}
+
+		// ── siteTitle / setSiteTitle ──────────────────────────────────────
+		//
+		// v1 stored `siteTitle` as a protected property on Helpers and used it
+		// to build `document.title` when updating the now-playing metadata.
+		// v2 has no built-in document.title management — that is consumer or
+		// MediaSessionPlugin responsibility.
+
+		let _siteTitle: string = 'NoMercy Player';
+
+		/**
+		 * @deprecated Removed in v2 — `document.title` management is a consumer concern.
+		 * Use the MediaSessionPlugin for media-session metadata, or set `document.title`
+		 * directly in your application code.
+		 */
+		if (!('siteTitle' in target)) {
+			Object.defineProperty(target, 'siteTitle', {
+				get: (): string => {
+					_warnRemoved(
+						'siteTitle',
+						'document.title management is a consumer concern in v2; use MediaSessionPlugin or set document.title directly',
+					);
+					return _siteTitle;
+				},
+				set: (value: string) => {
+					_warnRemoved(
+						'siteTitle = value',
+						'document.title management is a consumer concern in v2; use MediaSessionPlugin or set document.title directly',
+					);
+					_siteTitle = value;
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('siteTitle');
+		}
+
+		/**
+		 * @deprecated Removed in v2 — `document.title` management is a consumer concern.
+		 * Set `document.title` directly in your application code instead.
+		 */
+		this._patchMethod('setSiteTitle', (value: unknown) => {
+			_warnRemoved(
+				'setSiteTitle(value)',
+				'document.title management is a consumer concern in v2; set document.title directly',
+			);
+			_siteTitle = String(value ?? '');
+		});
+
+		// ── playbackRate alias ────────────────────────────────────────────
+
+		/**
+		 * @deprecated Use `player.playbackRate(rate)` instead.
+		 * v1 had no named setter for playback rate — consumers typically used
+		 * `_currentAudio.setPlaybackRate()` directly or duck-typed. Bridge here
+		 * for any code that called `setPlaybackRate` on the player instance.
+		 */
+		this._patchMethod('setPlaybackRate', (rate: unknown) => {
+			_warnDeprecated('setPlaybackRate(rate)', 'playbackRate(rate)');
+			player.playbackRate(Number(rate));
+		});
+
+		/**
+		 * @deprecated Use `player.playbackRate()` instead.
+		 */
+		this._patchMethod('getPlaybackRate', () => {
+			_warnDeprecated('getPlaybackRate()', 'playbackRate()');
+			return player.playbackRate();
 		});
 	}
 }

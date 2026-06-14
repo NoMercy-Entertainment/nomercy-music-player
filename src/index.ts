@@ -64,11 +64,13 @@ import {
 	NotImplementedError,
 	playerCoreMethods,
 	resolvePlayerConstructor,
+	setPlayerAudioContext,
 } from '@nomercy-entertainment/nomercy-player-core';
 import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from './adapters/audio-backend/web-audio';
 import { MusicPreloadStrategy } from './player/preload';
 import { normalizeMusicConfig } from './player/v1-config-normalizer';
+import { V1MusicCompatPlugin } from './plugins/v1-compat';
 
 export { MusicPreloadStrategy } from './player/preload';
 
@@ -114,8 +116,8 @@ const _instances = new Map<string, NMMusicPlayer<any>>();
  *  - Music-specific stubs (backends, crossfade, audio output devices, etc.)
  */
 export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
-	extends EventEmitter<MusicEventMap>
-	implements IPlayer<MusicEventMap>, IMusicPlayer<T> {
+	extends EventEmitter<MusicEventMap<T>>
+	implements IPlayer<MusicEventMap<T>>, IMusicPlayer<T> {
 	readonly playerId: string = '';
 	container: HTMLElement = <HTMLElement>{};
 
@@ -129,7 +131,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	 * TypeScript having to walk the `EventEmitter` inheritance chain (which
 	 * stalls in conditional-type inference for complex class hierarchies).
 	 */
-	declare readonly __eventMap__: MusicEventMap;
+	declare readonly __eventMap__: MusicEventMap<T>;
 
 	declare options: MusicPlayerConfig<T>;
 
@@ -254,6 +256,17 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare index: () => number;
 	declare seekToIndex: (position: number, opts?: ActionOptions) => void;
 
+	declare playItem: (
+		target: BasePlaylistItem | string | number | ((item: BasePlaylistItem) => boolean),
+		opts?: LoadOptions,
+	) => void;
+
+	declare playNow: (
+		items: BasePlaylistItem[],
+		start?: BasePlaylistItem | string | number | ((item: BasePlaylistItem) => boolean),
+		opts?: LoadOptions,
+	) => void;
+
 	declare backlog: {
 		(): ReadonlyArray<T>;
 		(items: T[]): void;
@@ -358,6 +371,15 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			return token ? `Bearer ${token}` : undefined;
 		});
 
+		// Bug 1 fix — single AudioContext invariant:
+		// When the backend owns an AudioContext (WebAudioBackend), register it
+		// on the player immediately so AudioGraphPlugin.use() finds it via
+		// player.audioContext() and reuses it instead of creating a second one.
+		// AudioElementBackend has no audioContext() method; guard for it.
+		if (typeof instance.audioContext === 'function') {
+			setPlayerAudioContext(this, instance.audioContext());
+		}
+
 		/**
 		 * Narrow view of the composed kit internals needed by this method only.
 		 *  These fields are written onto the instance by playerCoreMethods via
@@ -435,7 +457,13 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			const percentage = safeD > 0 ? (currentTime / safeD) * 100 : 0;
 			const remaining = safeD > 0 ? safeD - currentTime : 0;
 
-			this.emit('time', { time: currentTime, percentage, position: currentTime, duration: safeD, remaining });
+			this.emit('time', {
+				time: currentTime,
+				percentage,
+				position: currentTime,
+				duration: safeD,
+				remaining,
+			});
 
 			if (!this._trackEndingSoonEmitted) {
 				const duration = instance.duration();
@@ -462,7 +490,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 				this.emit('duration', { duration: backendDuration });
 				return;
 			}
-			const itemDuration = (this.item?.() as (MusicPlaylistItem & { duration?: number }) | undefined)?.duration;
+			const itemDuration = this.item?.()?.duration;
 			if (typeof itemDuration === 'number' && itemDuration > 0) {
 				this.emit('duration', { duration: itemDuration });
 			}
@@ -490,14 +518,14 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			return; // idempotent guard — reject stacked crossfades
 
 		const durationMs = ((opts?.duration ?? this.options?.crossfadeDefaults?.duration ?? 5) * 1000);
-		const url = (track as { url?: string }).url;
+		const url = track.url;
 		if (!url) {
 			throw new MediaFormatError({
 				code: 'core:media/missing-url',
 				severity: 'error',
 				scope: { kind: 'core' },
 				message: 'crossfadeTo(track) requires `track.url` to be present.',
-				context: { id: (track as { id?: string | number }).id },
+				context: { id: track.id },
 			});
 		}
 
@@ -826,140 +854,6 @@ export interface V1MusicPlayerOptions {
 	baseUrl?: string;
 }
 
-// ── v1 equalizer default data ─────────────────────────────────────────────────
-
-const _eqSliderValues: EQSliderValues = {
-	pan:  { min: -1, max: 1,   step: 0.01, default: 0 },
-	pre:  { min: -1, max: 3,   step: 1,    default: 0 },
-	band: { min: -12, max: 12, step: 0.01, default: 0 },
-};
-
-const _eqBandsDefault: EQBand[] = [
-	{ frequency: 'Pre', gain: 0 },
-	{ frequency: 70,    gain: 0 },
-	{ frequency: 180,   gain: 0 },
-	{ frequency: 320,   gain: 0 },
-	{ frequency: 600,   gain: 0 },
-	{ frequency: 1000,  gain: 0 },
-	{ frequency: 3000,  gain: 0 },
-	{ frequency: 6000,  gain: 0 },
-	{ frequency: 12000, gain: 0 },
-	{ frequency: 14000, gain: 0 },
-	{ frequency: 16000, gain: 0 },
-];
-
-const _eqPresetsDefault: EqualizerPreset[] = [
-	{ name: 'Flat',   values: [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000].map(f => ({ frequency: f, gain: 0 })) },
-	{ name: 'Custom', values: [70, 180, 320, 600, 1000, 3000, 6000, 12000, 14000, 16000].map(f => ({ frequency: f, gain: 0 })) },
-];
-
-/**
- * Attach v1 method aliases and equalizer stubs to a bare `NMMusicPlayer`
- * instance so that consumer code calling v1-era methods continues to work
- * after the migration.
- *
- * Called once in the `PlayerCore` constructor before returning the instance.
- */
-function _attachV1Compat<T extends MusicPlaylistItem>(
-	player: NMMusicPlayer<T>,
-	config: V1MusicPlayerOptions,
-): void {
-	const raw = player as unknown as Record<string, unknown>;
-
-	// ── Transport aliases ──
-
-	raw['seek'] = (position: number) => void player.time(position);
-
-	raw['setVolume'] = (value: number) => { player.volume(value); };
-
-	raw['repeat'] = (state: string) => {
-		player.repeatState(state as RepeatState);
-	};
-
-	raw['shuffle'] = (enabled: boolean | ShuffleState) => {
-		player.shuffleState(enabled);
-	};
-
-	raw['toggleMute'] = () => { player.toggleMute(); };
-
-	raw['setAutoPlayback'] = (_enabled: boolean) => {
-		// v2 auto-advance is config-level — silently accepted at runtime.
-	};
-
-	// ── Queue aliases ──
-
-	Object.defineProperty(player, 'currentSong', {
-		get: () => player.item(),
-		configurable: true,
-	});
-
-	raw['getQueue'] = () => player.queue();
-
-	raw['setCurrentSong'] = (item: T) => { player.item(item); };
-
-	raw['removeFromQueue'] = (item: T) => { player.queueRemove(item.id); };
-
-	raw['addToBackLog'] = (item: T | undefined) => {
-		if (item) {
-			player.backlogAppend(item);
-		}
-	};
-
-	raw['playTrack'] = (item: T, queue?: T[]) => {
-		if (queue?.length) {
-			player.queue(queue);
-		}
-		player.item(item);
-		void player.play();
-	};
-
-	// ── Equalizer stubs (no equalizer plugin in v2 core) ──
-	// These provide the data/methods the app's initEqualizer() reads at startup.
-	// Full equalizer functionality requires the v2 EqualizerPlugin (future).
-
-	raw['equalizerPanning'] = 0;
-	raw['equalizerBands'] = [..._eqBandsDefault];
-	raw['equalizerPresets'] = [..._eqPresetsDefault];
-	raw['equalizerSliderValues'] = _eqSliderValues;
-
-	raw['setPanner'] = (_value: number) => {
-		raw['equalizerPanning'] = _value;
-	};
-
-	raw['setPreGain'] = (value: number) => {
-		const bands = raw['equalizerBands'] as EQBand[];
-		const pre = bands.find(band => band.frequency === 'Pre');
-		if (pre) {
-			pre.gain = value;
-		}
-	};
-
-	raw['setFilter'] = (band: EQBand) => {
-		const bands = raw['equalizerBands'] as EQBand[];
-		const target = bands.find(existing => existing.frequency === band.frequency);
-		if (target) {
-			target.gain = band.gain;
-		}
-	};
-
-	raw['saveEqualizerSettings'] = () => {
-		// Stub — no persistence in v2 core. EqualizerPlugin will handle this.
-	};
-
-	// Wire any v1 action callbacks from the config. These fire in addition to
-	// the normal v2 player lifecycle so both the v1 actions object AND v2 event
-	// listeners work simultaneously.
-	if (config.actions) {
-		const { play: onPlay, pause: onPause, stop: onStop, previous: onPrevious, next: onNext, seek: onSeek } = config.actions;
-		if (onPlay)     { player.on('play'  as never, onPlay     as never); }
-		if (onPause)    { player.on('pause' as never, onPause    as never); }
-		if (onStop)     { player.on('stop'  as never, onStop     as never); }
-		if (onPrevious) { player.on('previous' as never, onPrevious as never); }
-		if (onNext)     { player.on('next'  as never, onNext     as never); }
-		if (onSeek)     { player.on('time'  as never, (state: { position: number }) => onSeek(state.position) as never); }
-	}
-}
-
 /**
  * @deprecated Use `NMMusicPlayer` directly.
  *
@@ -971,7 +865,7 @@ function _attachV1Compat<T extends MusicPlaylistItem>(
  *   `import type PlayerCore from '@nomercy-entertainment/nomercy-music-player'`
  * gives a type where `player: PlayerCore<T>` resolves correctly.
  */
-export interface PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> extends NMMusicPlayer<T> {
+export interface PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> extends Omit<NMMusicPlayer<T>, 'on'> {
 	// ── v1 transport aliases ──
 	/** @deprecated Use `player.time(position)` in v2. */
 	seek(position: number): void;
@@ -1104,7 +998,8 @@ export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 		// detached invisible div so the player instance can be created without
 		// any visible container. The music player never touches the DOM for
 		// rendering — the div is only needed to satisfy the registry contract.
-		const containerId = `_nm_playercore_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+		const containerId = `_nm_playercore_${Date.now()}_${Math.random().toString(36)
+			.slice(2)}`;
 		let mountDiv: HTMLDivElement | null = null;
 		if (typeof document !== 'undefined') {
 			mountDiv = document.createElement('div');
@@ -1122,8 +1017,10 @@ export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 			mountDiv.remove();
 		}
 
-		// Attach v1 method aliases + equalizer stubs to the NMMusicPlayer instance.
-		_attachV1Compat(player, config);
+		// Install V1MusicCompatPlugin so the instance exposes the full v1 method surface
+		// (aliases, EQ stubs, event-name bridging) with deprecation warnings.
+		// Pass config.actions so any v1 inline callbacks are wired to v2 events.
+		player.addPlugin(V1MusicCompatPlugin, { actions: config.actions });
 
 		// Expose window.musicPlayer when expose: true, mirroring v1 behaviour.
 		if (config.expose && typeof window !== 'undefined') {

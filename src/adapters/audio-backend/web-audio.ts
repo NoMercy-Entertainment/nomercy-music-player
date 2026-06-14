@@ -5,7 +5,7 @@ import type {
 	IAudioBackend,
 } from './IAudioBackend';
 
-import { BrowserPolicyError, EventEmitter, HLS_EXT_RE } from '@nomercy-entertainment/nomercy-player-core';
+import { appendAuthTokenParam, BrowserPolicyError, EventEmitter, HLS_EXT_RE, perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
 import HlsDefault from 'hls.js';
 
 const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
@@ -144,28 +144,37 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 	/**
 	 * Lazily build the Web Audio graph on first call. Safe to call multiple
-	 * times — subsequent calls return the already-created source node.
+	 * times — subsequent calls return the already-created gain node.
 	 *
 	 * NOTE: createMediaElementSource can only be called once per element. If
 	 * the element was previously connected to a different context this will
 	 * throw; callers sharing an element must pass in the same AudioContext.
+	 *
+	 * Baseline routing: source → gainNode(volume) → analyserNode → destination.
+	 * `gainNode` is the volume-control node and the public output point exposed
+	 * by `outputNode()`. When `AudioGraphPlugin` takes ownership it disconnects
+	 * `gainNode` from `analyserNode` and re-routes through the effect chain,
+	 * but `gainNode` stays at the head so `volume()` always controls audible
+	 * output — with or without the plugin stack.
 	 */
-	private ensureGraph(): MediaElementAudioSourceNode {
-		if (this.sourceNode)
-			return this.sourceNode;
+	private ensureGraph(): GainNode {
+		if (this.gainNode)
+			return this.gainNode;
 
 		this.sourceNode = this.ctx.createMediaElementSource(this.element);
 		this.gainNode = this.ctx.createGain();
 		this.analyserNode = this.ctx.createAnalyser();
 		this.analyserNode.fftSize = 2048;
 
-		// Default routing: source → gain → analyser → destination.
-		// Plugins can splice nodes by disconnecting / reconnecting from outputNode.
+		// source → gainNode(volume) → analyserNode → destination.
+		// gainNode is the volume tap. AudioGraphPlugin picks up from gainNode
+		// via outputNode() and splices its effect chain between gainNode and
+		// destination, replacing the gainNode → analyserNode → destination leg.
 		this.sourceNode.connect(this.gainNode);
 		this.gainNode.connect(this.analyserNode);
 		this.analyserNode.connect(this.ctx.destination);
 
-		return this.sourceNode;
+		return this.gainNode;
 	}
 
 	// ── DOM event bridging ──────────────────────────────────────────────────
@@ -230,6 +239,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 		const useHlsJs = isHls(url) && !supportsNativeHls(this.element);
 
+		const headerValue = await this._authHeaderProvider?.();
+
 		await new Promise<void>((resolve, reject) => {
 			const onLoaded = (): void => { cleanup(); resolve(); };
 			const onError = (): void => {
@@ -248,13 +259,12 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 				// statically imported so it is ready before the first load.
 				const Hls = HlsDefault as unknown as HlsCtor;
 				if (!Hls.isSupported()) {
-					this.element.src = url;
+					this.element.src = appendAuthTokenParam(url, headerValue);
 					this.element.load();
 				}
 				else {
 					const hls = new Hls({
-						xhrSetup: async (xhr: XMLHttpRequest) => {
-							const headerValue = await this._authHeaderProvider?.();
+						xhrSetup: (xhr: XMLHttpRequest) => {
 							if (headerValue) {
 								xhr.setRequestHeader('Authorization', headerValue);
 							}
@@ -266,7 +276,7 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 				}
 			}
 			else {
-				this.element.src = url;
+				this.element.src = appendAuthTokenParam(url, headerValue);
 				this.element.load();
 			}
 		});
@@ -392,19 +402,27 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	volume(v: number): void;
 	volume(v?: number): number | void {
 		if (v === undefined) {
+			// Returns the curved gain amplitude currently on the node — NOT the
+			// 0..1 slider position. The player mixin owns the position in
+			// _internalVolume; consumers must not infer position from this value.
 			return this.gainNode ? this.gainNode.gain.value : this.element.volume;
 		}
+
 		const clamped = Math.max(0, Math.min(1, v));
+		const gain = perceptualGain(clamped);
+
 		if (this.gainNode) {
 			// Ramp over 10 ms to avoid clicks — smooth per spec rules.
 			const now = this.ctx.currentTime;
-			this.gainNode.gain.setTargetAtTime(clamped, now, 0.01);
+			this.gainNode.gain.setTargetAtTime(gain, now, 0.01);
 		}
 		else {
-			this.element.volume = clamped;
+			this.element.volume = gain;
 		}
-		if (clamped > 0)
-			this.prevVolume = clamped;
+
+		if (clamped > 0) {
+			this.prevVolume = gain;
+		}
 	}
 
 	mute(): void {
@@ -427,24 +445,55 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	// ── Web Audio graph mount points ────────────────────────────────────────
 
 	/**
-	 * Returns the MediaElementAudioSourceNode. Plugins that need to inject
-	 * processing nodes splice them after this node and before `analyserSource`.
+	 * Returns the `AudioContext` this backend owns. The player calls this
+	 * immediately after construction and registers the context via
+	 * `setPlayerAudioContext` so every plugin shares the same single context.
+	 */
+	audioContext(): AudioContext {
+		return this.ctx;
+	}
+
+	/**
+	 * Returns the volume `GainNode` — the public chain entry point for plugins.
 	 *
-	 * The returned node's context must match `ctx` — passing a different context
-	 * after the graph is initialised will throw an InvalidStateError.
+	 * Baseline wiring is `source → gainNode → analyserNode → destination`.
+	 * `AudioGraphPlugin` disconnects `gainNode` from the rest and re-routes
+	 * it through the effect chain (`EQ → mixer → destination`). Because
+	 * `gainNode` is always the first node after the media source, `volume()`
+	 * controls audible output both with and without the plugin stack active.
+	 *
+	 * The parameter `_ctx` is accepted for interface compatibility but ignored —
+	 * this backend owns its `AudioContext` at construction time.
 	 */
 	outputNode(_ctx: AudioContext): AudioNode {
 		return this.ensureGraph();
 	}
 
 	/**
-	 * Returns the shared AnalyserNode tap. Spectrum / visualizer plugins read
+	 * Returns the shared `AnalyserNode` tap. Spectrum / visualizer plugins read
 	 * frequency and time-domain data from this node without disrupting the
-	 * main gain chain.
+	 * main signal path.
+	 *
+	 * The analyser sits between `gainNode` and `destination` in the baseline
+	 * chain. When plugins are active it is wired parallel to `gainNode` by
+	 * `AudioGraphPlugin.analyserSource()`, so it continues to receive signal.
 	 */
 	analyserSource(_ctx: AudioContext): AudioNode {
 		this.ensureGraph();
 		return this.analyserNode!;
+	}
+
+	/**
+	 * Returns the `MediaElementAudioSourceNode` — the raw source BEFORE the
+	 * volume `GainNode`. `AudioGraphPlugin` taps its `AnalyserNode` here so
+	 * spectrum/FFT magnitudes are not scaled by the volume fader.
+	 *
+	 * The parameter `_ctx` is accepted for interface compatibility but ignored —
+	 * this backend owns its `AudioContext` at construction time.
+	 */
+	analysisNode(_ctx: AudioContext): AudioNode {
+		this.ensureGraph();
+		return this.sourceNode!;
 	}
 
 	// ── Raw element access ──────────────────────────────────────────────────
@@ -586,6 +635,11 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		this._secondarySource = sourceNode;
 		this._secondaryGain = gainNode;
 
+		// Build the load promise first — listeners are registered synchronously
+		// inside the executor so test stubs that fire 'loadedmetadata' immediately
+		// after loadSecondary() resolves the outer promise are never missed.
+		// Auth resolution and src assignment happen inside the executor too,
+		// but the auth provider call is awaited so we spin a mini async wrapper.
 		await new Promise<void>((resolve, reject) => {
 			const onMeta = (): void => { cleanup(); resolve(); };
 			const onErr = (): void => { cleanup(); reject(el.error ?? new Error('secondary load error')); };
@@ -593,10 +647,52 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 				el.removeEventListener('loadedmetadata', onMeta);
 				el.removeEventListener('error', onErr);
 			};
+
+			// Wire listeners synchronously — before any async yield — so events
+			// dispatched by test stubs between now and the next microtask tick
+			// are captured.
 			el.addEventListener('loadedmetadata', onMeta, { once: true });
 			el.addEventListener('error', onErr, { once: true });
-			el.src = url;
-			el.load();
+
+			// Resolve auth then assign src. Structured as an immediately-invoked
+			// async inner function so the outer Promise executor remains
+			// synchronous (listeners registered above) while the async auth fetch
+			// runs without losing the resolve/reject handles.
+			void (async (): Promise<void> => {
+				try {
+					// Resolve auth identically to the primary load path so
+					// authenticated NoMercy servers serve the secondary without a 401.
+					const headerValue = await this._authHeaderProvider?.();
+					const useHlsJs = isHls(url) && !supportsNativeHls(el);
+
+					if (useHlsJs) {
+						const Hls = HlsDefault as unknown as HlsCtor;
+						if (!Hls.isSupported()) {
+							el.src = appendAuthTokenParam(url, headerValue);
+							el.load();
+						}
+						else {
+							const hls = new Hls({
+								xhrSetup: (xhr: XMLHttpRequest) => {
+									if (headerValue) {
+										xhr.setRequestHeader('Authorization', headerValue);
+									}
+								},
+							});
+							hls.attachMedia(el);
+							hls.loadSource(url);
+						}
+					}
+					else {
+						el.src = appendAuthTokenParam(url, headerValue);
+						el.load();
+					}
+				}
+				catch (err) {
+					cleanup();
+					reject(err);
+				}
+			})();
 		});
 	}
 
@@ -756,18 +852,34 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 		// 6. Re-attach DOM bridges to the new primary element.
 		this.attachDomBridges();
+
+		// 7. Notify plugins that the active source changed. AudioGraphPlugin
+		// listens for 'backend:sourceswap' to remount its chain on the new
+		// volume gain node, keeping EQ / mixer routed through the correct graph.
+		// We emit gainNode (not sourceNode) because gainNode is the volume tap
+		// and the plugin chain's entry point — matching what outputNode() returns.
+		// We also emit the new sourceNode as analysisNode so AudioGraphPlugin can
+		// retap its AnalyserNode pre-volume (volume-independent spectrum).
+		this.emit('backend:sourceswap', {
+			sourceNode: this.gainNode!,
+			analysisNode: this.sourceNode,
+		});
 	}
 
 	secondaryGain(): number;
 	secondaryGain(value: number): void;
 	secondaryGain(value?: number): number | void {
 		if (value === undefined) {
+			// Returns the curved gain currently on the secondary node.
 			return this._secondaryGain ? this._secondaryGain.gain.value : 0;
 		}
+
 		const clamped = Math.max(0, Math.min(1, value));
+		const gain = perceptualGain(clamped);
+
 		if (this._secondaryGain) {
 			const now = this.ctx.currentTime;
-			this._secondaryGain.gain.setTargetAtTime(clamped, now, 0.01);
+			this._secondaryGain.gain.setTargetAtTime(gain, now, 0.01);
 		}
 	}
 }

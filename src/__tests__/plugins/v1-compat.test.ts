@@ -247,13 +247,15 @@ describe('V1MusicCompatPlugin', () => {
 			player.dispose();
 		});
 
-		it('currentSong() → item()', async () => {
+		it('currentSong (property getter) → item()', async () => {
 			const player = setup();
 			player.addPlugin(V1MusicCompatPlugin);
 			await player.ready();
 
 			const spy = vi.spyOn(player, 'item');
-			shim(player, 'currentSong')();
+			// currentSong is a property getter, not a callable method.
+			// Reading it must invoke player.item() — no parentheses.
+			void (player as unknown as Record<string, unknown>)['currentSong'];
 			expect(spy).toHaveBeenCalled();
 			player.dispose();
 		});
@@ -330,7 +332,7 @@ describe('V1MusicCompatPlugin', () => {
 			player.dispose();
 		});
 
-		it('on("song", fn) receives the item object from v2 "current" event', async () => {
+		it('on("song", fn) receives the item object from v2 "item" event', async () => {
 			const player = setup();
 			player.addPlugin(V1MusicCompatPlugin);
 			await player.ready();
@@ -339,7 +341,7 @@ describe('V1MusicCompatPlugin', () => {
 			shimOn(player, 'song', (data) => { received.push(data); });
 
 			const fakeItem = { id: 'song-1', name: 'Test Song' };
-			player.emit('current' as never, { item: fakeItem, index: 0 } as never);
+			player.emit('item' as never, { item: fakeItem, index: 0 } as never);
 
 			expect(received).toHaveLength(1);
 			expect(received[0]).toEqual(fakeItem);
@@ -613,6 +615,234 @@ describe('V1MusicCompatPlugin', () => {
 			player.removePlugin(V1MusicCompatPlugin);
 
 			expect(player.on).toBe(originalOn);
+		});
+	});
+
+	// ── (e) New shims: EQ stubs, audio element stubs, getCurrentSong, siteTitle ──
+
+	describe('(e) newly added v1 surface shims', () => {
+		// ── getCurrentSong ──────────────────────────────────────────────────────
+
+		it('getCurrentSong() → item()', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const spy = vi.spyOn(player, 'item');
+			shim(player, 'getCurrentSong')();
+			expect(spy).toHaveBeenCalled();
+			player.dispose();
+		});
+
+		it('getCurrentSong() does not re-warn on repeated calls', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			// Call once to ensure the warning fires (may already be suppressed from
+			// earlier tests due to module-level _warnedSet — that is correct behaviour).
+			shim(player, 'getCurrentSong')();
+			const countAfterFirst = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"getCurrentSong()'))
+				.length;
+
+			// Second call must NOT add another warning.
+			shim(player, 'getCurrentSong')();
+			const countAfterSecond = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"getCurrentSong()'))
+				.length;
+
+			expect(countAfterSecond).toBe(countAfterFirst);
+			player.dispose();
+		});
+
+		// ── EQ stubs ────────────────────────────────────────────────────────────
+
+		it('equalizerBands property getter returns an array and warns once', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const result = target['equalizerBands'];
+			expect(Array.isArray(result)).toBe(true);
+			expect((result as unknown[]).length).toBeGreaterThan(0);
+
+			// Second read — still only one warning.
+			void target['equalizerBands'];
+			const warns = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"equalizerBands"'));
+			expect(warns.length).toBe(1);
+			player.dispose();
+		});
+
+		it('equalizerPresets property getter returns an array and warns once', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const result = target['equalizerPresets'];
+			expect(Array.isArray(result)).toBe(true);
+
+			void target['equalizerPresets'];
+			const warns = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"equalizerPresets"'));
+			expect(warns.length).toBe(1);
+			player.dispose();
+		});
+
+		it('equalizerPanning getter returns 0 by default and warns once', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const result = target['equalizerPanning'];
+			expect(result).toBe(0);
+
+			void target['equalizerPanning'];
+			const warns = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"equalizerPanning"'));
+			expect(warns.length).toBe(1);
+			player.dispose();
+		});
+
+		it('equalizerSliderValues getter returns slider-range config object and warns once', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const result = target['equalizerSliderValues'] as Record<string, unknown>;
+			expect(typeof result).toBe('object');
+			expect(result).toHaveProperty('pan');
+			expect(result).toHaveProperty('pre');
+			expect(result).toHaveProperty('band');
+
+			void target['equalizerSliderValues'];
+			const warns = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"equalizerSliderValues"'));
+			expect(warns.length).toBe(1);
+			player.dispose();
+		});
+
+		// ── _audioElement1 / _audioElement2 stubs ───────────────────────────────
+
+		it('_audioElement1.motion returns null without throwing', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const el1 = target['_audioElement1'] as { motion: unknown };
+			expect(el1).toBeDefined();
+			expect(el1.motion).toBeNull();
+			player.dispose();
+		});
+
+		it('_audioElement2.motion returns null without throwing', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const el2 = target['_audioElement2'] as { motion: unknown };
+			expect(el2).toBeDefined();
+			expect(el2.motion).toBeNull();
+			player.dispose();
+		});
+
+		it('_audioElement1 does not re-warn on repeated reads', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			// First read — may or may not warn (module-level once-guard may already have fired).
+			void target['_audioElement1'];
+			const countAfterFirst = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"_audioElement1"'))
+				.length;
+
+			// Second read — must NOT add another warning.
+			void target['_audioElement1'];
+			const countAfterSecond = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"_audioElement1"'))
+				.length;
+
+			expect(countAfterSecond).toBe(countAfterFirst);
+			player.dispose();
+		});
+
+		// ── siteTitle ────────────────────────────────────────────────────────────
+
+		it('siteTitle getter returns a string and warns', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const target = player as unknown as Record<string, unknown>;
+			const title = target['siteTitle'];
+			expect(typeof title).toBe('string');
+
+			const warns = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"siteTitle"'));
+			expect(warns.length).toBe(1);
+			player.dispose();
+		});
+
+		it('setSiteTitle(value) warns and does not throw', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			expect(() => shim(player, 'setSiteTitle')('My App')).not.toThrow();
+
+			const warns = (console.warn as ReturnType<typeof vi.spyOn>).mock.calls
+				.filter((args: unknown[]) => String(args[0]).includes('"setSiteTitle'));
+			expect(warns.length).toBe(1);
+			player.dispose();
+		});
+
+		// ── stop event bridge ────────────────────────────────────────────────────
+
+		it('on("stop", fn) fires when v2 stop event fires', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'stop', (data) => { received.push(data); });
+
+			player.emit('stop' as never);
+
+			expect(received).toHaveLength(1);
+			player.dispose();
+		});
+
+		// ── playback rate aliases ────────────────────────────────────────────────
+
+		it('setPlaybackRate(1.5) → playbackRate(1.5)', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const spy = vi.spyOn(player, 'playbackRate');
+			shim(player, 'setPlaybackRate')(1.5);
+			expect(spy).toHaveBeenCalledWith(1.5);
+			player.dispose();
+		});
+
+		it('getPlaybackRate() → playbackRate()', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const spy = vi.spyOn(player, 'playbackRate');
+			shim(player, 'getPlaybackRate')();
+			expect(spy).toHaveBeenCalled();
+			player.dispose();
 		});
 	});
 });

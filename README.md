@@ -38,7 +38,7 @@ const player = nmMPlayer('main')
   });
 
 player.on('ready', () => {
-  player.current(0, { autoplay: true });
+  player.item(0, { autoplay: true });
 });
 ```
 

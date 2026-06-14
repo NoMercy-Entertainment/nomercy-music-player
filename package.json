@@ -112,10 +112,6 @@
 			"types": "./dist/plugins/message/index.d.ts",
 			"import": "./dist/plugins/message/index.js"
 		},
-		"./plugins/music-ui": {
-			"types": "./dist/plugins/music-ui/index.d.ts",
-			"import": "./dist/plugins/music-ui/index.js"
-		},
 		"./plugins/tab-leader": {
 			"types": "./dist/plugins/tab-leader/index.d.ts",
 			"import": "./dist/plugins/tab-leader/index.js"

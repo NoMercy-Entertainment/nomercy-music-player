@@ -50,18 +50,8 @@ export enum PlayState {
 	ERROR = 'error',
 }
 
-/** Repeat mode. Returned by `player.repeatState()`. */
-export enum RepeatState {
-	OFF = 'off',
-	ALL = 'all',
-	ONE = 'one',
-}
-
-/** Shuffle mode. Returned by `player.shuffleState()`. */
-export enum ShuffleState {
-	OFF = 'off',
-	ON = 'on',
-}
+/** Re-exported from kit — canonical definition lives in nomercy-player-core. */
+export { RepeatState, ShuffleState } from '@nomercy-entertainment/nomercy-player-core';
 
 export type { AudioBackendKind } from './adapters/audio-backend/IAudioBackend';
 
@@ -74,20 +64,21 @@ export type { TimeState } from '@nomercy-entertainment/nomercy-player-core';
 /**
  * Music-specific events on top of `BaseEventMap`.
  *
- * Cursor change is signalled by `BaseEventMap.current` — listen to that for
+ * Cursor change is signalled by `BaseEventMap.item` — listen to that for
  * "current track changed". Music adds events for repeat / shuffle / crossfade /
  * backend / EQ that don't apply to other player libraries.
  *
  * `'mute'` and `'volume'` are inherited from `BaseEventMap` — not re-declared here.
+ *
+ * The generic `T` threads the concrete music-item type into every item-bearing
+ * event payload. Defaults to `MusicPlaylistItem` so existing code that references
+ * `MusicEventMap` without a type argument is unchanged.
  */
-export interface MusicEventMap extends BaseEventMap {
-	'current': { item: MusicPlaylistItem | undefined; index: number };
+export interface MusicEventMap<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseEventMap<T> {
 	'backend:changed': { kind: AudioBackendKind };
-	'repeat': { state: RepeatState };
-	'shuffle': { state: ShuffleState };
-	'trackEndingSoon': { remaining: number; currentTrack: MusicPlaylistItem };
-	'crossfadeStart': { from: MusicPlaylistItem | null; to: MusicPlaylistItem; duration: number };
-	'crossfadeComplete': { track: MusicPlaylistItem };
+	'trackEndingSoon': { remaining: number; currentTrack: T };
+	'crossfadeStart': { from: T | null; to: T; duration: number };
+	'crossfadeComplete': { track: T };
 	/**
 	 * Time event payload. Extends the kit `BaseEventMap['time']` with extra
 	 * convenience fields:
@@ -132,8 +123,8 @@ export type AudioBackendFactory = (
  * players but need music-specific methods (crossfade, backend swap) should type
  * their parameter as `IMusicPlayer` rather than `IPlayer<MusicEventMap>`.
  */
-export interface IMusicPlayer<T extends BasePlaylistItem = MusicPlaylistItem>
-	extends IPlayer<MusicEventMap> {
+export interface IMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
+	extends IPlayer<MusicEventMap<T>> {
 	backend(): IAudioBackend;
 	backend(kind: AudioBackendKind): Promise<void>;
 	crossfadeTo(track: T, opts?: CrossfadeOptions & ActionOptions): Promise<void>;
