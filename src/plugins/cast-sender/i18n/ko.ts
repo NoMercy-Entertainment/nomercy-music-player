@@ -9,9 +9,9 @@
 import type { CastSenderTranslationKey } from './en';
 
 export default {
-	'plugin.cast-sender.casting.track': '"{title}" van {artist} aan het casten',
-	'plugin.cast-sender.casting.album': 'Album "{album}" aan het casten',
-	'plugin.cast-sender.casting.queue': '{count} nummers aan het casten',
-	'plugin.cast-sender.action.cast-album': 'Album casten',
-	'plugin.cast-sender.action.cast-queue': 'Wachtrij casten',
+	'plugin.cast-sender.casting.track': '{artist}의 "{title}" 캐스트 중',
+	'plugin.cast-sender.casting.album': '앨범 "{album}" 캐스트 중',
+	'plugin.cast-sender.casting.queue': '{count}곡 캐스트 중',
+	'plugin.cast-sender.action.cast-album': '앨범 캐스트',
+	'plugin.cast-sender.action.cast-queue': '대기열 캐스트',
 } satisfies Record<CastSenderTranslationKey, string>;

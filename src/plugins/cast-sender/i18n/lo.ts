@@ -9,9 +9,9 @@
 import type { CastSenderTranslationKey } from './en';
 
 export default {
-	'plugin.cast-sender.casting.track': '"{title}" van {artist} aan het casten',
-	'plugin.cast-sender.casting.album': 'Album "{album}" aan het casten',
-	'plugin.cast-sender.casting.queue': '{count} nummers aan het casten',
-	'plugin.cast-sender.action.cast-album': 'Album casten',
-	'plugin.cast-sender.action.cast-queue': 'Wachtrij casten',
+	'plugin.cast-sender.casting.track': 'ກຳລັງສົ່ງ "{title}" ໂດຍ {artist}',
+	'plugin.cast-sender.casting.album': 'ກຳລັງສົ່ງອັລບັ້ມ "{album}"',
+	'plugin.cast-sender.casting.queue': 'ກຳລັງສົ່ງ {count} ເພງ',
+	'plugin.cast-sender.action.cast-album': 'ສົ່ງອັລບັ້ມ',
+	'plugin.cast-sender.action.cast-queue': 'ສົ່ງຄິວ',
 } satisfies Record<CastSenderTranslationKey, string>;

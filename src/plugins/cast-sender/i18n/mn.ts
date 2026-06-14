@@ -9,9 +9,9 @@
 import type { CastSenderTranslationKey } from './en';
 
 export default {
-	'plugin.cast-sender.casting.track': '"{title}" van {artist} aan het casten',
-	'plugin.cast-sender.casting.album': 'Album "{album}" aan het casten',
-	'plugin.cast-sender.casting.queue': '{count} nummers aan het casten',
-	'plugin.cast-sender.action.cast-album': 'Album casten',
-	'plugin.cast-sender.action.cast-queue': 'Wachtrij casten',
+	'plugin.cast-sender.casting.track': '{artist}-ийн "{title}"-г дамжуулж байна',
+	'plugin.cast-sender.casting.album': '"{album}" цомгийг дамжуулж байна',
+	'plugin.cast-sender.casting.queue': '{count} трек дамжуулж байна',
+	'plugin.cast-sender.action.cast-album': 'Цомог дамжуулах',
+	'plugin.cast-sender.action.cast-queue': 'Дарааллыг дамжуулах',
 } satisfies Record<CastSenderTranslationKey, string>;
