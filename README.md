@@ -2,7 +2,7 @@
 [![license](https://img.shields.io/npm/l/@nomercy-entertainment/nomercy-music-player)](./LICENSE)
 [![bundlephobia](https://img.shields.io/bundlephobia/minzip/@nomercy-entertainment/nomercy-music-player)](https://bundlephobia.com/package/@nomercy-entertainment/nomercy-music-player)
 
-Full documentation: https://docs.nomercy.tv/player/music/
+Full documentation: https://docs.nomercy.tv/nomercy-music-player/
 
 # nomercy-music-player
 
@@ -46,12 +46,12 @@ player.on('ready', () => {
 
 ## Documentation
 
-The [docs site](https://docs.nomercy.tv/player/music/) is the full reference and the home for everything that used to live in the wiki:
+The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference and the home for everything that used to live in the wiki:
 
-- [Quick Start](https://docs.nomercy.tv/player/music/quickstart), install, first track, and the no-bundler CDN embed
-- [Configuration](https://docs.nomercy.tv/player/music/configuration), every option and default
-- [API Methods](https://docs.nomercy.tv/player/music/api-methods) and [Events](https://docs.nomercy.tv/player/music/events)
-- [Crossfade](https://docs.nomercy.tv/player/music/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference
+- [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, first track, and the no-bundler CDN embed
+- [Configuration](https://docs.nomercy.tv/nomercy-music-player/configuration), every option and default
+- [API Methods](https://docs.nomercy.tv/nomercy-music-player/api-methods) and [Events](https://docs.nomercy.tv/nomercy-music-player/events)
+- [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference
 
 ## License
 
