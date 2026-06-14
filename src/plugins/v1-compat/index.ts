@@ -545,6 +545,48 @@ export class V1MusicCompatPlugin extends Plugin<
 			return player.timeData();
 		});
 
+		// ── v1 setters / internals kept for the upgrade contract ──────────────
+
+		/**
+		 * @deprecated Use `player.time(seconds)`.
+		 */
+		this._patchMethod('setCurrentTime', (seconds?: unknown) => {
+			_warnDeprecated('setCurrentTime(time)', 'time(seconds)');
+			player.time(Number(seconds ?? 0));
+			return player;
+		});
+
+		/**
+		 * @deprecated Use `player.repeatState(mode)`.
+		 */
+		this._patchMethod('setRepeating', (mode?: unknown) => {
+			_warnDeprecated('setRepeating(mode)', 'repeatState(mode)');
+			try {
+				(player as unknown as { repeatState: (state: unknown) => void }).repeatState(mode);
+			}
+			catch {
+				// Unknown mode — leave the repeat state unchanged.
+			}
+		});
+
+		/**
+		 * @deprecated v2 sets volume instantly via `player.volume(level)`; fades
+		 * are the crossfade transition strategy, not a player method.
+		 */
+		this._patchMethod('fadeVolume', (level?: unknown) => {
+			_warnRemoved('fadeVolume(level)', 'set volume(level) directly; fades are handled by the crossfade strategy in v2.');
+			player.volume(Number(level ?? 0));
+		});
+
+		/**
+		 * @deprecated The audio element is owned by the active audio backend in v2
+		 * and is not exposed on the player.
+		 */
+		this._patchMethod('getAudioElement', () => {
+			_warnRemoved('getAudioElement()', 'the audio element is owned by the audio backend in v2 and is not exposed.');
+			return undefined;
+		});
+
 		// ── Queue / Playlist ──────────────────────────────────────────────
 
 		/**
@@ -675,6 +717,29 @@ export class V1MusicCompatPlugin extends Plugin<
 				enumerable: false,
 			});
 			this._patchedMethods.push('currentSong');
+		}
+
+		/**
+		 * @deprecated Check the queue directly: `player.queue().length > 0`.
+		 * Installed as a property getter so v1 code reading `player.hasNextQueued`
+		 * without parentheses continues to work.
+		 */
+		const hasNextTarget = this.player as unknown as Record<string, unknown>;
+		if (!('hasNextQueued' in hasNextTarget)) {
+			Object.defineProperty(hasNextTarget, 'hasNextQueued', {
+				get: (): boolean => {
+					_warnDeprecated('hasNextQueued', 'queue().length > 0');
+					try {
+						return player.queue().length > 0;
+					}
+					catch {
+						return false;
+					}
+				},
+				configurable: true,
+				enumerable: false,
+			});
+			this._patchedMethods.push('hasNextQueued');
 		}
 
 		/**
