@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.0.0-rc.2",
+	"version": "2.0.0-rc.3",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
 		"name": "NoMercy Entertainment",
@@ -148,7 +148,7 @@
 		"node": ">=18.0.0"
 	},
 	"scripts": {
-		"build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && node ../nomercy-player-kit/scripts/resolve-translation-globs.mjs && node ../nomercy-player-kit/scripts/copy-dist-assets.mjs",
+		"build": "node -e \"fs.rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json && node node_modules/@nomercy-entertainment/nomercy-player-core/scripts/resolve-translation-globs.mjs && node node_modules/@nomercy-entertainment/nomercy-player-core/scripts/copy-dist-assets.mjs",
 		"build:iife": "vite build --config vite.iife.config.ts",
 		"build:all": "npm run build && npm run build:iife",
 		"dev": "tsc -p tsconfig.build.json --watch",
@@ -162,7 +162,7 @@
 		"prepublishOnly": "npm run build:all"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.2",
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.3",
 		"hls.js": "^1.6.0"
 	},
 	"devDependencies": {
