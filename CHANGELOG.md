@@ -1,5 +1,19 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.5] — 2026-06-14
+
+### Changed
+
+- The cast-sender plugin's translations use a typesafe key schema (`en.ts`
+  exports the canonical key type; language files are full-coverage
+  `satisfies Record<CastSenderTranslationKey, string>`) and ship in every
+  supported language.
+
+### Fixed
+
+- The README and the package `homepage` point at the live docs route
+  (`docs.nomercy.tv/nomercy-music-player/`) instead of the dead `/player/` path.
+
 ## [2.0.0-rc.4] — 2026-06-14
 
 ### Fixed

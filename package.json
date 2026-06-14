@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.0.0-rc.4",
+	"version": "2.0.0-rc.5",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
 		"name": "NoMercy Entertainment",
@@ -12,7 +12,7 @@
 		"Stoney Eagle <45034970+StoneyEagle@users.noreply.github.com>"
 	],
 	"license": "Apache-2.0",
-	"homepage": "https://docs.nomercy.tv/player/music/",
+	"homepage": "https://docs.nomercy.tv/nomercy-music-player/",
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/NoMercy-Entertainment/nomercy-music-player.git"
@@ -162,7 +162,7 @@
 		"prepublishOnly": "npm run build:all"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.4",
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.5",
 		"hls.js": "^1.6.0"
 	},
 	"devDependencies": {
