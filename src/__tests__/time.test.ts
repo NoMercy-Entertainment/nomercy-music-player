@@ -1,3 +1,11 @@
+// -----------------------------------------------------------------------------
+//  Copyright (c) NoMercy Entertainment
+//
+//  Licensed under the Apache License, Version 2.0. See LICENSE for details.
+//
+//  SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
 /**
  * Time / position tests for NMMusicPlayer. Locks the overloaded `time()`
  * accessor and the BeforeSeek contract on the writer path.

@@ -1,3 +1,11 @@
+// -----------------------------------------------------------------------------
+//  Copyright (c) NoMercy Entertainment
+//
+//  Licensed under the Apache License, Version 2.0. See LICENSE for details.
+//
+//  SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
 /**
  * Plugin-registration API tests for NMMusicPlayer. Validates the addPlugin /
  * getPlugin / removePlugin lifecycle and the lifecycle-event re-emit contract.

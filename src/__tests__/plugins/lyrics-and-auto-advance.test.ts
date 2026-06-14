@@ -1,3 +1,11 @@
+// -----------------------------------------------------------------------------
+//  Copyright (c) NoMercy Entertainment
+//
+//  Licensed under the Apache License, Version 2.0. See LICENSE for details.
+//
+//  SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
 /**
  * Tests for `lyricsPlugin` and `autoAdvancePlugin`. Locks the registration
  * contract (use() runs without throwing) and the auto-advance master-toggle

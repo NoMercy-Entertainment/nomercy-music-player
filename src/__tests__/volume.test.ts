@@ -1,3 +1,11 @@
+// -----------------------------------------------------------------------------
+//  Copyright (c) NoMercy Entertainment
+//
+//  Licensed under the Apache License, Version 2.0. See LICENSE for details.
+//
+//  SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
 /**
  * Volume tests for NMMusicPlayer. Locks the overloaded `volume()` accessor +
  * mute/unmute/toggleMute + volumeUp/Down step contract.

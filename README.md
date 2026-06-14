@@ -1,4 +1,4 @@
-[![npm](https://img.shields.io/npm/v/@nomercy-entertainment/nomercy-music-player/beta?label=beta)](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-music-player)
+[![npm](https://img.shields.io/npm/v/@nomercy-entertainment/nomercy-music-player/rc?label=rc)](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-music-player)
 [![license](https://img.shields.io/npm/l/@nomercy-entertainment/nomercy-music-player)](./LICENSE)
 [![bundlephobia](https://img.shields.io/bundlephobia/minzip/@nomercy-entertainment/nomercy-music-player)](https://bundlephobia.com/package/@nomercy-entertainment/nomercy-music-player)
 

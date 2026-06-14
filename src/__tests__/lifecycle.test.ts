@@ -1,3 +1,11 @@
+// -----------------------------------------------------------------------------
+//  Copyright (c) NoMercy Entertainment
+//
+//  Licensed under the Apache License, Version 2.0. See LICENSE for details.
+//
+//  SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
 /**
  * Real-behavior lifecycle tests for NMMusicPlayer. Drives `setup()`, `ready()`,
  * phase transitions, dispose. No throw-tolerance — methods are implemented now.

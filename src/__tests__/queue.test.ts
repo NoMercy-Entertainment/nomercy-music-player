@@ -1,3 +1,11 @@
+// -----------------------------------------------------------------------------
+//  Copyright (c) NoMercy Entertainment
+//
+//  Licensed under the Apache License, Version 2.0. See LICENSE for details.
+//
+//  SPDX-License-Identifier: Apache-2.0
+// -----------------------------------------------------------------------------
+
 /**
  * Queue tests for NMMusicPlayer. Validates the cursor + mutation behaviors
  * delegated to the kit's MediaList<T>. Also locks the re-emit contract:
