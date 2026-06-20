@@ -109,6 +109,20 @@ export { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core'
 const _instances = new Map<string, NMMusicPlayer<any>>();
 
 /**
+ * Narrow view of the composed kit internals accessed by `_wireBackend`.
+ * These fields are written onto the instance by playerCoreMethods via
+ * composeMixins — they exist at runtime but are not declared on the class
+ * (they live on the Internals interface in the kit). The cast is isolated
+ * inside `_wireBackend`; all mutations go through the declared helpers or
+ * direct assignment on the typed surface.
+ */
+type WireInternals = {
+	_phase: PlayerPhase;
+	_playState: PlayStateToken;
+	_transitionPhase: (next: PlayerPhase) => void;
+};
+
+/**
  * Headless music player. Plugin-driven, event-driven, no UI in core.
  *
  * The shared player core (lifecycle, transport, queue, state, volume, time,
@@ -325,6 +339,16 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	// lives inside each backend implementation (loadSecondary / crossfade / etc.).
 	private _backend?: IAudioBackend;
 	private _isTransitioning = false;
+
+	private _createBackend(kind: AudioBackendKind, opts: MusicPlayerConfig<T> | undefined): IAudioBackend {
+		const factory = opts?.backendFactory;
+		if (factory)
+			return factory(kind, opts as MusicPlayerConfig<BasePlaylistItem>);
+		if (kind === 'webaudio')
+			return new WebAudioBackend(this.container);
+		return new AudioElementBackend(this.container);
+	}
+
 	backend(): IAudioBackend;
 	backend(kind: AudioBackendKind): Promise<void>;
 	backend(kind?: AudioBackendKind): IAudioBackend | Promise<void> {
@@ -332,13 +356,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			if (!this._backend) {
 				const opts = this.options as MusicPlayerConfig<T> | undefined;
 				const configKind = opts?.backend ?? 'audio-element';
-				const factory = opts?.backendFactory;
-				if (factory)
-					this._backend = factory(configKind, opts as MusicPlayerConfig<BasePlaylistItem>);
-				else if (configKind === 'webaudio')
-					this._backend = new WebAudioBackend(this.container);
-				else
-					this._backend = new AudioElementBackend(this.container);
+				this._backend = this._createBackend(configKind, opts);
 				this._wireBackend(this._backend);
 			}
 			return this._backend;
@@ -349,13 +367,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 				this._backend = undefined;
 			}
 			const opts = this.options as MusicPlayerConfig<T> | undefined;
-			const factory = opts?.backendFactory;
-			if (factory)
-				this._backend = factory(kind, opts as MusicPlayerConfig<BasePlaylistItem>);
-			else if (kind === 'webaudio')
-				this._backend = new WebAudioBackend(this.container);
-			else
-				this._backend = new AudioElementBackend(this.container);
+			this._backend = this._createBackend(kind, opts);
 			this._wireBackend(this._backend);
 			this.emit('backend:changed', { kind });
 		});
@@ -364,43 +376,57 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	private _firstFrameEmitted = false;
 	private _trackEndingSoonEmitted = false;
 
-	private _wireBackend(instance: IAudioBackend): void {
-		this._firstFrameEmitted = false;
-		this._trackEndingSoonEmitted = false;
+	private _makeTimeupdateHandler(instance: IAudioBackend): () => void {
+		return () => {
+			const currentTime = instance.currentTime();
+			const totalDuration = instance.duration();
+			const safeD = Number.isFinite(totalDuration) && totalDuration > 0 ? totalDuration : 0;
+			const percentage = safeD > 0 ? (currentTime / safeD) * 100 : 0;
+			const remaining = safeD > 0 ? safeD - currentTime : 0;
 
-		// Authenticated media servers need the Authorization header on every
-		// hls.js manifest/segment request. The provider reads the auth config
-		// lazily so getter-style tokens (Vue refs, stores) stay live.
-		instance.setAuthHeaderProvider?.(async () => {
-			const bearer = this.options?.auth?.bearerToken;
-			if (!bearer)
-				return undefined;
-			const token = typeof bearer === 'function' ? await bearer() : bearer;
-			return token ? `Bearer ${token}` : undefined;
-		});
+			this.emit('time', {
+				time: currentTime,
+				percentage,
+				position: currentTime,
+				duration: safeD,
+				remaining,
+			});
 
-		// Bug 1 fix — single AudioContext invariant:
-		// When the backend owns an AudioContext (WebAudioBackend), register it
-		// on the player immediately so AudioGraphPlugin.use() finds it via
-		// player.audioContext() and reuses it instead of creating a second one.
-		// AudioElementBackend has no audioContext() method; guard for it.
-		if (typeof instance.audioContext === 'function') {
-			setPlayerAudioContext(this, instance.audioContext());
-		}
+			if (!this._trackEndingSoonEmitted) {
+				const duration = instance.duration();
+				const threshold = this.options?.trackEndingSoonThreshold ?? 10;
+				if (duration > 0 && currentTime >= duration - threshold) {
+					this._trackEndingSoonEmitted = true;
+					const currentTrack = this.item?.();
+					if (currentTrack) {
+						this.emit('trackEndingSoon', {
+							remaining: duration - currentTime,
+							currentTrack,
+						});
+					}
+				}
+			}
+		};
+	}
 
-		/**
-		 * Narrow view of the composed kit internals needed by this method only.
-		 *  These fields are written onto the instance by playerCoreMethods via
-		 *  composeMixins — they exist at runtime but are not declared on the class
-		 *  (they live on the Internals interface in the kit). The cast is isolated
-		 *  here; all mutations go through the declared helpers or direct assignment
-		 *  on the typed surface.
-		 */
-		interface WireInternals {
-			_phase: PlayerPhase;
-			_playState: PlayStateToken;
-			_transitionPhase: (next: PlayerPhase) => void;
-		}
+	private _makeLoadedMetadataHandler(instance: IAudioBackend): () => void {
+		// Read duration from the backend. If the backend hasn't resolved a valid
+		// duration yet (returns NaN / 0), fall back to the item's consumer-supplied
+		// `duration` field so seekbars have a length before metadata arrives.
+		return () => {
+			const backendDuration = instance.duration();
+			if (backendDuration > 0) {
+				this.emit('duration', { duration: backendDuration });
+				return;
+			}
+			const itemDuration = this.item?.()?.duration;
+			if (typeof itemDuration === 'number' && itemDuration > 0) {
+				this.emit('duration', { duration: itemDuration });
+			}
+		};
+	}
+
+	private _makePlayStateHandlers(instance: IAudioBackend): void {
 		const internals = this as unknown as WireInternals;
 
 		instance.on('canplay', () => {
@@ -457,52 +483,35 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			}
 		};
 		instance.on('loadstart', onResetToPaused);
+	}
 
-		instance.on('timeupdate', () => {
-			const currentTime = instance.currentTime();
-			const totalDuration = instance.duration();
-			const safeD = Number.isFinite(totalDuration) && totalDuration > 0 ? totalDuration : 0;
-			const percentage = safeD > 0 ? (currentTime / safeD) * 100 : 0;
-			const remaining = safeD > 0 ? safeD - currentTime : 0;
+	private _wireBackend(instance: IAudioBackend): void {
+		this._firstFrameEmitted = false;
+		this._trackEndingSoonEmitted = false;
 
-			this.emit('time', {
-				time: currentTime,
-				percentage,
-				position: currentTime,
-				duration: safeD,
-				remaining,
-			});
-
-			if (!this._trackEndingSoonEmitted) {
-				const duration = instance.duration();
-				const threshold = this.options?.trackEndingSoonThreshold ?? 10;
-				if (duration > 0 && currentTime >= duration - threshold) {
-					this._trackEndingSoonEmitted = true;
-					const currentTrack = this.item?.();
-					if (currentTrack) {
-						this.emit('trackEndingSoon', {
-							remaining: duration - currentTime,
-							currentTrack,
-						});
-					}
-				}
-			}
+		// Authenticated media servers need the Authorization header on every
+		// hls.js manifest/segment request. The provider reads the auth config
+		// lazily so getter-style tokens (Vue refs, stores) stay live.
+		instance.setAuthHeaderProvider?.(async () => {
+			const bearer = this.options?.auth?.bearerToken;
+			if (!bearer)
+				return undefined;
+			const token = typeof bearer === 'function' ? await bearer() : bearer;
+			return token ? `Bearer ${token}` : undefined;
 		});
 
-		// Read duration from the backend. If the backend hasn't resolved a valid
-		// duration yet (returns NaN / 0), fall back to the item's consumer-supplied
-		// `duration` field so seekbars have a length before metadata arrives.
-		instance.on('loadedmetadata', () => {
-			const backendDuration = instance.duration();
-			if (backendDuration > 0) {
-				this.emit('duration', { duration: backendDuration });
-				return;
-			}
-			const itemDuration = this.item?.()?.duration;
-			if (typeof itemDuration === 'number' && itemDuration > 0) {
-				this.emit('duration', { duration: itemDuration });
-			}
-		});
+		// Bug 1 fix — single AudioContext invariant:
+		// When the backend owns an AudioContext (WebAudioBackend), register it
+		// on the player immediately so AudioGraphPlugin.use() finds it via
+		// player.audioContext() and reuses it instead of creating a second one.
+		// AudioElementBackend has no audioContext() method; guard for it.
+		if (typeof instance.audioContext === 'function') {
+			setPlayerAudioContext(this, instance.audioContext());
+		}
+
+		this._makePlayStateHandlers(instance);
+		instance.on('timeupdate', this._makeTimeupdateHandler(instance));
+		instance.on('loadedmetadata', this._makeLoadedMetadataHandler(instance));
 	}
 
 	// ── Loading ── composed in via `loadingMethods` mixin.
