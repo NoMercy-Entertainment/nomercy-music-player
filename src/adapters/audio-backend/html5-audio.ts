@@ -17,20 +17,10 @@ import {
 	appendAuthTokenParam,
 	BrowserPolicyError,
 	EventEmitter,
-	HLS_EXT_RE,
 	perceptualGain,
 } from '@nomercy-entertainment/nomercy-player-core';
 import Hls from 'hls.js';
-
-const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
-
-function supportsNativeHls(audio: HTMLAudioElement): boolean {
-	// Chromium answers 'maybe' for HLS but cannot actually demux it. Trust
-	// 'maybe' only where MSE is absent (iOS Safari) — hls.js cannot run there
-	// anyway, so native is the only option.
-	const can = audio.canPlayType('application/vnd.apple.mpegurl');
-	return can === 'probably' || (can === 'maybe' && typeof MediaSource === 'undefined');
-}
+import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from './hls-loader';
 
 /**
  * HTML5 audio backend (fallback). Uses an HTMLAudioElement for transport. Lazily creates a
@@ -51,7 +41,7 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	private element: HTMLAudioElement;
 	private ownsElement: boolean;
 	private readonly container?: HTMLElement;
-	private hlsInstance?: { destroy: () => void; startLoad?: () => void; stopLoad?: () => void };
+	private hlsInstance?: { destroy: () => void; startLoad?: (pos?: number) => void; stopLoad?: () => void };
 	private currentState: BackendState = 'idle';
 
 	/** Resolves the full `Authorization` header value, or undefined when unauthenticated. */
@@ -108,42 +98,12 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 	}
 
 	private attachDomBridges(): void {
-		this.domHandlers = [];
-
-		const track = (domEvent: string, handler: EventListener): void => {
-			this.element.addEventListener(domEvent, handler);
-			this.domHandlers.push({
-				event: domEvent,
-				handler,
-			});
-		};
-
-		track('loadstart', ev => this.emit('loadstart', ev));
-		track('loadedmetadata', ev => this.emit('loadedmetadata', ev));
-		track('canplay', ev => this.emit('canplay', ev));
-		track('play', ev => this.emit('play', ev));
-		track('playing', ev => this.emit('playing', ev));
-		track('pause', ev => this.emit('pause', ev));
-		track('ended', ev => this.emit('ended', ev));
-		track('timeupdate', ev => this.emit('timeupdate', ev));
-		track('waiting', ev => this.emit('waiting', ev));
-		track('stalled', ev => this.emit('stalled', ev));
-		track('ratechange', ev => this.emit('ratechange', ev));
-		track('encrypted', ev => this.emit('encrypted', ev));
-		track('error', ev => this.emit('error', ev));
-
-		// State-mutation handlers tracked in the same array so detachDomBridges
-		// and dispose always remove them — no separate cleanup path.
-		track('loadstart', () => { this.currentState = 'loading'; });
-		track('loadedmetadata', () => { this.currentState = 'ready'; });
-		track('play', () => { this.currentState = 'playing'; });
-		track('pause', () => {
-			if (this.currentState !== 'idle' && this.currentState !== 'error') {
-				this.currentState = 'paused';
-			}
-		});
-		track('ended', () => { this.currentState = 'paused'; });
-		track('error', () => { this.currentState = 'error'; });
+		this.domHandlers = attachDomBridgesTo(
+			this.element,
+			(event, data) => this.emit(event as never, data as never),
+			(state) => { this.currentState = state; },
+			() => this.currentState,
+		);
 	}
 
 	private detachDomBridges(el: HTMLAudioElement): void {
@@ -190,12 +150,12 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs) {
-				if (!Hls.isSupported()) {
-					this.element.src = appendAuthTokenParam(url, headerValue);
-					this.element.load();
-				}
-				else {
-					const hlsInstance = new Hls({
+				this.hlsInstance = attachHlsOrFallback(
+					Hls,
+					this.element,
+					url,
+					headerValue,
+					{
 						autoStartLoad: true,
 						enableWorker: true,
 						lowLatencyMode: false,
@@ -205,11 +165,9 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 								xhr.setRequestHeader('Authorization', headerValue);
 							}
 						},
-					});
-					hlsInstance.attachMedia(this.element);
-					hlsInstance.loadSource(url);
-					this.hlsInstance = hlsInstance;
-				}
+					},
+					appendAuthTokenParam,
+				) ?? undefined;
 			}
 			else {
 				this.element.src = appendAuthTokenParam(url, headerValue);

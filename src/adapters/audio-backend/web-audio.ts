@@ -17,31 +17,10 @@ import {
 	appendAuthTokenParam,
 	BrowserPolicyError,
 	EventEmitter,
-	HLS_EXT_RE,
 	perceptualGain,
 } from '@nomercy-entertainment/nomercy-player-core';
 import HlsDefault from 'hls.js';
-
-const isHls = (url: string): boolean => HLS_EXT_RE.test(url);
-
-function supportsNativeHls(audio: HTMLAudioElement): boolean {
-	// Chromium answers 'maybe' for HLS but cannot actually demux it. Trust
-	// 'maybe' only where MSE is absent (iOS Safari) — hls.js cannot run there
-	// anyway, so native is the only option.
-	const can = audio.canPlayType('application/vnd.apple.mpegurl');
-	return can === 'probably' || (can === 'maybe' && typeof MediaSource === 'undefined');
-}
-
-interface HlsCtor {
-	new (cfg?: unknown): {
-		loadSource: (url: string) => void;
-		attachMedia: (el: HTMLMediaElement) => void;
-		destroy: () => void;
-		stopLoad: () => void;
-		startLoad: (startPosition?: number) => void;
-	};
-	isSupported: () => boolean;
-}
+import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from './hls-loader';
 
 /** Safari ships the Web Audio API under the vendor-prefixed name. */
 interface WebkitAudioContextGlobal {
@@ -194,42 +173,12 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	// ── DOM event bridging ──────────────────────────────────────────────────
 
 	private attachDomBridges(): void {
-		this.domHandlers = [];
-
-		const track = (domEvent: string, handler: EventListener): void => {
-			this.element.addEventListener(domEvent, handler);
-			this.domHandlers.push({
-				event: domEvent,
-				handler,
-			});
-		};
-
-		track('loadstart', ev => this.emit('loadstart', ev));
-		track('loadedmetadata', ev => this.emit('loadedmetadata', ev));
-		track('canplay', ev => this.emit('canplay', ev));
-		track('play', ev => this.emit('play', ev));
-		track('playing', ev => this.emit('playing', ev));
-		track('pause', ev => this.emit('pause', ev));
-		track('ended', ev => this.emit('ended', ev));
-		track('timeupdate', ev => this.emit('timeupdate', ev));
-		track('waiting', ev => this.emit('waiting', ev));
-		track('stalled', ev => this.emit('stalled', ev));
-		track('ratechange', ev => this.emit('ratechange', ev));
-		track('encrypted', ev => this.emit('encrypted', ev));
-		track('error', ev => this.emit('error', ev));
-
-		// State-mutation handlers tracked in the same array so dispose always
-		// removes them — no separate cleanup path.
-		track('loadstart', () => { this.currentState = 'loading'; });
-		track('loadedmetadata', () => { this.currentState = 'ready'; });
-		track('play', () => { this.currentState = 'playing'; });
-		track('pause', () => {
-			if (this.currentState !== 'idle' && this.currentState !== 'error') {
-				this.currentState = 'paused';
-			}
-		});
-		track('ended', () => { this.currentState = 'paused'; });
-		track('error', () => { this.currentState = 'error'; });
+		this.domHandlers = attachDomBridgesTo(
+			this.element,
+			(event, data) => this.emit(event as never, data as never),
+			(state) => { this.currentState = state; },
+			() => this.currentState,
+		);
 	}
 
 	// ── Lifecycle ───────────────────────────────────────────────────────────
@@ -269,25 +218,20 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs) {
-				// hls.js is the primary engine for NoMercy audio streams —
-				// statically imported so it is ready before the first load.
-				const Hls = HlsDefault as unknown as HlsCtor;
-				if (!Hls.isSupported()) {
-					this.element.src = appendAuthTokenParam(url, headerValue);
-					this.element.load();
-				}
-				else {
-					const hls = new Hls({
+				this.hlsInstance = attachHlsOrFallback(
+					HlsDefault,
+					this.element,
+					url,
+					headerValue,
+					{
 						xhrSetup: (xhr: XMLHttpRequest) => {
 							if (headerValue) {
 								xhr.setRequestHeader('Authorization', headerValue);
 							}
 						},
-					});
-					hls.attachMedia(this.element);
-					hls.loadSource(url);
-					this.hlsInstance = hls;
-				}
+					},
+					appendAuthTokenParam,
+				) ?? undefined;
 			}
 			else {
 				this.element.src = appendAuthTokenParam(url, headerValue);
@@ -680,22 +624,20 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 					const useHlsJs = isHls(url) && !supportsNativeHls(el);
 
 					if (useHlsJs) {
-						const Hls = HlsDefault as unknown as HlsCtor;
-						if (!Hls.isSupported()) {
-							el.src = appendAuthTokenParam(url, headerValue);
-							el.load();
-						}
-						else {
-							const hls = new Hls({
+						attachHlsOrFallback(
+							HlsDefault,
+							el,
+							url,
+							headerValue,
+							{
 								xhrSetup: (xhr: XMLHttpRequest) => {
 									if (headerValue) {
 										xhr.setRequestHeader('Authorization', headerValue);
 									}
 								},
-							});
-							hls.attachMedia(el);
-							hls.loadSource(url);
-						}
+							},
+							appendAuthTokenParam,
+						);
 					}
 					else {
 						el.src = appendAuthTokenParam(url, headerValue);
