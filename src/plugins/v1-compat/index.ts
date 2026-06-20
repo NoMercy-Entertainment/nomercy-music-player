@@ -124,107 +124,105 @@ function _toV1TimeState(v2Data: unknown): V1TimeState {
 let _currentDuration = 0;
 
 /**
- * Build the v1→v2 event bridge table. Constructed lazily per plugin instance.
+ * v1→v2 event bridge table. Stateless — built once at module load.
  */
-function _buildEventMap(): Record<string, V1EventMapping> {
-	return {
-		// v1 'play' fired with HTMLAudioElement; v2 'play' fires with undefined.
-		play: {
-			v2Event: 'play',
-			reshape: _data => undefined,
+const EVENT_MAP: Record<string, V1EventMapping> = {
+	// v1 'play' fired with HTMLAudioElement; v2 'play' fires with undefined.
+	play: {
+		v2Event: 'play',
+		reshape: _data => undefined,
+	},
+	// v1 'pause' fired with HTMLAudioElement; v2 'pause' fires with undefined.
+	pause: {
+		v2Event: 'pause',
+		reshape: _data => undefined,
+	},
+	// v1 'time' fired with TimeState; v2 fires { time: number }.
+	time: {
+		v2Event: 'time',
+		reshape: data => _toV1TimeState(data),
+	},
+	// v1 'song' fired with BasePlaylistItem | null; v2 uses 'item' with { item, index }.
+	song: {
+		v2Event: 'item',
+		reshape: (data) => {
+			const v2 = data as { item?: MusicPlaylistItem; index?: number } | undefined;
+			return v2?.item ?? null;
 		},
-		// v1 'pause' fired with HTMLAudioElement; v2 'pause' fires with undefined.
-		pause: {
-			v2Event: 'pause',
-			reshape: _data => undefined,
+	},
+	// v1 'queue' fired with S[]; v2 doesn't fire a queue event on set.
+	// Cannot auto-bridge — consumer must read queue() directly.
+	queue: { v2Event: 'ready' }, // no-op bridge
+	// v1 'backlog' fired with S[]; v2 equivalent not defined.
+	backlog: { v2Event: 'ready' }, // no-op bridge
+	// v1 'repeat' fired with RepeatState string; v2 fires { state: RepeatState }.
+	repeat: {
+		v2Event: 'repeat',
+		reshape: (data) => {
+			const v2 = data as { state?: string } | undefined;
+			return v2?.state ?? 'off';
 		},
-		// v1 'time' fired with TimeState; v2 fires { time: number }.
-		time: {
-			v2Event: 'time',
-			reshape: data => _toV1TimeState(data),
+	},
+	// v1 'shuffle' fired with boolean; v2 fires { state: ShuffleState }.
+	shuffle: {
+		v2Event: 'shuffle',
+		reshape: (data) => {
+			const v2 = data as { state?: string } | undefined;
+			return v2?.state === 'on';
 		},
-		// v1 'song' fired with BasePlaylistItem | null; v2 uses 'item' with { item, index }.
-		song: {
-			v2Event: 'item',
-			reshape: (data) => {
-				const v2 = data as { item?: MusicPlaylistItem; index?: number } | undefined;
-				return v2?.item ?? null;
-			},
+	},
+	// v1 'mute' fired with boolean; v2 fires { muted: boolean }.
+	mute: {
+		v2Event: 'mute',
+		reshape: (data) => {
+			const v2 = data as { muted?: boolean } | undefined;
+			return v2?.muted ?? false;
 		},
-		// v1 'queue' fired with S[]; v2 doesn't fire a queue event on set.
-		// Cannot auto-bridge — consumer must read queue() directly.
-		queue: { v2Event: 'ready' }, // no-op bridge
-		// v1 'backlog' fired with S[]; v2 equivalent not defined.
-		backlog: { v2Event: 'ready' }, // no-op bridge
-		// v1 'repeat' fired with RepeatState string; v2 fires { state: RepeatState }.
-		repeat: {
-			v2Event: 'repeat',
-			reshape: (data) => {
-				const v2 = data as { state?: string } | undefined;
-				return v2?.state ?? 'off';
-			},
+	},
+	// v1 'volume' fired with number (0–100); v2 fires { level: number }.
+	volume: {
+		v2Event: 'volume',
+		reshape: (data) => {
+			const v2 = data as { level?: number } | undefined;
+			return v2?.level ?? 100;
 		},
-		// v1 'shuffle' fired with boolean; v2 fires { state: ShuffleState }.
-		shuffle: {
-			v2Event: 'shuffle',
-			reshape: (data) => {
-				const v2 = data as { state?: string } | undefined;
-				return v2?.state === 'on';
-			},
+	},
+	// Lifecycle passthroughs
+	ready: { v2Event: 'ready' },
+	error: { v2Event: 'error' },
+	ended: { v2Event: 'ended' },
+	firstFrame: { v2Event: 'firstFrame' },
+	// v1 'seeked' fired with TimeState; v2 doesn't have a seeked event.
+	// Bridge from 'time' as best approximation.
+	seeked: {
+		v2Event: 'time',
+		reshape: data => _toV1TimeState(data),
+	},
+	// v1 'crossfadeStart' / 'crossfadeComplete' map directly to v2.
+	crossfadeStart: {
+		v2Event: 'crossfadeStart',
+		reshape: (data) => {
+			const v2 = data as { from?: unknown; to?: unknown; duration?: number } | undefined;
+			return {
+				from: v2?.from,
+				to: v2?.to,
+			};
 		},
-		// v1 'mute' fired with boolean; v2 fires { muted: boolean }.
-		mute: {
-			v2Event: 'mute',
-			reshape: (data) => {
-				const v2 = data as { muted?: boolean } | undefined;
-				return v2?.muted ?? false;
-			},
+	},
+	crossfadeComplete: {
+		v2Event: 'crossfadeComplete',
+		reshape: (data) => {
+			const v2 = data as { track?: unknown } | undefined;
+			return v2?.track;
 		},
-		// v1 'volume' fired with number (0–100); v2 fires { level: number }.
-		volume: {
-			v2Event: 'volume',
-			reshape: (data) => {
-				const v2 = data as { level?: number } | undefined;
-				return v2?.level ?? 100;
-			},
-		},
-		// Lifecycle passthroughs
-		ready: { v2Event: 'ready' },
-		error: { v2Event: 'error' },
-		ended: { v2Event: 'ended' },
-		firstFrame: { v2Event: 'firstFrame' },
-		// v1 'seeked' fired with TimeState; v2 doesn't have a seeked event.
-		// Bridge from 'time' as best approximation.
-		seeked: {
-			v2Event: 'time',
-			reshape: data => _toV1TimeState(data),
-		},
-		// v1 'crossfadeStart' / 'crossfadeComplete' map directly to v2.
-		crossfadeStart: {
-			v2Event: 'crossfadeStart',
-			reshape: (data) => {
-				const v2 = data as { from?: unknown; to?: unknown; duration?: number } | undefined;
-				return {
-					from: v2?.from,
-					to: v2?.to,
-				};
-			},
-		},
-		crossfadeComplete: {
-			v2Event: 'crossfadeComplete',
-			reshape: (data) => {
-				const v2 = data as { track?: unknown } | undefined;
-				return v2?.track;
-			},
-		},
-		// v1 'stop' fired with no payload; v2 fires 'stop' with undefined.
-		stop: { v2Event: 'stop' },
-		// v1 'fatalError' passthrough.
-		fatalError: { v2Event: 'error' },
-		// v1 'setCurrentAudio' was an internal event; bridge to ready as best approximation.
-		setCurrentAudio: { v2Event: 'ready' },
-	};
-}
+	},
+	// v1 'stop' fired with no payload; v2 fires 'stop' with undefined.
+	stop: { v2Event: 'stop' },
+	// v1 'fatalError' passthrough.
+	fatalError: { v2Event: 'error' },
+	// v1 'setCurrentAudio' was an internal event; bridge to ready as best approximation.
+	setCurrentAudio: { v2Event: 'ready' },
+};
 
 // ---------------------------------------------------------------------------
 // Plugin events
@@ -314,58 +312,21 @@ export class V1MusicCompatPlugin extends Plugin<
 			return;
 		}
 
-		const {
-			play: onPlay,
-			pause: onPause,
-			stop: onStop,
-			previous: onPrevious,
-			next: onNext,
-			seek: onSeek,
-		} = actions;
+		const { play: onPlay, pause: onPause, stop: onStop, previous: onPrevious, next: onNext, seek: onSeek } = actions;
 
-		if (onPlay) {
-			const listener = (): void => onPlay();
-			this.player.on('play' as never, listener as never);
-			this._eventBridges.push({
-				v2Event: 'play',
-				listener: listener as (d: unknown) => void,
-			});
-		}
-
-		if (onPause) {
-			const listener = (): void => onPause();
-			this.player.on('pause' as never, listener as never);
-			this._eventBridges.push({
-				v2Event: 'pause',
-				listener: listener as (d: unknown) => void,
-			});
-		}
-
-		if (onStop) {
-			const listener = (): void => onStop();
-			this.player.on('stop' as never, listener as never);
-			this._eventBridges.push({
-				v2Event: 'stop',
-				listener: listener as (d: unknown) => void,
-			});
-		}
-
-		if (onPrevious) {
-			const listener = (): void => onPrevious();
-			this.player.on('previous' as never, listener as never);
-			this._eventBridges.push({
-				v2Event: 'previous',
-				listener: listener as (d: unknown) => void,
-			});
-		}
-
-		if (onNext) {
-			const listener = (): void => onNext();
-			this.player.on('next' as never, listener as never);
-			this._eventBridges.push({
-				v2Event: 'next',
-				listener: listener as (d: unknown) => void,
-			});
+		const noopPairs: Array<[(() => void) | undefined, string]> = [
+			[onPlay, 'play'],
+			[onPause, 'pause'],
+			[onStop, 'stop'],
+			[onPrevious, 'previous'],
+			[onNext, 'next'],
+		];
+		for (const [cb, v2Event] of noopPairs) {
+			if (!cb) continue;
+			const fn = cb;
+			const listener = (): void => fn();
+			this.player.on(v2Event as never, listener as never);
+			this._eventBridges.push({ v2Event, listener: listener as (d: unknown) => void });
 		}
 
 		if (onSeek) {
@@ -417,7 +378,7 @@ export class V1MusicCompatPlugin extends Plugin<
 		const originalOn = player.on.bind(player) as typeof player.on;
 		this._originalOn = player.on;
 
-		const eventMap = _buildEventMap();
+		const eventMap = EVENT_MAP;
 
 		(player as unknown as Record<string, unknown>)['on'] = (
 			event: string,
@@ -464,10 +425,39 @@ export class V1MusicCompatPlugin extends Plugin<
 		}
 	}
 
-	private _attachMethodShims(): void {
-		const player = this.player;
+	private _defineGetterShim(name: string, get: () => unknown): void {
+		const target = this.player as unknown as Record<string, unknown>;
+		if (name in target) return;
+		Object.defineProperty(target, name, {
+			get,
+			configurable: true,
+			enumerable: false,
+		});
+		this._patchedMethods.push(name);
+	}
 
-		// ── Volume ────────────────────────────────────────────────────────
+	private _defineGetSetShim(name: string, get: () => unknown, set: (v: unknown) => void): void {
+		const target = this.player as unknown as Record<string, unknown>;
+		if (name in target) return;
+		Object.defineProperty(target, name, {
+			get,
+			set,
+			configurable: true,
+			enumerable: false,
+		});
+		this._patchedMethods.push(name);
+	}
+
+	private _attachMethodShims(): void {
+		this._attachVolumeShims();
+		this._attachTimeShims();
+		this._attachQueueShims();
+		this._attachStatePropertyShims();
+		this._attachEqStubs();
+	}
+
+	private _attachVolumeShims(): void {
+		const player = this.player;
 
 		/**
 		 * @deprecated Use `player.volume(v)` instead.
@@ -500,6 +490,11 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnDeprecated('unmute()', 'unmute()');
 			player.unmute();
 		});
+
+	}
+
+	private _attachTimeShims(): void {
+		const player = this.player;
 
 		// ── Time ──────────────────────────────────────────────────────────
 
@@ -586,6 +581,11 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnRemoved('getAudioElement()', 'the audio element is owned by the audio backend in v2 and is not exposed.');
 			return undefined;
 		});
+
+	}
+
+	private _attachQueueShims(): void {
+		const player = this.player;
 
 		// ── Queue / Playlist ──────────────────────────────────────────────
 
@@ -706,41 +706,25 @@ export class V1MusicCompatPlugin extends Plugin<
 		 * Installed as a property getter (not a method) so v1 code accessing
 		 * `player.currentSong` without parentheses continues to work.
 		 */
-		const currentSongTarget = this.player as unknown as Record<string, unknown>;
-		if (!('currentSong' in currentSongTarget)) {
-			Object.defineProperty(currentSongTarget, 'currentSong', {
-				get: (): MusicPlaylistItem | undefined => {
-					_warnDeprecated('currentSong', 'item()');
-					return player.item();
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('currentSong');
-		}
+		this._defineGetterShim('currentSong', (): MusicPlaylistItem | undefined => {
+			_warnDeprecated('currentSong', 'item()');
+			return player.item();
+		});
 
 		/**
 		 * @deprecated Check the queue directly: `player.queue().length > 0`.
 		 * Installed as a property getter so v1 code reading `player.hasNextQueued`
 		 * without parentheses continues to work.
 		 */
-		const hasNextTarget = this.player as unknown as Record<string, unknown>;
-		if (!('hasNextQueued' in hasNextTarget)) {
-			Object.defineProperty(hasNextTarget, 'hasNextQueued', {
-				get: (): boolean => {
-					_warnDeprecated('hasNextQueued', 'queue().length > 0');
-					try {
-						return player.queue().length > 0;
-					}
-					catch {
-						return false;
-					}
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('hasNextQueued');
-		}
+		this._defineGetterShim('hasNextQueued', (): boolean => {
+			_warnDeprecated('hasNextQueued', 'queue().length > 0');
+			try {
+				return player.queue().length > 0;
+			}
+			catch {
+				return false;
+			}
+		});
 
 		/**
 		 * @deprecated Use `player.queue(tracks)` + `player.item(track)` + `player.play()` in v2.
@@ -920,6 +904,11 @@ export class V1MusicCompatPlugin extends Plugin<
 			return player.item();
 		});
 
+	}
+
+	private _attachEqStubs(): void {
+		const player = this.player;
+
 		// ── EQ state stubs ────────────────────────────────────────────────
 		//
 		// v1 exposed equalizerBands, equalizerPresets, equalizerPanning, and
@@ -929,153 +918,72 @@ export class V1MusicCompatPlugin extends Plugin<
 		// default values v1 initialised with so v1 code that reads them can
 		// continue functioning without crashing.
 
-		const target = this.player as unknown as Record<string, unknown>;
+		const defaultBands: EQBand[] = [
+			{ frequency: 'Pre', gain: 0 },
+			{ frequency: 70, gain: 0 },
+			{ frequency: 180, gain: 0 },
+			{ frequency: 320, gain: 0 },
+			{ frequency: 600, gain: 0 },
+			{ frequency: 1000, gain: 0 },
+			{ frequency: 3000, gain: 0 },
+			{ frequency: 6000, gain: 0 },
+			{ frequency: 12000, gain: 0 },
+			{ frequency: 14000, gain: 0 },
+			{ frequency: 16000, gain: 0 },
+		];
 
 		/**
 		 * @deprecated Removed in v2 — EQ band state is owned by EqualizerPlugin.
 		 * Use `player.getPlugin(EqualizerPlugin)?.bands` instead.
 		 * Stub returns the v1 default 10-band configuration.
 		 */
-		if (!('equalizerBands' in target)) {
-			const defaultBands: EQBand[] = [
-				{
-					frequency: 'Pre',
-					gain: 0,
-				},
-				{
-					frequency: 70,
-					gain: 0,
-				},
-				{
-					frequency: 180,
-					gain: 0,
-				},
-				{
-					frequency: 320,
-					gain: 0,
-				},
-				{
-					frequency: 600,
-					gain: 0,
-				},
-				{
-					frequency: 1000,
-					gain: 0,
-				},
-				{
-					frequency: 3000,
-					gain: 0,
-				},
-				{
-					frequency: 6000,
-					gain: 0,
-				},
-				{
-					frequency: 12000,
-					gain: 0,
-				},
-				{
-					frequency: 14000,
-					gain: 0,
-				},
-				{
-					frequency: 16000,
-					gain: 0,
-				},
-			];
-			Object.defineProperty(target, 'equalizerBands', {
-				get: () => {
-					_warnRemoved('equalizerBands', 'use EqualizerPlugin.bands instead');
-					return defaultBands;
-				},
-				set: (_value: EQBand[]) => {
-					_warnRemoved('equalizerBands = bands', 'use EqualizerPlugin.setBands() instead');
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('equalizerBands');
-		}
+		this._defineGetSetShim(
+			'equalizerBands',
+			() => { _warnRemoved('equalizerBands', 'use EqualizerPlugin.bands instead'); return defaultBands; },
+			(_value: unknown) => { _warnRemoved('equalizerBands = bands', 'use EqualizerPlugin.setBands() instead'); },
+		);
+
+		const defaultPresets: EqualizerPreset[] = [];
 
 		/**
 		 * @deprecated Removed in v2 — EQ presets are owned by EqualizerPlugin.
 		 * Use `player.getPlugin(EqualizerPlugin)?.presets` instead.
 		 * Stub returns an empty array so iteration-based v1 code does not crash.
 		 */
-		if (!('equalizerPresets' in target)) {
-			const defaultPresets: EqualizerPreset[] = [];
-			Object.defineProperty(target, 'equalizerPresets', {
-				get: () => {
-					_warnRemoved('equalizerPresets', 'use EqualizerPlugin.presets instead');
-					return defaultPresets;
-				},
-				set: (_value: EqualizerPreset[]) => {
-					_warnRemoved('equalizerPresets = presets', 'use EqualizerPlugin instead');
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('equalizerPresets');
-		}
+		this._defineGetSetShim(
+			'equalizerPresets',
+			() => { _warnRemoved('equalizerPresets', 'use EqualizerPlugin.presets instead'); return defaultPresets; },
+			(_value: unknown) => { _warnRemoved('equalizerPresets = presets', 'use EqualizerPlugin instead'); },
+		);
+
+		let panValue = 0;
 
 		/**
 		 * @deprecated Removed in v2 — stereo panning is owned by MixerPlugin.
 		 * Use `player.getPlugin(MixerPlugin)?.panning` instead.
 		 * Stub returns 0 (center) so v1 code that reads this property continues.
 		 */
-		if (!('equalizerPanning' in target)) {
-			let panValue = 0;
-			Object.defineProperty(target, 'equalizerPanning', {
-				get: () => {
-					_warnRemoved('equalizerPanning', 'use MixerPlugin.panning instead');
-					return panValue;
-				},
-				set: (value: number) => {
-					_warnRemoved('equalizerPanning = pan', 'use MixerPlugin.setPanning() instead');
-					panValue = value;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('equalizerPanning');
-		}
+		this._defineGetSetShim(
+			'equalizerPanning',
+			() => { _warnRemoved('equalizerPanning', 'use MixerPlugin.panning instead'); return panValue; },
+			(value: unknown) => { _warnRemoved('equalizerPanning = pan', 'use MixerPlugin.setPanning() instead'); panValue = value as number; },
+		);
+
+		const defaultSliderValues: EQSliderValues = {
+			pan: { min: -1, max: 1, step: 0.01, default: 0 },
+			pre: { min: -1, max: 3, step: 1, default: 0 },
+			band: { min: -12, max: 12, step: 0.01, default: 0 },
+		};
 
 		/**
 		 * @deprecated Removed in v2 — EQ slider ranges are owned by EqualizerPlugin.
 		 * Use `player.getPlugin(EqualizerPlugin)?.sliderValues` instead.
 		 * Stub returns the v1 default slider configuration.
 		 */
-		if (!('equalizerSliderValues' in target)) {
-			const defaultSliderValues: EQSliderValues = {
-				pan: {
-					min: -1,
-					max: 1,
-					step: 0.01,
-					default: 0,
-				},
-				pre: {
-					min: -1,
-					max: 3,
-					step: 1,
-					default: 0,
-				},
-				band: {
-					min: -12,
-					max: 12,
-					step: 0.01,
-					default: 0,
-				},
-			};
-			Object.defineProperty(target, 'equalizerSliderValues', {
-				get: () => {
-					_warnRemoved('equalizerSliderValues', 'use EqualizerPlugin.sliderValues instead');
-					return defaultSliderValues;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('equalizerSliderValues');
-		}
+		this._defineGetterShim('equalizerSliderValues', () => {
+			_warnRemoved('equalizerSliderValues', 'use EqualizerPlugin.sliderValues instead');
+			return defaultSliderValues;
+		});
 
 		// ── Audio element / visualizer stubs ──────────────────────────────
 		//
@@ -1097,38 +1005,24 @@ export class V1MusicCompatPlugin extends Plugin<
 		 * those are available, or wire `AudioContext` via the `audioContext()` method.
 		 * The `.motion` property on this stub is always `null`.
 		 */
-		if (!('_audioElement1' in target)) {
-			Object.defineProperty(target, '_audioElement1', {
-				get: () => {
-					_warnRemoved(
-						'_audioElement1',
-						'raw audio element access removed; for visualizer use audioContext() + AnalyserNode',
-					);
-					return audioNodeStub;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('_audioElement1');
-		}
+		this._defineGetterShim('_audioElement1', () => {
+			_warnRemoved(
+				'_audioElement1',
+				'raw audio element access removed; for visualizer use audioContext() + AnalyserNode',
+			);
+			return audioNodeStub;
+		});
 
 		/**
 		 * @deprecated Removed in v2 — see `_audioElement1` stub above.
 		 */
-		if (!('_audioElement2' in target)) {
-			Object.defineProperty(target, '_audioElement2', {
-				get: () => {
-					_warnRemoved(
-						'_audioElement2',
-						'raw audio element access removed; for visualizer use audioContext() + AnalyserNode',
-					);
-					return audioNodeStub;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('_audioElement2');
-		}
+		this._defineGetterShim('_audioElement2', () => {
+			_warnRemoved(
+				'_audioElement2',
+				'raw audio element access removed; for visualizer use audioContext() + AnalyserNode',
+			);
+			return audioNodeStub;
+		});
 
 		// ── siteTitle / setSiteTitle ──────────────────────────────────────
 		//
@@ -1144,27 +1038,23 @@ export class V1MusicCompatPlugin extends Plugin<
 		 * Use the MediaSessionPlugin for media-session metadata, or set `document.title`
 		 * directly in your application code.
 		 */
-		if (!('siteTitle' in target)) {
-			Object.defineProperty(target, 'siteTitle', {
-				get: (): string => {
-					_warnRemoved(
-						'siteTitle',
-						'document.title management is a consumer concern in v2; use MediaSessionPlugin or set document.title directly',
-					);
-					return _siteTitle;
-				},
-				set: (value: string) => {
-					_warnRemoved(
-						'siteTitle = value',
-						'document.title management is a consumer concern in v2; use MediaSessionPlugin or set document.title directly',
-					);
-					_siteTitle = value;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('siteTitle');
-		}
+		this._defineGetSetShim(
+			'siteTitle',
+			(): string => {
+				_warnRemoved(
+					'siteTitle',
+					'document.title management is a consumer concern in v2; use MediaSessionPlugin or set document.title directly',
+				);
+				return _siteTitle;
+			},
+			(value: unknown) => {
+				_warnRemoved(
+					'siteTitle = value',
+					'document.title management is a consumer concern in v2; use MediaSessionPlugin or set document.title directly',
+				);
+				_siteTitle = value as string;
+			},
+		);
 
 		/**
 		 * @deprecated Removed in v2 — `document.title` management is a consumer concern.
@@ -1199,6 +1089,11 @@ export class V1MusicCompatPlugin extends Plugin<
 			return player.playbackRate();
 		});
 
+	}
+
+	private _attachStatePropertyShims(): void {
+		const player = this.player;
+
 		// ── v1 Helpers data-property shims ───────────────────────────────────
 		//
 		// v1 exposed many playback state values as plain mutable data properties on
@@ -1214,152 +1109,87 @@ export class V1MusicCompatPlugin extends Plugin<
 		// would stop working). Consumers relying on these as data properties must
 		// migrate. These are documented as HARD PARITY GAPs below.
 
-		const propTarget = this.player as unknown as Record<string, unknown>;
-
 		/**
 		 * @deprecated Data-property read of current playhead position.
 		 * Use `player.time()` in v2.
 		 */
-		if (!('currentTime' in propTarget)) {
-			Object.defineProperty(propTarget, 'currentTime', {
-				get: (): number => {
-					_warnDeprecated('currentTime', 'time()');
-					return player.time();
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('currentTime');
-		}
+		this._defineGetterShim('currentTime', (): number => {
+			_warnDeprecated('currentTime', 'time()');
+			return player.time();
+		});
 
 		/**
 		 * @deprecated Data-property read of muted state (boolean).
 		 * Use `player.volumeState() === VolumeState.MUTED` in v2.
 		 */
-		if (!('muted' in propTarget)) {
-			Object.defineProperty(propTarget, 'muted', {
-				get: (): boolean => {
-					_warnDeprecated('muted', 'volumeState()');
-					return player.volumeState() === VolumeState.MUTED;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('muted');
-		}
+		this._defineGetterShim('muted', (): boolean => {
+			_warnDeprecated('muted', 'volumeState()');
+			return player.volumeState() === VolumeState.MUTED;
+		});
 
 		/**
 		 * @deprecated Data-property read of muted state (boolean).
 		 * Use `player.volumeState() === VolumeState.MUTED` in v2.
 		 */
-		if (!('isMuted' in propTarget)) {
-			Object.defineProperty(propTarget, 'isMuted', {
-				get: (): boolean => {
-					_warnDeprecated('isMuted', 'volumeState()');
-					return player.volumeState() === VolumeState.MUTED;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isMuted');
-		}
+		this._defineGetterShim('isMuted', (): boolean => {
+			_warnDeprecated('isMuted', 'volumeState()');
+			return player.volumeState() === VolumeState.MUTED;
+		});
 
 		/**
 		 * @deprecated Data-property read of playing state (boolean).
 		 * Use `player.playState() === PlayState.PLAYING` in v2.
 		 */
-		if (!('isPlaying' in propTarget)) {
-			Object.defineProperty(propTarget, 'isPlaying', {
-				get: (): boolean => {
-					_warnDeprecated('isPlaying', 'playState()');
-					return player.playState() === PlayState.PLAYING;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isPlaying');
-		}
+		this._defineGetterShim('isPlaying', (): boolean => {
+			_warnDeprecated('isPlaying', 'playState()');
+			return player.playState() === PlayState.PLAYING;
+		});
 
 		/**
 		 * @deprecated Data-property read of paused state (boolean).
 		 * Use `player.playState() === PlayState.PAUSED` in v2.
 		 */
-		if (!('isPaused' in propTarget)) {
-			Object.defineProperty(propTarget, 'isPaused', {
-				get: (): boolean => {
-					_warnDeprecated('isPaused', 'playState()');
-					return player.playState() === PlayState.PAUSED;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isPaused');
-		}
+		this._defineGetterShim('isPaused', (): boolean => {
+			_warnDeprecated('isPaused', 'playState()');
+			return player.playState() === PlayState.PAUSED;
+		});
 
 		/**
 		 * @deprecated Data-property read of stopped state (boolean).
 		 * Use `player.playState() === PlayState.STOPPED` in v2.
 		 */
-		if (!('isStopped' in propTarget)) {
-			Object.defineProperty(propTarget, 'isStopped', {
-				get: (): boolean => {
-					_warnDeprecated('isStopped', 'playState()');
-					return player.playState() === PlayState.STOPPED;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isStopped');
-		}
+		this._defineGetterShim('isStopped', (): boolean => {
+			_warnDeprecated('isStopped', 'playState()');
+			return player.playState() === PlayState.STOPPED;
+		});
 
 		/**
 		 * @deprecated v1 indicated seeking in progress via this boolean.
 		 * v2 has no distinct 'seeking' phase — always returns false.
 		 * Use backend seek events if you need seek completion signals.
 		 */
-		if (!('isSeeking' in propTarget)) {
-			Object.defineProperty(propTarget, 'isSeeking', {
-				get: (): boolean => {
-					_warnRemoved('isSeeking', 'v2 has no seeking-phase boolean; listen to time events instead');
-					return false;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isSeeking');
-		}
+		this._defineGetterShim('isSeeking', (): boolean => {
+			_warnRemoved('isSeeking', 'v2 has no seeking-phase boolean; listen to time events instead');
+			return false;
+		});
 
 		/**
 		 * @deprecated Data-property read of repeat active state (boolean).
 		 * Use `player.repeatState() !== 'off'` in v2.
 		 */
-		if (!('isRepeating' in propTarget)) {
-			Object.defineProperty(propTarget, 'isRepeating', {
-				get: (): boolean => {
-					_warnDeprecated('isRepeating', 'repeatState() !== \'off\'');
-					return player.repeatState() !== 'off';
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isRepeating');
-		}
+		this._defineGetterShim('isRepeating', (): boolean => {
+			_warnDeprecated('isRepeating', 'repeatState() !== \'off\'');
+			return player.repeatState() !== 'off';
+		});
 
 		/**
 		 * @deprecated Data-property read of shuffle active state (boolean).
 		 * Use `player.shuffleState() === 'on'` in v2.
 		 */
-		if (!('isShuffling' in propTarget)) {
-			Object.defineProperty(propTarget, 'isShuffling', {
-				get: (): boolean => {
-					_warnDeprecated('isShuffling', 'shuffleState() === \'on\'');
-					return player.shuffleState() === 'on';
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('isShuffling');
-		}
+		this._defineGetterShim('isShuffling', (): boolean => {
+			_warnDeprecated('isShuffling', 'shuffleState() === \'on\'');
+			return player.shuffleState() === 'on';
+		});
 
 		/**
 		 * @deprecated Data-property read of player state as a v1 PlayerState enum string.
@@ -1369,95 +1199,60 @@ export class V1MusicCompatPlugin extends Plugin<
 		 * approximated: BUFFERING uses the buffer state, ENDED is not tracked
 		 * separately in v2 and falls through to STOPPED.
 		 */
-		if (!('state' in propTarget)) {
-			Object.defineProperty(propTarget, 'state', {
-				get: (): string => {
-					_warnDeprecated('state', 'playState()');
-					const ps = player.playState();
+		this._defineGetterShim('state', (): string => {
+			_warnDeprecated('state', 'playState()');
+			const ps = player.playState();
 
-					// Map v2 PlayState → v1 PlayerState string values.
-					switch (ps) {
-						case PlayState.PLAYING: return 'PLAYING';
-						case PlayState.PAUSED: return 'PAUSED';
-						case PlayState.STOPPED: return 'STOPPED';
-						case PlayState.LOADING: return 'LOADING';
-						case PlayState.ERROR: return 'ERROR';
-						case PlayState.IDLE:
-						default: return 'IDLE';
-					}
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('state');
-		}
+			// Map v2 PlayState → v1 PlayerState string values.
+			switch (ps) {
+				case PlayState.PLAYING: return 'PLAYING';
+				case PlayState.PAUSED: return 'PAUSED';
+				case PlayState.STOPPED: return 'STOPPED';
+				case PlayState.LOADING: return 'LOADING';
+				case PlayState.ERROR: return 'ERROR';
+				case PlayState.IDLE:
+				default: return 'IDLE';
+			}
+		});
 
 		/**
 		 * @deprecated `fadeDuration` was a protected property on Helpers controlling
 		 * the crossfade ramp duration in milliseconds. v2 configures this at setup
 		 * via `crossfadeDefaults.duration`. Always returns 0 in v2.
 		 */
-		if (!('fadeDuration' in propTarget)) {
-			Object.defineProperty(propTarget, 'fadeDuration', {
-				get: (): number => {
-					_warnRemoved('fadeDuration', 'configure via crossfadeDefaults.duration in setup()');
-					return 0;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('fadeDuration');
-		}
+		this._defineGetterShim('fadeDuration', (): number => {
+			_warnRemoved('fadeDuration', 'configure via crossfadeDefaults.duration in setup()');
+			return 0;
+		});
 
 		/**
 		 * @deprecated `newSourceLoaded` was an internal flag on Helpers. No v2
 		 * equivalent. Always returns false.
 		 */
-		if (!('newSourceLoaded' in propTarget)) {
-			Object.defineProperty(propTarget, 'newSourceLoaded', {
-				get: (): boolean => {
-					_warnRemoved('newSourceLoaded', 'no equivalent in v2; listen to the item event instead');
-					return false;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('newSourceLoaded');
-		}
+		this._defineGetterShim('newSourceLoaded', (): boolean => {
+			_warnRemoved('newSourceLoaded', 'no equivalent in v2; listen to the item event instead');
+			return false;
+		});
 
 		/**
 		 * @deprecated `context` was a public AudioContext property on Helpers.
 		 * Use `player.audioContext()` in v2.
 		 */
-		if (!('context' in propTarget)) {
-			Object.defineProperty(propTarget, 'context', {
-				get: (): AudioContext | undefined => {
-					_warnDeprecated('context', 'audioContext()');
-					return player.audioContext();
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('context');
-		}
+		this._defineGetterShim('context', (): AudioContext | undefined => {
+			_warnDeprecated('context', 'audioContext()');
+			return player.audioContext();
+		});
 
 		/**
 		 * @deprecated `accessToken` was a public getter on Helpers returning the
 		 * raw token string. Use `player.auth()?.bearerToken` in v2.
 		 */
-		if (!('accessToken' in propTarget)) {
-			Object.defineProperty(propTarget, 'accessToken', {
-				get: (): string | undefined => {
-					_warnDeprecated('accessToken', 'auth()?.bearerToken');
-					const authCfg = player.auth();
-					const token = authCfg?.bearerToken;
-					return typeof token === 'string' ? token : undefined;
-				},
-				configurable: true,
-				enumerable: false,
-			});
-			this._patchedMethods.push('accessToken');
-		}
+		this._defineGetterShim('accessToken', (): string | undefined => {
+			_warnDeprecated('accessToken', 'auth()?.bearerToken');
+			const authCfg = player.auth();
+			const token = authCfg?.bearerToken;
+			return typeof token === 'string' ? token : undefined;
+		});
 	}
 }
 
