@@ -88,7 +88,6 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			else {
 				this.element = document.createElement('audio');
 				this.element.preload = 'metadata';
-				this.element.crossOrigin = 'anonymous';
 				this.ownsElement = true;
 				if (container)
 					container.appendChild(this.element);
@@ -442,9 +441,6 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		const el = document.createElement('audio');
 		el.preload = 'auto';
-		// See primary-element createElement above — required for AudioGraph
-		// to read real samples from cross-origin tracks during crossfade.
-		el.crossOrigin = 'anonymous';
 		el.volume = 0;
 		el.style.display = 'none';
 		if (this.container) {
