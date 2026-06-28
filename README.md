@@ -14,15 +14,21 @@ It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.
 npm install @nomercy-entertainment/nomercy-music-player
 ```
 
+If you use HLS streams (`.m3u8`), also install the optional peer dependency:
+
+```
+npm install hls.js
+```
+
 > **Upgrading from v1?** See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list, including renamed methods, changed event payloads, and the `item.path` to `item.url` rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
 
 ## Quick start
 
 ```ts
-import nmMPlayer from '@nomercy-entertainment/nomercy-music-player';
+import { nmMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
 import { AutoAdvancePlugin, MediaSessionPlugin } from '@nomercy-entertainment/nomercy-music-player/plugins';
 
-const player = nmMPlayer('main')
+const player = nmMusicPlayer('main')
   .addPlugin(AutoAdvancePlugin)
   .addPlugin(MediaSessionPlugin)
   .setup({
@@ -48,7 +54,7 @@ player.on('ready', () => {
 
 The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference and the home for everything that used to live in the wiki:
 
-- [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, first track, and the no-bundler CDN embed
+- [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, and first track
 - [Configuration](https://docs.nomercy.tv/nomercy-music-player/configuration), every option and default
 - [API Methods](https://docs.nomercy.tv/nomercy-music-player/api-methods) and [Events](https://docs.nomercy.tv/nomercy-music-player/events)
 - [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference

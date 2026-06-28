@@ -33,8 +33,7 @@
 	"exports": {
 		".": {
 			"types": "./dist/index.d.ts",
-			"import": "./dist/index.js",
-			"browser": "./dist/nomercy-music-player.iife.js"
+			"import": "./dist/index.js"
 		},
 		"./adapters": {
 			"types": "./dist/adapters/index.d.ts",
@@ -132,8 +131,6 @@
 	},
 	"main": "./dist/index.js",
 	"module": "./dist/index.js",
-	"unpkg": "./dist/nomercy-music-player.iife.js",
-	"jsdelivr": "./dist/nomercy-music-player.iife.js",
 	"types": "./dist/index.d.ts",
 	"files": [
 		"CHANGELOG.md",
@@ -159,16 +156,24 @@
 		"test:watch": "vitest",
 		"test:e2e": "npx playwright test",
 		"test:e2e:report": "npx playwright show-report reports/playwright",
-		"prepublishOnly": "npm run build:all"
+		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.5",
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.5"
+	},
+	"peerDependencies": {
 		"hls.js": "^1.6.0"
+	},
+	"peerDependenciesMeta": {
+		"hls.js": {
+			"optional": true
+		}
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.0.0",
 		"@playwright/test": "^1.60.0",
 		"@types/node": "^25.9.0",
+		"@vitest/coverage-v8": "^4.1.9",
 		"@vitest/ui": "^4.1.6",
 		"eslint": "^10.4.0",
 		"happy-dom": "^20.9.0",
