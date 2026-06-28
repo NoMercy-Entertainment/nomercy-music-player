@@ -20,7 +20,12 @@ import {
 	perceptualGain,
 } from '@nomercy-entertainment/nomercy-player-core';
 import HlsDefault from 'hls.js';
-import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from './hls-loader';
+import {
+	attachDomBridgesTo,
+	attachHlsOrFallback,
+	isHls,
+	supportsNativeHls,
+} from './hls-loader';
 
 /** Safari ships the Web Audio API under the vendor-prefixed name. */
 interface WebkitAudioContextGlobal {

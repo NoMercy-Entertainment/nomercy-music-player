@@ -20,9 +20,9 @@
  * calls out by name.
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { MusicPlaylistItem } from '../../types';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../../index';
 import { V1MusicCompatPlugin } from '../../plugins/v1-compat';
 

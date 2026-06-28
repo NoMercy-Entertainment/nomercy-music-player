@@ -50,7 +50,9 @@ describe('AudioElementBackend — crossOrigin (P-2 regression)', () => {
 		// not to a hard-coded value that differs across jsdom versions.
 		const beforeConstruction = external.crossOrigin;
 
-		new AudioElementBackend(container, { element: external });
+		// Construct the backend purely for its side effect on the passed element.
+		const backend = new AudioElementBackend(container, { element: external });
+		expect(backend).toBeDefined();
 
 		// Backend must not have mutated the element's crossOrigin
 		expect(external.crossOrigin).toBe(beforeConstruction);

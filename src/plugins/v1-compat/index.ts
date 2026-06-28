@@ -312,7 +312,14 @@ export class V1MusicCompatPlugin extends Plugin<
 			return;
 		}
 
-		const { play: onPlay, pause: onPause, stop: onStop, previous: onPrevious, next: onNext, seek: onSeek } = actions;
+		const {
+			play: onPlay,
+			pause: onPause,
+			stop: onStop,
+			previous: onPrevious,
+			next: onNext,
+			seek: onSeek,
+		} = actions;
 
 		const noopPairs: Array<[(() => void) | undefined, string]> = [
 			[onPlay, 'play'],
@@ -322,11 +329,15 @@ export class V1MusicCompatPlugin extends Plugin<
 			[onNext, 'next'],
 		];
 		for (const [cb, v2Event] of noopPairs) {
-			if (!cb) continue;
+			if (!cb)
+				continue;
 			const fn = cb;
 			const listener = (): void => fn();
 			this.player.on(v2Event as never, listener as never);
-			this._eventBridges.push({ v2Event, listener: listener as (d: unknown) => void });
+			this._eventBridges.push({
+				v2Event,
+				listener: listener as (d: unknown) => void,
+			});
 		}
 
 		if (onSeek) {
@@ -427,7 +438,8 @@ export class V1MusicCompatPlugin extends Plugin<
 
 	private _defineGetterShim(name: string, get: () => unknown): void {
 		const target = this.player as unknown as Record<string, unknown>;
-		if (name in target) return;
+		if (name in target)
+			return;
 		Object.defineProperty(target, name, {
 			get,
 			configurable: true,
@@ -438,7 +450,8 @@ export class V1MusicCompatPlugin extends Plugin<
 
 	private _defineGetSetShim(name: string, get: () => unknown, set: (v: unknown) => void): void {
 		const target = this.player as unknown as Record<string, unknown>;
-		if (name in target) return;
+		if (name in target)
+			return;
 		Object.defineProperty(target, name, {
 			get,
 			set,
@@ -490,7 +503,6 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnDeprecated('unmute()', 'unmute()');
 			player.unmute();
 		});
-
 	}
 
 	private _attachTimeShims(): void {
@@ -581,7 +593,6 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnRemoved('getAudioElement()', 'the audio element is owned by the audio backend in v2 and is not exposed.');
 			return undefined;
 		});
-
 	}
 
 	private _attachQueueShims(): void {
@@ -903,7 +914,6 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnDeprecated('getCurrentSong()', 'item()');
 			return player.item();
 		});
-
 	}
 
 	private _attachEqStubs(): void {
@@ -919,17 +929,50 @@ export class V1MusicCompatPlugin extends Plugin<
 		// continue functioning without crashing.
 
 		const defaultBands: EQBand[] = [
-			{ frequency: 'Pre', gain: 0 },
-			{ frequency: 70, gain: 0 },
-			{ frequency: 180, gain: 0 },
-			{ frequency: 320, gain: 0 },
-			{ frequency: 600, gain: 0 },
-			{ frequency: 1000, gain: 0 },
-			{ frequency: 3000, gain: 0 },
-			{ frequency: 6000, gain: 0 },
-			{ frequency: 12000, gain: 0 },
-			{ frequency: 14000, gain: 0 },
-			{ frequency: 16000, gain: 0 },
+			{
+				frequency: 'Pre',
+				gain: 0,
+			},
+			{
+				frequency: 70,
+				gain: 0,
+			},
+			{
+				frequency: 180,
+				gain: 0,
+			},
+			{
+				frequency: 320,
+				gain: 0,
+			},
+			{
+				frequency: 600,
+				gain: 0,
+			},
+			{
+				frequency: 1000,
+				gain: 0,
+			},
+			{
+				frequency: 3000,
+				gain: 0,
+			},
+			{
+				frequency: 6000,
+				gain: 0,
+			},
+			{
+				frequency: 12000,
+				gain: 0,
+			},
+			{
+				frequency: 14000,
+				gain: 0,
+			},
+			{
+				frequency: 16000,
+				gain: 0,
+			},
 		];
 
 		/**
@@ -970,9 +1013,24 @@ export class V1MusicCompatPlugin extends Plugin<
 		);
 
 		const defaultSliderValues: EQSliderValues = {
-			pan: { min: -1, max: 1, step: 0.01, default: 0 },
-			pre: { min: -1, max: 3, step: 1, default: 0 },
-			band: { min: -12, max: 12, step: 0.01, default: 0 },
+			pan: {
+				min: -1,
+				max: 1,
+				step: 0.01,
+				default: 0,
+			},
+			pre: {
+				min: -1,
+				max: 3,
+				step: 1,
+				default: 0,
+			},
+			band: {
+				min: -12,
+				max: 12,
+				step: 0.01,
+				default: 0,
+			},
 		};
 
 		/**
@@ -1088,7 +1146,6 @@ export class V1MusicCompatPlugin extends Plugin<
 			_warnDeprecated('getPlaybackRate()', 'playbackRate()');
 			return player.playbackRate();
 		});
-
 	}
 
 	private _attachStatePropertyShims(): void {

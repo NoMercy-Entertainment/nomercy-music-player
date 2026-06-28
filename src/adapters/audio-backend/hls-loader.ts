@@ -76,7 +76,7 @@ export function attachHlsOrFallback(
 	return hls;
 }
 
-export type DomBridgeHandler = { event: string; handler: EventListener };
+export interface DomBridgeHandler { event: string; handler: EventListener }
 
 /**
  * Attaches the standard set of DOM → backend event bridges and state-mutation
@@ -98,7 +98,10 @@ export function attachDomBridgesTo(
 
 	const track = (domEvent: string, handler: EventListener): void => {
 		el.addEventListener(domEvent, handler);
-		handlers.push({ event: domEvent, handler });
+		handlers.push({
+			event: domEvent,
+			handler,
+		});
 	};
 
 	track('loadstart', ev => emit('loadstart', ev));

@@ -20,7 +20,12 @@ import {
 	perceptualGain,
 } from '@nomercy-entertainment/nomercy-player-core';
 import Hls from 'hls.js';
-import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from './hls-loader';
+import {
+	attachDomBridgesTo,
+	attachHlsOrFallback,
+	isHls,
+	supportsNativeHls,
+} from './hls-loader';
 
 /**
  * HTML5 audio backend (fallback). Uses an HTMLAudioElement for transport. Lazily creates a

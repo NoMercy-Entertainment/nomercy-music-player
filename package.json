@@ -158,9 +158,6 @@
 		"test:e2e:report": "npx playwright show-report reports/playwright",
 		"prepublishOnly": "npm run build"
 	},
-	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.6"
-	},
 	"peerDependencies": {
 		"hls.js": "^1.6.0"
 	},
@@ -168,6 +165,9 @@
 		"hls.js": {
 			"optional": true
 		}
+	},
+	"dependencies": {
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.6"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.0.0",

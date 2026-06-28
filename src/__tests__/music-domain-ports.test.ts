@@ -271,7 +271,7 @@ describe('MediaSessionArtProvider.publish()', () => {
 
 		// MediaMetadata is not available in happy-dom — stub it with a
 		// real class so `new MediaMetadata(...)` works as a constructor.
-		type MediaMetadataInit = { title?: string; artist?: string; album?: string; artwork?: object[] };
+		interface MediaMetadataInit { title?: string; artist?: string; album?: string; artwork?: object[] }
 		const OriginalMediaMetadata = (globalThis as any).MediaMetadata as unknown;
 		class MediaMetadataStub {
 			title: string;

@@ -36,24 +36,23 @@
  *    via shim property)
  */
 
-import type { IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
+import type { BackendState, IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
 import type { MusicPlaylistItem } from '../types';
 import { perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from '../adapters/audio-backend/hls-loader';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
-import type { BackendState } from '../adapters/audio-backend/IAudioBackend';
-import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from '../adapters/audio-backend/hls-loader';
-import { SmartShuffleGenerator } from '../adapters/playlist-generator/smart-shuffle';
-import { LinearPlaylistGenerator } from '../adapters/playlist-generator/linear';
-import { MusicPreloadStrategy } from '../player/preload';
 import { MediaSessionArtProvider } from '../adapters/now-playing-art/media-session';
-import { resolveNameList } from '../utils/resolve-name-list';
+import { LinearPlaylistGenerator } from '../adapters/playlist-generator/linear';
+import { SmartShuffleGenerator } from '../adapters/playlist-generator/smart-shuffle';
 import { NMMusicPlayer } from '../index';
+import { MusicPreloadStrategy } from '../player/preload';
 import { AutoAdvancePlugin } from '../plugins/auto-advance';
-import { LyricsPlugin } from '../plugins/lyrics';
 import { KeyHandlerPlugin } from '../plugins/key-handler';
+import { LyricsPlugin } from '../plugins/lyrics';
 import { V1MusicCompatPlugin } from '../plugins/v1-compat';
+import { resolveNameList } from '../utils/resolve-name-list';
 
 // ── AudioContext stub shared across suites ────────────────────────────────────
 
@@ -122,24 +121,11 @@ function makeContainer(): HTMLDivElement {
 	return div;
 }
 
-function stubPlay(el: HTMLAudioElement): void {
-	Object.defineProperty(el, 'play', {
-		value: vi.fn(() => Promise.resolve()),
-		writable: true,
-		configurable: true,
-	});
-}
-
 function fireMetadata(container: HTMLElement): void {
 	const audios = container.querySelectorAll('audio');
 	const target = audios[audios.length - 1];
-	if (target) target.dispatchEvent(new Event('loadedmetadata'));
-}
-
-function fireCanPlay(container: HTMLElement): void {
-	const audios = container.querySelectorAll('audio');
-	const target = audios[audios.length - 1];
-	if (target) target.dispatchEvent(new Event('canplay'));
+	if (target)
+		target.dispatchEvent(new Event('loadedmetadata'));
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -156,7 +142,8 @@ function shim(player: NMMusicPlayer, name: string): (...args: unknown[]) => unkn
 function shimOn(player: NMMusicPlayer, event: string, fn: (data: unknown) => void): void {
 	const target = player as unknown as Record<string, unknown>;
 	const onFn = target['on'];
-	if (typeof onFn !== 'function') throw new TypeError('on() not found');
+	if (typeof onFn !== 'function')
+		throw new TypeError('on() not found');
 	(onFn as (ev: string, cb: (d: unknown) => void) => void)(event, fn);
 }
 
@@ -607,7 +594,8 @@ describe('AudioElementBackend — additional coverage', () => {
 
 			const audios = container.querySelectorAll('audio');
 			const secondary = audios[audios.length - 1];
-			if (secondary) secondary.dispatchEvent(new Event('error'));
+			if (secondary)
+				secondary.dispatchEvent(new Event('error'));
 
 			await expect(loadPromise).rejects.toBeDefined();
 		});
@@ -629,7 +617,8 @@ describe('AudioElementBackend — additional coverage', () => {
 			const loadPromise = backend.loadSecondary('http://test/track.mp3');
 			const audios = container.querySelectorAll('audio');
 			const el = audios[audios.length - 1];
-			if (el) el.dispatchEvent(new Event('loadedmetadata'));
+			if (el)
+				el.dispatchEvent(new Event('loadedmetadata'));
 			await loadPromise;
 
 			const raw = backend as unknown as { _secondary?: HTMLAudioElement };
@@ -647,7 +636,8 @@ describe('AudioElementBackend — additional coverage', () => {
 			const loadPromise = backend.loadSecondary('http://test/track.mp3');
 			const audios = container.querySelectorAll('audio');
 			const el = audios[audios.length - 1];
-			if (el) el.dispatchEvent(new Event('loadedmetadata'));
+			if (el)
+				el.dispatchEvent(new Event('loadedmetadata'));
 			await loadPromise;
 
 			const raw = backend as unknown as { _secondary?: HTMLAudioElement };
@@ -672,7 +662,8 @@ describe('AudioElementBackend — additional coverage', () => {
 			const loadPromise = backend.loadSecondary('http://test/track.mp3');
 			const audios = container.querySelectorAll('audio');
 			const el = audios[audios.length - 1];
-			if (el) el.dispatchEvent(new Event('loadedmetadata'));
+			if (el)
+				el.dispatchEvent(new Event('loadedmetadata'));
 			await loadPromise;
 
 			backend.secondaryGain(0.4);
@@ -940,11 +931,6 @@ describe('hls-loader utilities', () => {
 				startLoad = startLoad;
 			}
 
-			const FakeHls = {
-				isSupported: () => true,
-				new: (): FakeHlsInstance => new FakeHlsInstance(),
-			};
-
 			function FakeHlsCtor(this: FakeHlsInstance): void {
 				Object.assign(this, new FakeHlsInstance());
 			}
@@ -1054,12 +1040,14 @@ describe('SmartShuffleGenerator', () => {
 	type TaggedTrack = MusicPlaylistItem & { genre?: string | string[]; decade?: number };
 
 	const tracks = (overrides: TaggedTrack[] = []): TaggedTrack[] =>
-		overrides.length > 0 ? overrides : [
-			{ id: 'a', name: 'A', genre: 'rock', decade: 90 },
-			{ id: 'b', name: 'B', genre: 'pop', decade: 80 },
-			{ id: 'c', name: 'C', genre: 'rock', decade: 90 },
-			{ id: 'd', name: 'D', genre: 'jazz', decade: 70 },
-		];
+		overrides.length > 0
+			? overrides
+			: [
+					{ id: 'a', name: 'A', genre: 'rock', decade: 90 },
+					{ id: 'b', name: 'B', genre: 'pop', decade: 80 },
+					{ id: 'c', name: 'C', genre: 'rock', decade: 90 },
+					{ id: 'd', name: 'D', genre: 'jazz', decade: 70 },
+				];
 
 	it('next() returns an index different from currentIndex', () => {
 		const gen = new SmartShuffleGenerator();
@@ -1108,7 +1096,6 @@ describe('SmartShuffleGenerator', () => {
 	});
 
 	it('penalizes same-genre items (does not always pick same genre)', () => {
-		const gen = new SmartShuffleGenerator();
 		const list: TaggedTrack[] = [
 			{ id: 'a', name: 'A', genre: 'rock', decade: 90 },
 			{ id: 'b', name: 'B', genre: 'rock', decade: 90 },
@@ -1119,7 +1106,8 @@ describe('SmartShuffleGenerator', () => {
 		for (let i = 0; i < 50; i++) {
 			const newGen = new SmartShuffleGenerator();
 			const idx = newGen.next(list, 0);
-			if (idx !== undefined) results.add(idx);
+			if (idx !== undefined)
+				results.add(idx);
 		}
 		expect(results.size).toBeGreaterThan(0);
 	});
@@ -2195,7 +2183,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		const p = setup();
 		p.addPlugin(V1MusicCompatPlugin, {
 			actions: {
-				seek: (pos) => seekValues.push(pos),
+				seek: pos => seekValues.push(pos),
 			},
 		});
 		await p.ready();
@@ -2290,7 +2278,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		await p.ready();
 
 		const received: unknown[] = [];
-		shimOn(p, 'customEvent', (d) => received.push(d));
+		shimOn(p, 'customEvent', d => received.push(d));
 
 		p.emit('customEvent' as never, { value: 99 } as never);
 		expect(received).toHaveLength(1);
@@ -2305,7 +2293,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		await p.ready();
 
 		const received: unknown[] = [];
-		shimOn(p, 'crossfadeStart', (d) => received.push(d));
+		shimOn(p, 'crossfadeStart', d => received.push(d));
 
 		p.emit('crossfadeStart' as never, { from: 'trackA', to: 'trackB', duration: 5000 } as never);
 		expect(received).toHaveLength(1);
@@ -2324,7 +2312,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		await p.ready();
 
 		const received: unknown[] = [];
-		shimOn(p, 'crossfadeComplete', (d) => received.push(d));
+		shimOn(p, 'crossfadeComplete', d => received.push(d));
 
 		p.emit('crossfadeComplete' as never, { track: { id: 'x', name: 'X' } } as never);
 		expect(received).toHaveLength(1);
@@ -2340,7 +2328,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		await p.ready();
 
 		const received: unknown[] = [];
-		shimOn(p, 'fatalError', (d) => received.push(d));
+		shimOn(p, 'fatalError', d => received.push(d));
 
 		p.emit('error' as never, { code: 'net:fail' } as never);
 		expect(received).toHaveLength(1);
@@ -2355,7 +2343,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		await p.ready();
 
 		const received: unknown[] = [];
-		shimOn(p, 'setCurrentAudio', (d) => received.push(d));
+		shimOn(p, 'setCurrentAudio', d => received.push(d));
 
 		p.emit('ready' as never, undefined as never);
 		expect(received).toHaveLength(1);
@@ -2372,7 +2360,7 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		p.emit('duration' as never, { duration: 240 } as never);
 
 		const received: unknown[] = [];
-		shimOn(p, 'time', (d) => received.push(d));
+		shimOn(p, 'time', d => received.push(d));
 		p.emit('time' as never, { time: 60 } as never);
 
 		const payload = received[0] as Record<string, number>;

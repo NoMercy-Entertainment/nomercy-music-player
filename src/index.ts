@@ -116,11 +116,11 @@ const _instances = new Map<string, NMMusicPlayer<any>>();
  * inside `_wireBackend`; all mutations go through the declared helpers or
  * direct assignment on the typed surface.
  */
-type WireInternals = {
+interface WireInternals {
 	_phase: PlayerPhase;
 	_playState: PlayStateToken;
 	_transitionPhase: (next: PlayerPhase) => void;
-};
+}
 
 /**
  * Headless music player. Plugin-driven, event-driven, no UI in core.
