@@ -12,6 +12,11 @@
  * behaviour. Lyrics fetching itself is exercised via the kit's cue helpers
  * and does not require a real network round-trip — when no `lyricsUrl` is
  * present the plugin is a no-op.
+ *
+ * Slice-09 additions:
+ *  - LyricsPlugin line-entry / line-exit plugin events via CueTracker
+ *  - LyricsPlugin.current() returns the active cue payload
+ *  - AutoAdvancePlugin crossfade:true calls crossfadeTo() on trackEndingSoon
  */
 
 import type { CueList, ICueParser } from '@nomercy-entertainment/nomercy-player-core';
@@ -19,8 +24,8 @@ import type { MusicPlaylistItem } from '../../types';
 import { createCueList } from '@nomercy-entertainment/nomercy-player-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NMMusicPlayer } from '../../index';
-import { autoAdvancePlugin, AutoAdvancePlugin } from '../../plugins/auto-advance';
-import { lyricsPlugin, LyricsPlugin } from '../../plugins/lyrics';
+import { AutoAdvancePlugin, autoAdvancePlugin } from '../../plugins/auto-advance';
+import { LyricsPlugin, lyricsPlugin } from '../../plugins/lyrics';
 
 function track(id: string, extra?: Partial<MusicPlaylistItem>): MusicPlaylistItem {
 	return {
@@ -28,6 +33,36 @@ function track(id: string, extra?: Partial<MusicPlaylistItem>): MusicPlaylistIte
 		name: `track ${id}`,
 		...extra,
 	};
+}
+
+/** Two-cue LRC text: cue 0 spans [1,2), cue 1 spans [2,3). */
+const TWO_CUE_LRC = '[00:01.00]Hello\n[00:02.00]World\n';
+
+/**
+ * Minimal stub LRC parser. Parses `[MM:SS.cc]text` lines into cues where each
+ * cue occupies a 1-second window.  Accepts any URL ending in `.lrc`.
+ */
+const stubLrcParser: ICueParser<{ text: string }> = {
+	id: 'stub-lrc',
+	canParse: (url: string) => url.endsWith('.lrc'),
+	parse: (raw: string): CueList<{ text: string }> => {
+		const cues = raw
+			.trim()
+			.split('\n')
+			.map((line, index) => ({
+				id: String(index),
+				start: index + 1,
+				end: index + 2,
+				payload: { text: line.replace(/^\[.*?\]/u, '').trim() },
+			}))
+			.filter(cue => cue.payload.text.length > 0);
+		return createCueList(cues);
+	},
+};
+
+/** Build a player with the stub LRC parser pre-registered. */
+function setupWithLrcParser(): NMMusicPlayer {
+	return new NMMusicPlayer('test').setup({ cueParsers: [stubLrcParser] });
 }
 
 describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
@@ -59,31 +94,11 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 		});
 
 		it('emits plugin:lyrics:loaded with cue count after fetchLyrics() attaches a cue list', async () => {
-			const lrcText = '[00:01.00]Hello\n[00:02.00]World\n';
-
-			// Stub fetch so the kit auth pipeline returns the LRC text.
 			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-				new Response(lrcText, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
+				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
 			);
 
-			// Register a minimal cue parser that accepts *.lrc URLs.
-			const stubParser: ICueParser<{ text: string }> = {
-				id: 'stub-lrc',
-				canParse: (url: string) => url.endsWith('.lrc'),
-				parse: (raw: string): CueList<{ text: string }> => {
-					const cues = raw.trim().split('\n')
-						.map((line, index) => ({
-							id: String(index),
-							start: index,
-							end: index + 1,
-							payload: { text: line.replace(/^\[.*?\]/u, '').trim() },
-						}))
-						.filter(cue => cue.payload.text.length > 0);
-					return createCueList(cues);
-				},
-			};
-
-			const p = new NMMusicPlayer('test').setup({ cueParsers: [stubParser] });
+			const p = setupWithLrcParser();
 			p.addPlugin(lyricsPlugin);
 			await p.ready();
 
@@ -95,6 +110,81 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 
 			expect(loadedPayloads).toHaveLength(1);
 			expect(loadedPayloads[0]!.count).toBe(2);
+
+			fetchSpy.mockRestore();
+		});
+
+		it('emits plugin:lyrics:lineEnter when a cue becomes active', async () => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
+			);
+
+			const p = setupWithLrcParser();
+			p.addPlugin(lyricsPlugin);
+			await p.ready();
+
+			const lineEnterPayloads: unknown[] = [];
+			p.on('plugin:lyrics:lineEnter' as any, (data: unknown) => { lineEnterPayloads.push(data); });
+
+			const instance = p.getPlugin(LyricsPlugin)!;
+			await instance.fetchLyrics('https://example.com/track.lrc');
+
+			// Cue 0 spans [1, 2). Advance past the start.
+			p.emit('time' as any, { time: 1.5 } as any);
+
+			expect(lineEnterPayloads).toHaveLength(1);
+			expect((lineEnterPayloads[0] as { text: string }).text).toBe('Hello');
+
+			fetchSpy.mockRestore();
+		});
+
+		it('emits plugin:lyrics:lineExit when a cue becomes inactive', async () => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
+			);
+
+			const p = setupWithLrcParser();
+			p.addPlugin(lyricsPlugin);
+			await p.ready();
+
+			const lineExitPayloads: unknown[] = [];
+			p.on('plugin:lyrics:lineExit' as any, (data: unknown) => { lineExitPayloads.push(data); });
+
+			const instance = p.getPlugin(LyricsPlugin)!;
+			await instance.fetchLyrics('https://example.com/track.lrc');
+
+			// Enter cue 0 at t=1.5, then exit by advancing past end (t=2).
+			p.emit('time' as any, { time: 1.5 } as any);
+			p.emit('time' as any, { time: 2.5 } as any);
+
+			expect(lineExitPayloads).toHaveLength(1);
+			expect((lineExitPayloads[0] as { text: string }).text).toBe('Hello');
+
+			fetchSpy.mockRestore();
+		});
+
+		it('current() returns the active cue payload during the cue window', async () => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
+			);
+
+			const p = setupWithLrcParser();
+			p.addPlugin(lyricsPlugin);
+			await p.ready();
+
+			const instance = p.getPlugin(LyricsPlugin)!;
+			await instance.fetchLyrics('https://example.com/track.lrc');
+
+			expect(instance.current()).toBeUndefined();
+
+			// Advance into cue 0 window [1, 2).
+			p.emit('time' as any, { time: 1.5 } as any);
+			expect(instance.current()?.text).toBe('Hello');
+
+			// Advance past both cues (cue 1 ends at t=3) into a gap.
+			p.emit('time' as any, { time: 3.5 } as any);
+			// current() returns undefined when no cue is active.
+			expect(instance.current()).toBeUndefined();
 
 			fetchSpy.mockRestore();
 		});
@@ -157,6 +247,30 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(nextFired).toBe(true);
+		});
+
+		it('crossfade:true calls crossfadeTo() with next track on trackEndingSoon', async () => {
+			const p = setup();
+			p.addPlugin(autoAdvancePlugin);
+			await p.ready();
+
+			const trackA = track('a');
+			const trackB = track('b');
+			p.queue([trackA, trackB]);
+
+			const instance = p.getPlugin(AutoAdvancePlugin)!;
+			instance.options({ crossfade: true, crossfadeDuration: 3 });
+
+			// crossfadeTo is called by onTrackEndingSoon, not onEnded.
+			const crossfadeSpy = vi.spyOn(p, 'crossfadeTo').mockResolvedValue(undefined);
+
+			p.emit('trackEndingSoon' as any, undefined as any);
+			await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+			expect(crossfadeSpy).toHaveBeenCalledOnce();
+			// First arg is the next track (trackB) — the second arg is options.
+			const [calledWith] = crossfadeSpy.mock.calls[0]!;
+			expect((calledWith as MusicPlaylistItem).id).toBe(trackB.id);
 		});
 	});
 });
