@@ -19,7 +19,6 @@ import {
 	EventEmitter,
 	perceptualGain,
 } from '@nomercy-entertainment/nomercy-player-core';
-import HlsDefault from 'hls.js';
 import {
 	attachDomBridgesTo,
 	attachHlsOrFallback,
@@ -208,6 +207,7 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		const useHlsJs = isHls(url) && !supportsNativeHls(this.element);
 
 		const headerValue = await this._authHeaderProvider?.();
+		const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 		await new Promise<void>((resolve, reject) => {
 			const onLoaded = (): void => { cleanup(); resolve(); };
@@ -222,9 +222,9 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			this.element.addEventListener('loadedmetadata', onLoaded, { once: true });
 			this.element.addEventListener('error', onError, { once: true });
 
-			if (useHlsJs) {
+			if (useHlsJs && hlsMod) {
 				this.hlsInstance = attachHlsOrFallback(
-					HlsDefault,
+					hlsMod.default,
 					this.element,
 					url,
 					headerValue,
@@ -627,10 +627,11 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 					// authenticated NoMercy servers serve the secondary without a 401.
 					const headerValue = await this._authHeaderProvider?.();
 					const useHlsJs = isHls(url) && !supportsNativeHls(el);
+					const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
-					if (useHlsJs) {
+					if (useHlsJs && hlsMod) {
 						attachHlsOrFallback(
-							HlsDefault,
+							hlsMod.default,
 							el,
 							url,
 							headerValue,

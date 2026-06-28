@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.0.0-rc.8",
+	"version": "2.0.0-rc.9",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
 		"name": "NoMercy Entertainment",
@@ -158,16 +158,8 @@
 		"test:e2e:report": "npx playwright show-report reports/playwright",
 		"prepublishOnly": "npm run build"
 	},
-	"peerDependencies": {
-		"hls.js": "^1.6.0"
-	},
-	"peerDependenciesMeta": {
-		"hls.js": {
-			"optional": true
-		}
-	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.8"
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.9"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.0.0",

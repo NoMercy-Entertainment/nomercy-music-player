@@ -19,7 +19,6 @@ import {
 	EventEmitter,
 	perceptualGain,
 } from '@nomercy-entertainment/nomercy-player-core';
-import Hls from 'hls.js';
 import {
 	attachDomBridgesTo,
 	attachHlsOrFallback,
@@ -135,6 +134,7 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		// Resolve auth header before entering the Promise so the executor stays synchronous.
 		const headerValue = await this._authHeaderProvider?.();
+		const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 		await new Promise<void>((resolve, reject) => {
 			const onLoaded = (): void => {
@@ -153,9 +153,9 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			this.element.addEventListener('loadedmetadata', onLoaded, { once: true });
 			this.element.addEventListener('error', onError, { once: true });
 
-			if (useHlsJs) {
+			if (useHlsJs && hlsMod) {
 				this.hlsInstance = attachHlsOrFallback(
-					Hls,
+					hlsMod.default,
 					this.element,
 					url,
 					headerValue,

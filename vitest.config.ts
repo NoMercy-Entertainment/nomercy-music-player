@@ -12,6 +12,11 @@ import { nomercyTranslationsPlugin } from '@nomercy-entertainment/nomercy-player
 import { defineConfig } from 'vitest/config';
 
 const coreRoot = fileURLToPath(new URL('../nomercy-player-core/src', import.meta.url));
+// hls.js is owned by nomercy-player-core (resolved transitively at runtime), so
+// it is not in this package's node_modules. Alias it to a local stub so the
+// dynamic `import('hls.js')` in the audio backends resolves under vitest. Tests
+// that need real HLS behaviour mock it inline with vi.mock('hls.js', ...).
+const hlsMock = fileURLToPath(new URL('./src/__tests__/__mocks__/hls.js.ts', import.meta.url));
 // Monorepo: alias the core to its live TypeScript source so tests pick up unbuilt
 // changes. Standalone / CI: no sibling core checkout, so resolve the core from the
 // installed @nomercy-entertainment/nomercy-player-core package via node_modules.
@@ -22,6 +27,10 @@ export default defineConfig({
 	resolve: {
 		alias: useCoreSource
 			? [
+					{
+						find: 'hls.js',
+						replacement: hlsMock,
+					},
 					{
 						find: '@nomercy-entertainment/nomercy-player-core/testing',
 						replacement: `${coreRoot}/testing/index.ts`,
@@ -85,7 +94,12 @@ export default defineConfig({
 						replacement: `${coreRoot}/index.ts`,
 					},
 				]
-			: [],
+			: [
+					{
+						find: 'hls.js',
+						replacement: hlsMock,
+					},
+				],
 	},
 	test: {
 		globals: true,
