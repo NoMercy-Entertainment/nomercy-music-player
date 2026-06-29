@@ -6,16 +6,26 @@ Full documentation: https://docs.nomercy.tv/nomercy-music-player/
 
 # nomercy-music-player
 
-The headless audio engine behind music on NoMercy TV. It is built around the hard part of a music player, the hand-off between two tracks, and hands you plain events and methods so you wire your own interface.
+The headless audio engine behind music on NoMercy TV.
 
-- Sample-accurate crossfade on the Web Audio backend, or a gapless straight-into-the-next transition
+It nails the hard part of a music player: the hand-off between two tracks.
+
+You get plain events and methods, and you wire your own interface.
+
+- Sample-accurate crossfade, or a gapless transition straight into the next track
 - A full equalizer chain and synced lyrics
-- Queue and backlog control, repeat and shuffle, and a typed event bus
-- `MediaSessionPlugin` for lock-screen and notification controls, plus an auto-advance plugin
+- Queue and backlog control, repeat and shuffle, a typed event bus
+- Lock-screen and notification controls, plus auto-advance
 
-**You stay in charge.** No UI is bundled and nothing is forced on you. Crossfade and gapless playback are built into the engine and called when you want them; lyrics, the equalizer, media-session controls, auto-advance, and key handling are plugins you opt into with `addPlugin`. Through the shared [player core](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core) you can also swap any cross-cutting behavior (storage, the URL resolver, the shuffle strategy, the logger, and more) by passing your own implementation to `setup()`, no subclassing.
+**You stay in charge.**
 
-It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), the shared engine that carries the queue, auth, plugin system, i18n, and storage.
+No UI is bundled. Nothing is forced on you.
+
+Crossfade and gapless playback are built in, called when you want them. Everything else (lyrics, the equalizer, media controls, auto-advance, key handling) is a plugin you opt into with `addPlugin`.
+
+You can also swap any built-in behavior. Pass your own storage, URL resolver, shuffle strategy, or logger to `setup()`. No subclassing.
+
+Built on [`nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), the shared engine for the queue, auth, plugins, i18n, and storage.
 
 ```
 npm install @nomercy-entertainment/nomercy-music-player
