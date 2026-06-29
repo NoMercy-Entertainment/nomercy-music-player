@@ -13,6 +13,8 @@ The headless audio engine behind music on NoMercy TV. It is built around the har
 - Queue and backlog control, repeat and shuffle, and a typed event bus
 - `MediaSessionPlugin` for lock-screen and notification controls, plus an auto-advance plugin
 
+**You stay in charge.** No UI is bundled and nothing is forced on you. Crossfade and gapless playback are built into the engine and called when you want them; lyrics, the equalizer, media-session controls, auto-advance, and key handling are plugins you opt into with `addPlugin`. Through the shared [player core](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core) you can also swap any cross-cutting behavior (storage, the URL resolver, the shuffle strategy, the logger, and more) by passing your own implementation to `setup()`, no subclassing.
+
 It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), the shared engine that carries the queue, auth, plugin system, i18n, and storage.
 
 ```
