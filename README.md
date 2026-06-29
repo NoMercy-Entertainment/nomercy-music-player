@@ -14,11 +14,7 @@ It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.
 npm install @nomercy-entertainment/nomercy-music-player
 ```
 
-If you use HLS streams (`.m3u8`), also install the optional peer dependency:
-
-```
-npm install hls.js
-```
+HLS support is built in. `hls.js` ships with the player core, so `.m3u8` streams work out of the box with nothing extra to install.
 
 > **Upgrading from v1?** See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list, including renamed methods, changed event payloads, and the `item.path` to `item.url` rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
 
