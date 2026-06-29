@@ -28,6 +28,26 @@ Two members have no runtime shim:
 - The `PlayerState` enum is now `PlayState`. Import `PlayState` and map values
   (`BUFFERING`/`ENDED` are not part of `PlayState`).
 
+### Known compat-shim gaps
+
+The shim restores the v1 transport, volume, queue, current-song, repeat/shuffle,
+crossfade, and auth methods, and the v1 event names. For a player that drives
+playback and reads queue state that is the whole migration. A few v1 surfaces
+moved to dedicated plugins in v2, so the shim can only stub them. Check these
+against your call sites before assuming "add the plugin and done". v1 `on('queue')`
+and `on('backlog')` listeners are safe: they fire on every real mutation, not just
+once at startup.
+
+| v1 surface | What the shim does | What to change |
+| --- | --- | --- |
+| `equalizerBands`, `equalizerPresets`, `equalizerSliderValues`, `equalizerPanning` | Returns the v1 default shapes, not live state. Writes do nothing. | Read and set bands through `getPlugin(EqualizerPlugin)`; set panning through `getPlugin(MixerPlugin)`. |
+| `setPreGain()`, `setPanner()`, `setFilter()`, `loadEqualizerSettings()`, `saveEqualizerSettings()` | Logs a deprecation and no-ops. | Use `EqualizerPlugin` and `MixerPlugin` directly. |
+| `fadeVolume(level)` | Sets the volume in one step. The v1 ramp is gone. | Use crossfade transitions for ramps, or ramp in your own UI. |
+| `isSeeking` | Always `false`. v2 has no distinct seeking phase. | Drive seek-in-progress state from your own UI gesture. |
+| `_audioElement1` / `_audioElement2` (and `.motion`) | Returns an inert stub. No visualizer access. | Read frequency data from `SpectrumPlugin` or the `AudioContext`. |
+| `getAudioElement()` | Returns `undefined`. v2 does not expose the element. | Use the plugin surfaces above. |
+| `siteTitle` / `setSiteTitle()` | Stored but does not touch `document.title`. | Set `document.title` yourself, or use `MediaSessionPlugin`. |
+
 ## beta.0 → beta.1 breaking change
 
 `currentSubtitle()`, `currentAudioTrack()`, and `currentQuality()` now return

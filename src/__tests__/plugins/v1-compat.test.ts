@@ -520,7 +520,7 @@ describe('V1MusicCompatPlugin', () => {
 			expect(warnsFor(`on('pause') is delivered with its v1 payload shape`)).toBe(1);
 
 			shimOn(player, 'queue', () => undefined);
-			expect(warnsFor(`DEPRECATED "on('queue')" — use "on('ready')"`)).toBe(1);
+			expect(warnsFor(`on('queue') is delivered with its v1 payload shape`)).toBe(1);
 
 			const readyBefore = warnsFor(`on('ready')`);
 			shimOn(player, 'ready', () => undefined);
@@ -850,6 +850,119 @@ describe('V1MusicCompatPlugin', () => {
 			const spy = vi.spyOn(player, 'playbackRate');
 			shim(player, 'getPlaybackRate')();
 			expect(spy).toHaveBeenCalled();
+			player.dispose();
+		});
+	});
+
+	// ── (f) Queue and backlog mutation event bridges ─────────────────────────
+
+	describe('(f) v1 queue/backlog event bridges fire on actual mutations', () => {
+		it('on("queue", fn) fires with items array when queue is replaced via queue(items)', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'queue', (data) => { received.push(data); });
+
+			const tracks = [
+				{ id: 'q1', name: 'Track 1' },
+				{ id: 'q2', name: 'Track 2' },
+			];
+			player.queue(tracks);
+
+			expect(received).toHaveLength(1);
+			expect(Array.isArray(received[0])).toBe(true);
+			expect((received[0] as unknown[]).length).toBe(2);
+			player.dispose();
+		});
+
+		it('on("queue", fn) fires when queueAppend adds an item', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			player.queue([{ id: 'q1', name: 'Track 1' }]);
+
+			const received: unknown[] = [];
+			shimOn(player, 'queue', (data) => { received.push(data); });
+
+			player.queueAppend({ id: 'q2', name: 'Track 2' });
+
+			expect(received.length).toBeGreaterThanOrEqual(1);
+			player.dispose();
+		});
+
+		it('on("queue", fn) does NOT fire on ready — only on mutation', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'queue', (data) => { received.push(data); });
+
+			expect(received).toHaveLength(0);
+			player.dispose();
+		});
+
+		it('on("queue", fn) handler fires multiple times across multiple mutations', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'queue', (data) => { received.push(data); });
+
+			player.queue([{ id: 'a', name: 'A' }]);
+			player.queue([{ id: 'b', name: 'B' }, { id: 'c', name: 'C' }]);
+
+			expect(received).toHaveLength(2);
+			player.dispose();
+		});
+
+		it('on("backlog", fn) fires with items array when backlog is replaced via backlog(items)', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'backlog', (data) => { received.push(data); });
+
+			const items = [
+				{ id: 'b1', name: 'Backlog 1' },
+				{ id: 'b2', name: 'Backlog 2' },
+			];
+			player.backlog(items);
+
+			expect(received).toHaveLength(1);
+			expect(Array.isArray(received[0])).toBe(true);
+			expect((received[0] as unknown[]).length).toBe(2);
+			player.dispose();
+		});
+
+		it('on("backlog", fn) fires when backlogAppend adds an item', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'backlog', (data) => { received.push(data); });
+
+			player.backlogAppend({ id: 'b1', name: 'Backlog 1' });
+
+			expect(received.length).toBeGreaterThanOrEqual(1);
+			player.dispose();
+		});
+
+		it('on("backlog", fn) does NOT fire on ready — only on mutation', async () => {
+			const player = setup();
+			player.addPlugin(V1MusicCompatPlugin);
+			await player.ready();
+
+			const received: unknown[] = [];
+			shimOn(player, 'backlog', (data) => { received.push(data); });
+
+			expect(received).toHaveLength(0);
 			player.dispose();
 		});
 	});
