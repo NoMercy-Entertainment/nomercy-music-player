@@ -6,9 +6,14 @@ Full documentation: https://docs.nomercy.tv/nomercy-music-player/
 
 # nomercy-music-player
 
-The headless audio engine behind music on NoMercy TV. It is built around the hard part of a music player, the hand-off between two tracks: sample-accurate crossfade on the Web Audio backend, or a gapless transition when you want one track to run straight into the next. Lyric sync and a full EQ chain are here too. No UI is bundled, you wire your own to plain events and methods.
+The headless audio engine behind music on NoMercy TV. It is built around the hard part of a music player, the hand-off between two tracks, and hands you plain events and methods so you wire your own interface.
 
-It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), which carries the generic engine (queue, auth, plugins, i18n, storage) shared with the video player.
+- Sample-accurate crossfade on the Web Audio backend, or a gapless straight-into-the-next transition
+- A full equalizer chain and synced lyrics
+- Queue and backlog control, repeat and shuffle, and a typed event bus
+- `MediaSessionPlugin` for lock-screen and notification controls, plus an auto-advance plugin
+
+It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), the shared engine that carries the queue, auth, plugin system, i18n, and storage.
 
 ```
 npm install @nomercy-entertainment/nomercy-music-player
@@ -53,25 +58,7 @@ The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full refer
 - [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, and first track
 - [Configuration](https://docs.nomercy.tv/nomercy-music-player/configuration), every option and default
 - [API Methods](https://docs.nomercy.tv/nomercy-music-player/api-methods) and [Events](https://docs.nomercy.tv/nomercy-music-player/events)
-- [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference
-
-## Testing your own plugin
-
-Plugins written for `nomercy-music-player` use the conformance helper that ships in `nomercy-player-core`:
-
-```ts
-import { describePlugin } from '@nomercy-entertainment/nomercy-player-core/testing';
-import { MyMusicPlugin } from './my-plugin';
-
-describePlugin(MyMusicPlugin, (ctx) => {
-  it('behaves correctly', () => {
-    ctx.player.emit('play', undefined);
-    expect(ctx.plugin.someState()).toBe(true);
-  });
-});
-```
-
-The full guide, worked example, and all available kit exports are in [`nomercy-player-core` TESTING.md](https://github.com/NoMercy-Entertainment/nomercy-player-core/blob/master/TESTING.md).
+- [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and writing your own plugins
 
 ## License
 
