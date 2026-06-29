@@ -52,7 +52,7 @@ player.on('ready', () => {
 
 ## Documentation
 
-The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference and the home for everything that used to live in the wiki:
+The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference:
 
 - [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, and first track
 - [Configuration](https://docs.nomercy.tv/nomercy-music-player/configuration), every option and default
