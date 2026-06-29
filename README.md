@@ -59,6 +59,24 @@ The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full refer
 - [API Methods](https://docs.nomercy.tv/nomercy-music-player/api-methods) and [Events](https://docs.nomercy.tv/nomercy-music-player/events)
 - [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference
 
+## Testing your own plugin
+
+Plugins written for `nomercy-music-player` use the conformance helper that ships in `nomercy-player-core`:
+
+```ts
+import { describePlugin } from '@nomercy-entertainment/nomercy-player-core/testing';
+import { MyMusicPlugin } from './my-plugin';
+
+describePlugin(MyMusicPlugin, (ctx) => {
+  it('behaves correctly', () => {
+    ctx.player.emit('play', undefined);
+    expect(ctx.plugin.someState()).toBe(true);
+  });
+});
+```
+
+The full guide, worked example, and all available kit exports are in [`nomercy-player-core` TESTING.md](https://github.com/NoMercy-Entertainment/nomercy-player-core/blob/master/TESTING.md).
+
 ## License
 
 Apache-2.0

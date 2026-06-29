@@ -1085,10 +1085,4 @@ export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 	}
 }
 
-/**
- * @deprecated Default-importing `PlayerCore` is the migration pattern — it
- * resolves to the v1 compat wrapper type (which extends `NMMusicPlayer<T>`)
- * so existing `import PlayerCore from '...'` consumers keep working unchanged
- * during the 2.x beta window. New code imports the named `nmMusicPlayer`.
- */
-export default PlayerCore;
+export default nmMusicPlayer;
