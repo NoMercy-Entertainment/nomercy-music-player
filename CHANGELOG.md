@@ -1,5 +1,73 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.15] — 2026-06-29
+
+### Changed
+
+- The package default export is now the `nmMusicPlayer` factory. `import nmMusicPlayer from '...'` returns the factory directly — no `new`, matching the video player convention. The named `NMMusicPlayer` class and the `nmMPlayer` v1-compat alias remain as named exports.
+- The v1-compat `queue` and `backlog` events now fire on every real queue/backlog mutation, not only once at startup.
+
+### Removed
+
+- `DrmPlugin`, `GroupListeningPlugin`, and `LiveTranscodingPlugin` stubs deleted. The `./plugins/drm`, `./plugins/group-listening`, and `./plugins/live-transcoding` subpath exports no longer exist — importing them will 404. These were unimplemented stubs with no production functionality.
+
+### Added
+
+- Real-browser Playwright e2e suite (`e2e/`) with media fixtures generated from the NoMercy ffmpeg fork. Run with `npm run test:e2e`.
+
+## [2.0.0-rc.14] — 2026-06-29
+
+### Changed
+
+- The package default export changed from the `PlayerCore` class to the `nmMusicPlayer` factory. `import nmMusicPlayer from '...'` calls the factory directly — no `new` required, matching the video player convention. The named `NMMusicPlayer` class and the `nmMPlayer` v1-compat alias remain as named exports.
+
+### Removed
+
+- `DrmPlugin`, `GroupListeningPlugin`, and `LiveTranscodingPlugin` stubs deleted. The `./plugins/drm`, `./plugins/group-listening`, and `./plugins/live-transcoding` subpath exports no longer exist.
+
+### Added
+
+- Real-browser Playwright e2e suite (`e2e/`) as the primary integration test layer.
+
+## [2.0.0-rc.13] — 2026-06-28
+
+Version aligned with the trio; pinned `@nomercy-entertainment/nomercy-player-core` rc.13.
+
+## [2.0.0-rc.12] — 2026-06-28
+
+Version aligned with the trio; pinned `@nomercy-entertainment/nomercy-player-core` rc.12.
+
+## [2.0.0-rc.11] — 2026-06-28
+
+Version aligned with the trio; pinned `@nomercy-entertainment/nomercy-player-core` rc.11.
+
+## [2.0.0-rc.10] — 2026-06-28
+
+Version aligned with the trio; pinned `@nomercy-entertainment/nomercy-player-core` rc.10.
+
+## [2.0.0-rc.9] — 2026-06-28
+
+### Changed
+
+- `hls.js` dropped as a direct dependency. The core package owns it; music pulls it transitively. `hls.js` remains a `devDependency` for local test builds.
+
+## [2.0.0-rc.8] — 2026-06-28
+
+### Changed
+
+- Build emits `.js` extensions on all internal imports via `tsc-alias`, enabling clean Node-ESM import without loader hacks.
+
+## [2.0.0-rc.7] — 2026-06-28
+
+### Changed
+
+- Pinned `@nomercy-entertainment/nomercy-player-core` rc.6 (and subsequently rc.7 for the Node-ESM kit-version fix).
+- ESLint configured with `--max-warnings 0`; all existing lint warnings resolved.
+
+### Added
+
+- `hls.js` added as a `devDependency` for local build and test runs.
+
 ## [2.0.0-rc.6] — 2026-06-14
 
 ### Fixed
@@ -50,6 +118,12 @@
 - Stale `./plugins/embed`, `./plugins/message`, and `./plugins/tab-leader`
   subpath exports that pointed at unbuilt files. These kit plugins remain
   available through the `./plugins` aggregate or directly from the core package.
+
+## [2.0.0-rc.1] — 2026-06-14
+
+### Added
+
+- First 2.0.0 release candidate. Restores full v1 `PlayerCore` property-read parity so upgrading consumers can read `currentTime`, `duration`, `volume`, and the other v1 public properties through the compat shim without errors.
 
 ## [2.0.0-beta.1] — 2026-05-30
 

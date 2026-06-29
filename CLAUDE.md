@@ -19,7 +19,7 @@ src/
   plugins/                # auto-advance, equalizer, spectrum, lyrics, + re-exports
   streams/                # re-exports of kit's streams/ for ergonomic imports
   types.ts                # MusicEventMap, MusicPlayerConfig, enums
-  index.ts                # nmMPlayer factory + NMMusicPlayer class
+  index.ts                # nmMusicPlayer factory (default export) + nmMPlayer (v1 compat alias) + NMMusicPlayer class + PlayerCore v1 compat wrapper
 ```
 
 ## Conventions
