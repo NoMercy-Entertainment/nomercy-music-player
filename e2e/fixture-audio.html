@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>E2E Audio Fixture</title>
+	</head>
+	<body>
+		<div id="player"></div>
+		<script type="module">
+			import { nmMusicPlayer } from '/src/index.ts';
+			import {
+				audioGraphPlugin,
+				AudioGraphPlugin,
+				spectrumPlugin,
+				SpectrumPlugin,
+				equalizerPlugin,
+				EqualizerPlugin,
+				mixerPlugin,
+				MixerPlugin,
+			} from '@nomercy-entertainment/nomercy-player-core';
+			import { MediaSessionPlugin } from '@nomercy-entertainment/nomercy-player-core/plugins/media-session';
+			import { KeyHandlerPlugin } from '@nomercy-entertainment/nomercy-player-core/plugins/key-handler';
+
+			window.__playerError = null;
+			window.__playerReady = false;
+
+			// Expose plugin constructors immediately so they're accessible even if
+			// the player setup below partially fails.
+			window.AudioGraphPlugin = AudioGraphPlugin;
+			window.SpectrumPlugin = SpectrumPlugin;
+			window.EqualizerPlugin = EqualizerPlugin;
+			window.MixerPlugin = MixerPlugin;
+			window.MediaSessionPlugin = MediaSessionPlugin;
+			window.KeyHandlerPlugin = KeyHandlerPlugin;
+
+			try {
+				// ── AudioElement player (default backend, for basic playback tests)
+				const playerBasic = nmMusicPlayer('player');
+				playerBasic.setup({ backend: 'audio-element' });
+				window.playerBasic = playerBasic;
+			} catch (e) {
+				window.__playerError = e.message || String(e);
+				window.__playerReady = false;
+				throw e;
+			}
+
+			// ── WebAudio player with full graph plugins — non-fatal if AudioContext
+			// is unavailable in this context (e.g. resource limits under parallel load).
+			try {
+				const container = document.createElement('div');
+				container.id = 'player-webaudio';
+				document.body.appendChild(container);
+
+				const playerWA = nmMusicPlayer('player-webaudio');
+				playerWA
+					.setup({ backend: 'webaudio' })
+					.addPlugin(audioGraphPlugin, { fftSize: 2048, smoothing: 0.5 })
+					.addPlugin(spectrumPlugin, { fftSize: 2048 })
+					.addPlugin(equalizerPlugin)
+					.addPlugin(mixerPlugin);
+
+				window.playerWA = playerWA;
+				window.__waReady = true;
+			} catch (e) {
+				window.__waError = e.message || String(e);
+				window.__waReady = false;
+			}
+
+			window.__playerError = null;
+			window.__playerReady = true;
+		</script>
+	</body>
+</html>

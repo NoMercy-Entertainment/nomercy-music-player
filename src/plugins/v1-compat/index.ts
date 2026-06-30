@@ -150,11 +150,16 @@ const EVENT_MAP: Record<string, V1EventMapping> = {
 			return v2?.item ?? null;
 		},
 	},
-	// v1 'queue' fired with S[]; v2 doesn't fire a queue event on set.
-	// Cannot auto-bridge — consumer must read queue() directly.
-	queue: { v2Event: 'ready' }, // no-op bridge
-	// v1 'backlog' fired with S[]; v2 equivalent not defined.
-	backlog: { v2Event: 'ready' }, // no-op bridge
+	// v1 'queue' fired with S[]; v2 fires 'queue' with the items array directly.
+	queue: {
+		v2Event: 'queue',
+		reshape: data => Array.isArray(data) ? data : [],
+	},
+	// v1 'backlog' fired with S[]; v2 fires 'backlog' with the items array directly.
+	backlog: {
+		v2Event: 'backlog',
+		reshape: data => Array.isArray(data) ? data : [],
+	},
 	// v1 'repeat' fired with RepeatState string; v2 fires { state: RepeatState }.
 	repeat: {
 		v2Event: 'repeat',

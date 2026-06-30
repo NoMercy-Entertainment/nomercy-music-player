@@ -1,11 +1,11 @@
 # Releasing @nomercy-entertainment/nomercy-music-player
 
-## Beta publish (current)
+## RC publish (current)
 
-Published under the `beta` dist-tag via `publishConfig.tag: "beta"`. Install the beta:
+Published under the `rc` dist-tag via `publishConfig.tag: "rc"`. Install the latest RC:
 
 ```
-npm install @nomercy-entertainment/nomercy-music-player@beta
+npm install @nomercy-entertainment/nomercy-music-player@rc
 ```
 
 A plain `npm install @nomercy-entertainment/nomercy-music-player` resolves nothing until a
@@ -17,11 +17,11 @@ See `packages/nomercy-player-core/RELEASING.md` for the full trio checklist. Ste
 to this package:
 
 1. Bump version to `2.0.0` in `package.json`.
-2. Remove `"tag": "beta"` from `publishConfig`, or publish with `npm publish --tag latest`.
-3. The `@nomercy-entertainment/nomercy-player-core` range `^2.0.0-beta.0` already matches
+2. Remove `"tag": "rc"` from `publishConfig`, or publish with `npm publish --tag latest`.
+3. The `@nomercy-entertainment/nomercy-player-core` range `^2.0.0-rc.15` already matches
    `2.0.0` stable — no range change is required. Updating it to `^2.0.0` is conventional
    but not mechanical.
-4. Add a `[2.0.0]` entry to `CHANGELOG.md` summarizing changes since the last beta.
+4. Add a `[2.0.0]` entry to `CHANGELOG.md` summarizing changes since the last RC.
 
 ## IMPORTANT: release.yml fires on any branch push
 

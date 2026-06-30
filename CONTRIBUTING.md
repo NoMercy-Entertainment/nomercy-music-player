@@ -14,7 +14,8 @@ Thanks for your interest in `@nomercy-entertainment/nomercy-music-player`. This 
 git clone https://github.com/NoMercy-Entertainment/nomercy-music-player.git
 cd nomercy-music-player
 npm install
-npm test          # vitest run (1240 unit tests must pass)
+npm test          # vitest run — unit tests must pass
+npm run test:e2e  # Playwright real-browser e2e suite
 npm run typecheck # tsc --noEmit
 npm run build     # writes dist/
 ```

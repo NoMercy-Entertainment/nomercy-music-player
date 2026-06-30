@@ -6,19 +6,32 @@ Full documentation: https://docs.nomercy.tv/nomercy-music-player/
 
 # nomercy-music-player
 
-The headless audio engine behind music on NoMercy TV. It is built around the hard part of a music player, the hand-off between two tracks: sample-accurate crossfade on the Web Audio backend, or a gapless transition when you want one track to run straight into the next. Lyric sync and a full EQ chain are here too. No UI is bundled, you wire your own to plain events and methods.
+The headless audio engine behind music on NoMercy TV.
 
-It is built on [`@nomercy-entertainment/nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), which carries the generic engine (queue, auth, plugins, i18n, storage) shared with the video player.
+It nails the hard part of a music player: the hand-off between two tracks.
+
+You get plain events and methods, and you wire your own interface.
+
+- Sample-accurate crossfade, or a gapless transition straight into the next track
+- A full equalizer chain and synced lyrics
+- Queue and backlog control, repeat and shuffle, a typed event bus
+- Lock-screen and notification controls, plus auto-advance
+
+**You stay in charge.**
+
+No UI is bundled. Nothing is forced on you.
+
+Crossfade and gapless playback are built in, called when you want them. Everything else (lyrics, the equalizer, media controls, auto-advance, key handling) is a plugin you opt into with `addPlugin`.
+
+You can also swap any built-in behavior. Pass your own storage, URL resolver, shuffle strategy, or logger to `setup()`. No subclassing.
+
+Built on [`nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), the shared engine for the queue, auth, plugins, i18n, and storage.
 
 ```
 npm install @nomercy-entertainment/nomercy-music-player
 ```
 
-If you use HLS streams (`.m3u8`), also install the optional peer dependency:
-
-```
-npm install hls.js
-```
+Adaptive HLS audio streams play out of the box. The backend detects an `.m3u8` source and streams it, falling back to native HLS where the platform supports it, and `hls.js` ships with the player core so there is nothing extra to install.
 
 > **Upgrading from v1?** See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list, including renamed methods, changed event payloads, and the `item.path` to `item.url` rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
 
@@ -52,12 +65,12 @@ player.on('ready', () => {
 
 ## Documentation
 
-The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference and the home for everything that used to live in the wiki:
+The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference:
 
 - [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, and first track
 - [Configuration](https://docs.nomercy.tv/nomercy-music-player/configuration), every option and default
 - [API Methods](https://docs.nomercy.tv/nomercy-music-player/api-methods) and [Events](https://docs.nomercy.tv/nomercy-music-player/events)
-- [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and the full plugin reference
+- [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and writing your own plugins
 
 ## License
 

@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.0.0-rc.13",
+	"version": "2.0.0-rc.19",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
 		"name": "NoMercy Entertainment",
@@ -79,21 +79,9 @@
 			"types": "./dist/plugins/cast-sender/index.d.ts",
 			"import": "./dist/plugins/cast-sender/index.js"
 		},
-		"./plugins/drm": {
-			"types": "./dist/plugins/drm/index.d.ts",
-			"import": "./dist/plugins/drm/index.js"
-		},
-		"./plugins/group-listening": {
-			"types": "./dist/plugins/group-listening/index.d.ts",
-			"import": "./dist/plugins/group-listening/index.js"
-		},
 		"./plugins/key-handler": {
 			"types": "./dist/plugins/key-handler/index.d.ts",
 			"import": "./dist/plugins/key-handler/index.js"
-		},
-		"./plugins/live-transcoding": {
-			"types": "./dist/plugins/live-transcoding/index.d.ts",
-			"import": "./dist/plugins/live-transcoding/index.js"
 		},
 		"./plugins/lyrics": {
 			"types": "./dist/plugins/lyrics/index.d.ts",
@@ -154,12 +142,13 @@
 		"lint:fix": "eslint . --fix --max-warnings 0",
 		"test": "vitest run",
 		"test:watch": "vitest",
+		"pretest:e2e": "node scripts/generate-e2e-fixtures.mjs",
 		"test:e2e": "npx playwright test",
 		"test:e2e:report": "npx playwright show-report reports/playwright",
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.13"
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.19"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.0.0",

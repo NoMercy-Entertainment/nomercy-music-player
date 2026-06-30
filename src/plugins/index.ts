@@ -12,16 +12,7 @@ export type { AutoAdvanceOptions } from './auto-advance';
 export { castSenderPlugin, CastSenderPlugin } from './cast-sender';
 export type { CastSenderEvents, CastSenderOptions } from './cast-sender';
 
-export { drmPlugin, DrmPlugin } from './drm';
-export type { DrmEvents, DrmOptions } from './drm';
-
-export { groupListeningPlugin, GroupListeningPlugin } from './group-listening';
-export type { GroupListeningEvents, GroupListeningOptions } from './group-listening';
-
-// Cross-library plugins (from core, with music-specific defaults where applicable)
 export { keyHandlerPlugin, KeyHandlerPlugin } from './key-handler';
-export { liveTranscodingPlugin, LiveTranscodingPlugin } from './live-transcoding';
-export type { LiveTranscodingEvents, LiveTranscodingOptions } from './live-transcoding';
 
 export { lyricsPlugin, LyricsPlugin } from './lyrics';
 export type { LyricsEvents, LyricsOptions } from './lyrics';
