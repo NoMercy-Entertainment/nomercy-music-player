@@ -21,8 +21,25 @@
  * intentionally out of scope for this test.
  */
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
+
+// Minimal AudioContext stub — happy-dom has none. Enough for ensureSourceGraph
+// to wire the baseline chain so we can assert the crossOrigin side effect.
+class MockNode {
+	gain = { value: 1 };
+	connect = vi.fn();
+	disconnect = vi.fn();
+}
+class MockAudioContext {
+	state = 'running';
+	currentTime = 0;
+	destination = {} as AudioDestinationNode;
+	createGain = vi.fn(() => new MockNode());
+	createAnalyser = vi.fn(() => new MockNode());
+	createMediaElementSource = vi.fn(() => new MockNode());
+	resume = vi.fn(() => Promise.resolve());
+}
 
 afterEach(() => {
 	document.body.innerHTML = '';
@@ -70,5 +87,42 @@ describe('AudioElementBackend — crossOrigin (P-2 regression)', () => {
 
 		// And still has no CORS attribute
 		expect(el.crossOrigin).not.toBe('anonymous');
+	});
+});
+
+describe('AudioElementBackend — crossOrigin when the graph is tapped', () => {
+	it('sets crossOrigin = anonymous the first time a plugin taps outputNode()', () => {
+		const container = document.createElement('div');
+		document.body.appendChild(container);
+
+		const backend = new AudioElementBackend(container);
+		const el = backend.mediaElement() as HTMLAudioElement;
+
+		// Direct transport: no CORS yet.
+		expect(el.crossOrigin).not.toBe('anonymous');
+
+		// A graph plugin requests the output node — CORS is now required so the
+		// MediaElementAudioSourceNode receives audible (untainted) samples.
+		const ctx = new MockAudioContext() as unknown as AudioContext;
+		backend.outputNode(ctx);
+
+		expect(el.crossOrigin).toBe('anonymous');
+	});
+
+	it('re-loads an already-sourced element so the new crossOrigin takes effect', () => {
+		const container = document.createElement('div');
+		document.body.appendChild(container);
+
+		const backend = new AudioElementBackend(container);
+		const el = backend.mediaElement() as HTMLAudioElement;
+		el.src = 'https://cdn.example.com/track.mp3';
+		const loadSpy = vi.spyOn(el, 'load');
+
+		const ctx = new MockAudioContext() as unknown as AudioContext;
+		backend.outputNode(ctx);
+
+		expect(el.crossOrigin).toBe('anonymous');
+		// crossOrigin only applies to the next load — the element must be reloaded.
+		expect(loadSpy).toHaveBeenCalled();
 	});
 });

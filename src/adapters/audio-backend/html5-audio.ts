@@ -92,6 +92,10 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			else {
 				this.element = document.createElement('audio');
 				this.element.preload = 'metadata';
+				// crossOrigin is left unset on purpose: forcing 'anonymous' breaks
+				// playback on servers that don't send CORS headers (P-2 regression).
+				// It is set lazily in ensureSourceGraph() only when a plugin taps the
+				// Web Audio graph, where CORS is actually required.
 				this.ownsElement = true;
 				if (container)
 					container.appendChild(this.element);
@@ -325,6 +329,15 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			catch { /* defensive */ }
 		}
 
+		// A graph tap is being requested. The element's output now flows through
+		// the AudioContext, and the browser feeds SILENCE into the graph for a
+		// cross-origin element that lacks CORS (tainted source). Set crossOrigin
+		// here — not at construction — so plain direct-transport playback stays
+		// CORS-free for servers that don't send CORS headers (P-2 regression).
+		// crossOrigin only takes effect on the next load, so if a source is
+		// already attached, re-load it (preserving position) before tapping.
+		this.applyGraphCrossOrigin();
+
 		this.sourceCtx = ctx;
 		this.sourceNode = ctx.createMediaElementSource(this.element);
 		this.analyserNode = ctx.createAnalyser();
@@ -336,6 +349,36 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		// any plugin. AudioGraphPlugin disconnects this and re-routes through its
 		// effect chain when it takes ownership via outputNode(ctx).
 		this.outputGain.connect(ctx.destination);
+	}
+
+	/**
+	 * Set `crossOrigin = 'anonymous'` so `createMediaElementSource()` receives
+	 * audible (untainted) samples for cross-origin media. The attribute only
+	 * applies to the NEXT resource load, so when a source is already attached we
+	 * re-load it and restore the playback position. Same-origin and already-set
+	 * elements are left untouched, and a missing src needs no reload.
+	 */
+	private applyGraphCrossOrigin(): void {
+		if (this.element.crossOrigin === 'anonymous')
+			return;
+
+		const hadSource = this.element.currentSrc !== '' || this.element.src !== '';
+		const position = this.element.currentTime;
+		const wasPlaying = !this.element.paused;
+
+		this.element.crossOrigin = 'anonymous';
+
+		if (!hadSource)
+			return;
+
+		const restore = (): void => {
+			try { this.element.currentTime = position; }
+			catch { /* element not seekable yet — best effort */ }
+			if (wasPlaying)
+				void this.element.play().catch(() => { /* autoplay policy — best effort */ });
+		};
+		this.element.addEventListener('loadedmetadata', restore, { once: true });
+		this.element.load();
 	}
 
 	mediaElement(): HTMLMediaElement {
@@ -446,6 +489,10 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		const el = document.createElement('audio');
 		el.preload = 'auto';
+		// crossOrigin matches the primary: only set when the graph is tapped
+		// (see ensureSourceGraph). Forcing it here breaks CORS-less servers.
+		if (this.element.crossOrigin === 'anonymous')
+			el.crossOrigin = 'anonymous';
 		el.volume = 0;
 		el.style.display = 'none';
 		if (this.container) {
