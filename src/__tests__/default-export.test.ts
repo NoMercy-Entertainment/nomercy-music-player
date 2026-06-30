@@ -10,11 +10,13 @@
  * Pins the symmetric default-export contract (S00-R1):
  *   - The default export is a function (not a class constructor that requires `new`).
  *   - Calling it with a DOM id returns a working player instance without `new`.
- *   - The named exports `nmMusicPlayer` and `PlayerCore` are still reachable.
+ *   - The default export is the named `nmplayer` (the migration-compatible entry
+ *     point), symmetric with the video package — both expose `nmplayer` + default.
+ *   - The clean `nmMusicPlayer` and `PlayerCore` named exports are still reachable.
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import DefaultExport, { NMMusicPlayer, nmMusicPlayer, PlayerCore } from '../index';
+import DefaultExport, { NMMusicPlayer, nmMusicPlayer, nmplayer, PlayerCore } from '../index';
 
 describe('music default export — symmetric factory contract (S00-R1)', () => {
 	beforeEach(() => {
@@ -41,11 +43,15 @@ describe('music default export — symmetric factory contract (S00-R1)', () => {
 		expect(player.id).toBe('default-export-test');
 	});
 
-	it('DefaultExport is the same reference as the named nmMusicPlayer export', () => {
-		expect(DefaultExport).toBe(nmMusicPlayer);
+	it('DefaultExport is the same reference as the named nmplayer export', () => {
+		expect(DefaultExport).toBe(nmplayer);
 	});
 
-	it('named export nmMusicPlayer is still reachable and is a function', () => {
+	it('named export nmplayer is reachable and is a function', () => {
+		expect(typeof nmplayer).toBe('function');
+	});
+
+	it('named export nmMusicPlayer (clean factory) is still reachable and is a function', () => {
 		expect(typeof nmMusicPlayer).toBe('function');
 	});
 

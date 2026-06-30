@@ -806,6 +806,18 @@ export function nmMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(i
 	return new NMMusicPlayer<T>(id);
 }
 
+/**
+ * @deprecated Use `nmMusicPlayer` instead. This factory is kept for v1 migration
+ * compatibility only — it normalises v1 config and auto-installs the v1 music
+ * compat shims. Exposed under the shared `nmplayer` name so the music and video
+ * packages have a symmetric entry point; when both players are imported in the
+ * same file, alias one (`import { nmplayer as nmMusicPlayer } from '...'`).
+ *
+ * `nmMusicPlayer` is the clean v2 entry point; `nmplayer` is the
+ * migration-compatible entry point. Both point to the same underlying class.
+ */
+export const nmplayer = nmMPlayer;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // v1 compatibility — PlayerCore
 //
@@ -1085,4 +1097,11 @@ export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 	}
 }
 
-export default nmMusicPlayer;
+/**
+ * @deprecated Default-importing the factory is the migration pattern — it
+ * returns the compat factory with v1 shims attached so existing
+ * `import nmplayer from '...'` consumers keep working unchanged during the
+ * 2.x beta window. New code imports the named `nmMusicPlayer`. Flips to the
+ * clean factory when the compat layer is removed in the first stable 2.x.
+ */
+export default nmplayer;
