@@ -84,7 +84,15 @@ export type { TimeState } from '@nomercy-entertainment/nomercy-player-core';
  */
 export interface MusicEventMap<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseEventMap<T> {
 	'backend:changed': { kind: AudioBackendKind };
+
+	/**
+	 * @deprecated Use `'itemEndingSoon'` from `BaseEventMap` instead.
+	 * This alias fires alongside `'itemEndingSoon'` for one migration cycle and
+	 * will be removed in the next major release. Migrate: listen to
+	 * `'itemEndingSoon'` and use `payload.item` instead of `payload.currentTrack`.
+	 */
 	'trackEndingSoon': { remaining: number; currentTrack: T };
+
 	'crossfadeStart': { from: T | null; to: T; duration: number };
 	'crossfadeComplete': { track: T };
 	/**
@@ -153,9 +161,9 @@ export interface MusicPlayerConfig<T extends BasePlaylistItem = MusicPlaylistIte
 	/** Initial playlist — items inline, or a URL fetched and parsed at setup. */
 	playlist?: T[] | string;
 	/**
-	 * Seconds before natural end at which `trackEndingSoon` fires.
-	 * AutoAdvancePlugin listens to this for preload and crossfade cues.
-	 * Default `10`.
+	 * @deprecated Use `itemEndingSoonThreshold` from `BasePlayerConfig` instead.
+	 * Accepted as a fallback when `itemEndingSoonThreshold` is not set.
+	 * Will be removed in the next major release.
 	 */
 	trackEndingSoonThreshold?: number;
 }

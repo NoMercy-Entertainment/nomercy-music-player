@@ -1681,6 +1681,89 @@ describe('AutoAdvancePlugin — additional coverage', () => {
 
 		expect(crossfadeSpy).not.toHaveBeenCalled();
 	});
+
+	it('itemEndingSoon fires when _checkItemEndingSoon crosses the threshold', async () => {
+		const p = setup();
+		await p.ready();
+		p.queue([track('a')]);
+
+		const payloads: Array<{ remaining: number; item: MusicPlaylistItem }> = [];
+		p.on('itemEndingSoon' as never, (data: unknown) => {
+			payloads.push(data as { remaining: number; item: MusicPlaylistItem });
+		});
+
+		const check = (p as unknown as { _checkItemEndingSoon: (t: number, d: number) => void })._checkItemEndingSoon.bind(p);
+		check(111, 120);
+
+		expect(payloads).toHaveLength(1);
+		expect(payloads[0]!.remaining).toBeCloseTo(9, 5);
+		expect(payloads[0]!.item.id).toBe('a');
+
+		p.dispose();
+	});
+
+	it('trackEndingSoon alias fires when itemEndingSoon fires', async () => {
+		const p = setup();
+		await p.ready();
+		p.queue([track('a')]);
+
+		const aliasPayloads: Array<{ remaining: number; currentTrack: MusicPlaylistItem }> = [];
+		p.on('trackEndingSoon' as never, (data: unknown) => {
+			aliasPayloads.push(data as { remaining: number; currentTrack: MusicPlaylistItem });
+		});
+
+		const check = (p as unknown as { _checkItemEndingSoon: (t: number, d: number) => void })._checkItemEndingSoon.bind(p);
+		check(111, 120);
+
+		await new Promise<void>(resolve => setTimeout(resolve, 0));
+
+		expect(aliasPayloads).toHaveLength(1);
+		expect(aliasPayloads[0]!.currentTrack.id).toBe('a');
+		expect(aliasPayloads[0]!.remaining).toBeCloseTo(9, 5);
+
+		p.dispose();
+	});
+
+	it('itemEndingSoon latch resets on new load so it fires once per item', async () => {
+		const p = setup();
+		await p.ready();
+		p.queue([track('a')]);
+
+		const payloads: unknown[] = [];
+		p.on('itemEndingSoon' as never, (data: unknown) => { payloads.push(data); });
+
+		const check = (p as unknown as { _checkItemEndingSoon: (t: number, d: number) => void })._checkItemEndingSoon.bind(p);
+		const internals = p as unknown as { _itemEndingSoonEmitted: boolean };
+
+		check(111, 120);
+		expect(payloads).toHaveLength(1);
+
+		// simulate new load resetting the latch
+		internals._itemEndingSoonEmitted = false;
+
+		check(111, 120);
+		expect(payloads).toHaveLength(2);
+
+		p.dispose();
+	});
+
+	it('trackEndingSoonThreshold config is honoured via itemEndingSoonThreshold fallback', async () => {
+		const p = new NMMusicPlayer('aa-test').setup({ trackEndingSoonThreshold: 30 } as never);
+		await p.ready();
+		p.queue([track('a')]);
+
+		const payloads: unknown[] = [];
+		p.on('itemEndingSoon' as never, (data: unknown) => { payloads.push(data); });
+
+		const check = (p as unknown as { _checkItemEndingSoon: (t: number, d: number) => void })._checkItemEndingSoon.bind(p);
+
+		// remaining = 20 s, threshold should be 30 s → fires
+		check(100, 120);
+
+		expect(payloads).toHaveLength(1);
+
+		p.dispose();
+	});
 });
 
 // =============================================================================

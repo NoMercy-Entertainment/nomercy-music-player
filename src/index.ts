@@ -120,6 +120,7 @@ interface WireInternals {
 	_phase: PlayerPhase;
 	_playState: PlayStateToken;
 	_transitionPhase: (next: PlayerPhase) => void;
+	_checkItemEndingSoon: (currentTime: number, duration: number) => void;
 }
 
 /**
@@ -374,7 +375,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	}
 
 	private _firstFrameEmitted = false;
-	private _trackEndingSoonEmitted = false;
 
 	private _makeTimeupdateHandler(instance: IAudioBackend): () => void {
 		return () => {
@@ -392,20 +392,9 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 				remaining,
 			});
 
-			if (!this._trackEndingSoonEmitted) {
-				const duration = instance.duration();
-				const threshold = this.options?.trackEndingSoonThreshold ?? 10;
-				if (duration > 0 && currentTime >= duration - threshold) {
-					this._trackEndingSoonEmitted = true;
-					const currentTrack = this.item?.();
-					if (currentTrack) {
-						this.emit('trackEndingSoon', {
-							remaining: duration - currentTime,
-							currentTrack,
-						});
-					}
-				}
-			}
+			// Core fires `itemEndingSoon` when the threshold is crossed.
+			// `_checkItemEndingSoon` is idempotent — it latches internally.
+			(this as unknown as WireInternals)._checkItemEndingSoon(currentTime, safeD);
 		};
 	}
 
@@ -476,7 +465,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 		const onResetToPaused = (): void => {
 			this._firstFrameEmitted = false;
-			this._trackEndingSoonEmitted = false;
 			if (internals._playState === 'playing') {
 				internals._playState = 'paused';
 				this.emit('pause', undefined);
@@ -487,7 +475,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	private _wireBackend(instance: IAudioBackend): void {
 		this._firstFrameEmitted = false;
-		this._trackEndingSoonEmitted = false;
 
 		// Authenticated media servers need the Authorization header on every
 		// hls.js manifest/segment request. The provider reads the auth config
@@ -724,12 +711,20 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 		const leadSeconds = config.preloadLeadSeconds ?? 10;
 		const crossfadeLeadSeconds = config.crossfadeLeadSeconds ?? 3;
 		const crossfadeTailSeconds = config.crossfadeTailSeconds ?? 3;
+		// Resolve the `itemEndingSoonThreshold` from either the canonical name
+		// (new) or the deprecated `trackEndingSoonThreshold` alias (old), giving
+		// precedence to the canonical name when both are supplied.
+		const itemEndingSoonThreshold
+			= config.itemEndingSoonThreshold
+				?? (config as MusicPlayerConfig<MusicPlaylistItem> & { trackEndingSoonThreshold?: number }).trackEndingSoonThreshold;
+
 		const enrichedConfig: MusicPlayerConfig<MusicPlaylistItem> = {
 			crossfadeEnabled: true,
 			...config,
 			preloadLeadSeconds: leadSeconds,
 			crossfadeLeadSeconds,
 			crossfadeTailSeconds,
+			...(itemEndingSoonThreshold !== undefined ? { itemEndingSoonThreshold } : {}),
 			preloadStrategy: config.preloadStrategy ?? new MusicPreloadStrategy(leadSeconds),
 			transitionStrategy: config.transitionStrategy ?? new CrossfadeTransitionStrategy({
 				leadSeconds: crossfadeLeadSeconds,
@@ -737,7 +732,21 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 				curve: config.crossfadeDefaults?.curve ?? 'equal-power',
 			}),
 		};
-		return kitSetup.call(this, enrichedConfig);
+		const instance = kitSetup.call(this, enrichedConfig);
+
+		// Wire the deprecated `trackEndingSoon` alias. Whenever core emits
+		// `itemEndingSoon` the music player also emits `trackEndingSoon` with the
+		// legacy payload shape so consumers that haven't migrated yet keep working.
+		// The threshold fallback supports `trackEndingSoonThreshold` in config as
+		// a deprecated alias for `itemEndingSoonThreshold`.
+		instance.on('itemEndingSoon', (payload) => {
+			instance.emit('trackEndingSoon' as never, {
+				remaining: payload.remaining,
+				currentTrack: payload.item,
+			} as never);
+		});
+
+		return instance;
 	};
 	Object.defineProperty(NMMusicPlayer.prototype, 'setup', {
 		value: wrappedSetup,
