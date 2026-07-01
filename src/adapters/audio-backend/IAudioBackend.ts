@@ -86,9 +86,9 @@ export type { BackendLoaderState, BackendState };
  *   - `WebAudioBackend` (web-audio) — `<audio>` + `MediaElementAudioSourceNode` routed through an `AudioContext` gain/analyser graph
  *
  * Method conventions:
- *   - **Stateful = overloaded function:** `volume()` / `volume(v)`
+ *   - **Stateful = overloaded function:** `volume()` / `volume(level)`
  *   - **Action = verb:** `play()`, `pause()`, `stop()`, `mute()`, `unmute()`
- *   - **Time / position uses `currentTime(t)` for seeking** — no separate `seek`
+ *   - **Time / position uses `currentTime(seconds)` for seeking** — no separate `seek`
  */
 export interface IAudioBackend {
 	readonly kind: AudioBackendKind;
