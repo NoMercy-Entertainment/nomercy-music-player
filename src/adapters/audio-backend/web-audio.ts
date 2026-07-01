@@ -310,16 +310,16 @@ export class WebAudioBackend
 	// ── Volume overrides (GainNode path + prevVolume bookkeeping) ─────────────
 
 	override volume(): number;
-	override volume(v: number): void;
-	override volume(v?: number): number | void {
-		if (v === undefined) {
+	override volume(level: number): void;
+	override volume(level?: number): number | void {
+		if (level === undefined) {
 			// Returns the curved gain amplitude currently on the node — NOT the
 			// 0..1 slider position. The player mixin owns the position in
 			// _internalVolume; consumers must not infer position from this value.
 			return this.gainNode ? this.gainNode.gain.value : this.element.volume;
 		}
 
-		const clamped = Math.max(0, Math.min(1, v));
+		const clamped = Math.max(0, Math.min(1, level));
 		const gain = perceptualGain(clamped);
 
 		if (this.gainNode) {

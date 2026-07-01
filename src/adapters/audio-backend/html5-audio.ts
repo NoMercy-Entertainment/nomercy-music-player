@@ -220,13 +220,13 @@ export class AudioElementBackend
 	// ── Volume overrides (adds prevVolume bookkeeping) ─────────────────────────
 
 	override volume(): number;
-	override volume(v: number): void;
-	override volume(v?: number): number | void {
-		if (v === undefined) {
+	override volume(level: number): void;
+	override volume(level?: number): number | void {
+		if (level === undefined) {
 			return this.element.volume;
 		}
 
-		const clamped = Math.max(0, Math.min(1, v));
+		const clamped = Math.max(0, Math.min(1, level));
 		const gain = perceptualGain(clamped);
 		this.element.volume = gain;
 
