@@ -42,29 +42,17 @@ export interface MusicPlaylistItem extends BasePlaylistItem {
 	duration?: number | string;
 }
 
-/** Volume gain stage. Returned by `player.volumeState()`. */
-export enum VolumeState {
-	UNMUTED = 'unmuted',
-	MUTED = 'muted',
-}
-
-/** Top-level playback state. Returned by `player.playState()`. */
-export enum PlayState {
-	IDLE = 'idle',
-	LOADING = 'loading',
-	PLAYING = 'playing',
-	PAUSED = 'paused',
-	STOPPED = 'stopped',
-	ERROR = 'error',
-}
-
 export type { AudioBackendKind } from './adapters/audio-backend/IAudioBackend';
 
 /** Re-exported from kit — canonical definition lives in nomercy-player-core. */
-export { RepeatState, ShuffleState } from '@nomercy-entertainment/nomercy-player-core';
-
-/** Re-exported from kit — canonical definition lives in nomercy-player-core. */
-export { AudioTrackState, QualityState } from '@nomercy-entertainment/nomercy-player-core';
+export {
+	AudioTrackState,
+	PlayState,
+	QualityState,
+	RepeatState,
+	ShuffleState,
+	VolumeState,
+} from '@nomercy-entertainment/nomercy-player-core';
 
 /** Aggregated time state — re-exported from the kit. */
 export type { TimeState } from '@nomercy-entertainment/nomercy-player-core';
