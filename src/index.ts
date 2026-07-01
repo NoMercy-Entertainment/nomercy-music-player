@@ -77,7 +77,6 @@ import {
 import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from './adapters/audio-backend/web-audio';
 import { MusicPreloadStrategy } from './player/preload';
-import { normalizeMusicConfig } from './player/v1-config-normalizer';
 import { V1MusicCompatPlugin } from './plugins/v1-compat';
 
 export { MusicPreloadStrategy } from './player/preload';
@@ -606,10 +605,18 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	};
 
 	// ── Tracks / chapters / quality ── composed in via `mediaTracksMethods` mixin.
+	// `subtitles`, `subtitle`, and `subtitleStyle` are overridden below the class
+	// to throw `NotImplementedError` — these are screen-domain concerns with no
+	// meaning on an audio backend.
 	declare subtitles: () => SubtitleTrack[];
 	declare subtitle: {
 		(): CurrentSubtitleSelection | null;
 		(idx: number | null): void;
+	};
+
+	declare subtitleStyle: {
+		(): import('@nomercy-entertainment/nomercy-player-core').SubtitleStyle;
+		(patch: Partial<import('@nomercy-entertainment/nomercy-player-core').SubtitleStyle>): void;
 	};
 
 	declare audioTracks: () => AudioTrack[];
@@ -686,6 +693,24 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 	);
 };
 
+// Override mixin-installed `subtitle()` — reading or selecting a subtitle track
+// is a screen-domain concern that has no meaning on an audio backend.
+NMMusicPlayer.prototype.subtitle = function (): never {
+	throw new NotImplementedError(
+		'Subtitle track selection is not supported on the music player. Use a video player for subtitle support.',
+		'subtitle',
+	);
+};
+
+// Override mixin-installed `subtitleStyle()` — subtitle rendering style is a
+// screen-domain concern that has no meaning on an audio backend.
+NMMusicPlayer.prototype.subtitleStyle = function (): never {
+	throw new NotImplementedError(
+		'Subtitle style is not supported on the music player. Use a video player for subtitle support.',
+		'subtitleStyle',
+	);
+};
+
 {
 	const composedDispose = NMMusicPlayer.prototype.dispose as () => void;
 	NMMusicPlayer.prototype.dispose = function (this: NMMusicPlayer<MusicPlaylistItem>): void {
@@ -756,76 +781,42 @@ NMMusicPlayer.prototype.subtitles = function (): never {
 }
 
 /**
- * @deprecated Use `nmMusicPlayer` instead. This factory name is the v1
- * migration alias. New code should call `nmMusicPlayer(id)`.
+ * Canonical v2 entry point — clean, zero v1 baggage.
  *
- * When `setup({ expose: true })` is called on the returned instance,
- * `window.nmMPlayer` is set to this factory for console access alongside
- * `window.player` (wired by the kit). Cleaned up on `dispose()`.
- *
- * ```ts
- * const player = nmMusicPlayer<MyTrack>('player')
- *   .setup({ ... })
- *   .addPlugin(audioGraphPlugin)
- *   .addPlugin(equalizerPlugin);
- * ```
- */
-export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
-	const instance = new NMMusicPlayer<T>(id);
-
-	const originalSetup = instance.setup.bind(instance);
-	instance.setup = function (config: MusicPlayerConfig<T>): NMMusicPlayer<T> {
-		// Normalise v1 legacy fields (accessToken → auth.bearerToken,
-		// debug: true → logLevel: 'debug') at the library boundary so core
-		// never sees them and carries no compat knowledge. Strategy defaults
-		// are applied by the class setup wrapper — shared with the clean
-		// factory, never duplicated here.
-		const normalizedConfig = normalizeMusicConfig(config);
-
-		const result = originalSetup(normalizedConfig);
-
-		if (config.expose === true && typeof window !== 'undefined') {
-			Object.assign(window, { nmMPlayer });
-			const originalDispose = instance.dispose.bind(instance);
-			instance.dispose = function (): void {
-				if (Object.is(Reflect.get(window, 'nmMPlayer'), nmMPlayer)) {
-					Reflect.deleteProperty(window, 'nmMPlayer');
-				}
-				originalDispose();
-			};
-		}
-		return result;
-	};
-
-	return instance;
-}
-
-/**
- * Canonical v2 entry point. Use this name in all new code.
- *
- * Returns a clean `NMMusicPlayer` instance — no shims, no compat plugin,
- * the fully typed v2 surface and nothing else.
+ * Returns an `NMMusicPlayer` instance with no compat shims, no compat plugin,
+ * the fully typed v2 surface and nothing else. Chain `.addPlugin(V1MusicCompatPlugin)`
+ * before `.setup()` to opt into the v1 transition path.
  *
  * ```ts
- * import { nmMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
- * const player = nmMusicPlayer('my-div');
+ * // v2 canonical:
+ * import nmplayer from '@nomercy-entertainment/nomercy-music-player';
+ * nmplayer('my-div').setup({ ...v2Config });
+ *
+ * // v1 transition:
+ * nmplayer('my-div').addPlugin(V1MusicCompatPlugin).setup({ ...v1Config });
  * ```
  */
-export function nmMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
+export function nmplayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
 	return new NMMusicPlayer<T>(id);
 }
 
 /**
- * @deprecated Use `nmMusicPlayer` instead. This factory is kept for v1 migration
- * compatibility only — it normalises v1 config and auto-installs the v1 music
- * compat shims. Exposed under the shared `nmplayer` name so the music and video
- * packages have a symmetric entry point; when both players are imported in the
- * same file, alias one (`import { nmplayer as nmMusicPlayer } from '...'`).
- *
- * `nmMusicPlayer` is the clean v2 entry point; `nmplayer` is the
- * migration-compatible entry point. Both point to the same underlying class.
+ * @deprecated Use `nmplayer` instead. This name is kept for the migration window
+ * so existing `nmMusicPlayer(id)` call sites continue to compile without changes.
+ * Remove once all consumers are updated to `nmplayer`.
  */
-export const nmplayer = nmMPlayer;
+export function nmMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
+	return nmplayer<T>(id);
+}
+
+/**
+ * @deprecated Use `nmplayer` instead. This name is kept for the migration window
+ * so existing `nmMPlayer(id)` call sites continue to compile without changes.
+ * Remove once all consumers are updated to `nmplayer`.
+ */
+export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
+	return nmplayer<T>(id);
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v1 compatibility — PlayerCore
@@ -1107,10 +1098,6 @@ export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
 }
 
 /**
- * @deprecated Default-importing the factory is the migration pattern — it
- * returns the compat factory with v1 shims attached so existing
- * `import nmplayer from '...'` consumers keep working unchanged during the
- * 2.x beta window. New code imports the named `nmMusicPlayer`. Flips to the
- * clean factory when the compat layer is removed in the first stable 2.x.
+ * Default export is the canonical `nmplayer` factory — clean v2, no v1 baggage.
  */
 export default nmplayer;

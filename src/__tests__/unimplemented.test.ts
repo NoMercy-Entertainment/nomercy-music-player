@@ -221,13 +221,41 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await p.ready();
 			expect(() => p.subtitles()).toThrow('Music backends don\'t expose subtitle tracks');
 		});
-		it('subtitle is a no-op on audio (no backend track support); emits subtitle event', async () => {
+		it('subtitles throws with code core:not-implemented/subtitles', async () => {
 			const p = player();
 			await p.ready();
-			let emittedTrack: unknown;
-			p.on('subtitle' as any, (data: any) => { emittedTrack = data?.track; });
-			expect(() => p.subtitle(null)).not.toThrow();
-			expect(emittedTrack).toBeNull();
+			let err: unknown;
+			try { p.subtitles(); }
+			catch (e) { err = e; }
+			expect((err as { code?: string })?.code).toBe('core:not-implemented/subtitles');
+		});
+		it('subtitle throws NotImplementedError — subtitle track selection is a screen-domain concern', async () => {
+			const p = player();
+			await p.ready();
+			let err: unknown;
+			try { p.subtitle(null); }
+			catch (e) { err = e; }
+			expect((err as { name?: string })?.name).toBe('NotImplementedError');
+			expect((err as { code?: string })?.code).toBe('core:not-implemented/subtitle');
+		});
+		it('subtitle() read overload also throws NotImplementedError', async () => {
+			const p = player();
+			await p.ready();
+			expect(() => p.subtitle()).toThrow();
+		});
+		it('subtitleStyle throws NotImplementedError — subtitle style is a screen-domain concern', async () => {
+			const p = player();
+			await p.ready();
+			let err: unknown;
+			try { p.subtitleStyle(); }
+			catch (e) { err = e; }
+			expect((err as { name?: string })?.name).toBe('NotImplementedError');
+			expect((err as { code?: string })?.code).toBe('core:not-implemented/subtitleStyle');
+		});
+		it('subtitleStyle(patch) setter overload also throws NotImplementedError', async () => {
+			const p = player();
+			await p.ready();
+			expect(() => p.subtitleStyle({ fontSize: 120 } as any)).toThrow();
 		});
 		it('audioTracks returns [] — single-stream audio has no track variants', async () => {
 			const p = player();
