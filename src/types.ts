@@ -18,7 +18,7 @@ import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/I
 
 /**
  * Default music playlist item shape. Consumers extend with their own
- * fields via the generic on `nmMPlayer<T>('id')`.
+ * fields via the generic on `nmplayer<T>('id')`.
  */
 export interface MusicPlaylistItem extends BasePlaylistItem {
 	name: string;
@@ -72,14 +72,6 @@ export type { TimeState } from '@nomercy-entertainment/nomercy-player-core';
  */
 export interface MusicEventMap<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseEventMap<T> {
 	'backend:changed': { kind: AudioBackendKind };
-
-	/**
-	 * @deprecated Use `'itemEndingSoon'` from `BaseEventMap` instead.
-	 * This alias fires alongside `'itemEndingSoon'` for one migration cycle and
-	 * will be removed in the next major release. Migrate: listen to
-	 * `'itemEndingSoon'` and use `payload.item` instead of `payload.currentTrack`.
-	 */
-	'trackEndingSoon': { remaining: number; currentTrack: T };
 
 	'crossfadeStart': { from: T | null; to: T; duration: number };
 	'crossfadeComplete': { track: T };
@@ -148,59 +140,4 @@ export interface MusicPlayerConfig<T extends BasePlaylistItem = MusicPlaylistIte
 	crossfadeDefaults?: { duration: number; curve?: CrossfadeCurve };
 	/** Initial playlist — items inline, or a URL fetched and parsed at setup. */
 	playlist?: T[] | string;
-	/**
-	 * @deprecated Use `itemEndingSoonThreshold` from `BasePlayerConfig` instead.
-	 * Accepted as a fallback when `itemEndingSoonThreshold` is not set.
-	 * Will be removed in the next major release.
-	 */
-	trackEndingSoonThreshold?: number;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// v1 compatibility types
-//
-// Exported from the `/types` and `/dist/types` subpaths so v1 consumer code
-// that imported these from `@nomercy-entertainment/nomercy-music-player/dist/types`
-// continues to compile without source changes.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Single equalizer band.
- * @deprecated Use the EqualizerPlugin API in new code.
- */
-export interface EQBand {
-	/** Frequency in Hz, or `'Pre'` for the pre-amplifier gain band. */
-	frequency: number | 'Pre';
-	/** Gain in dB. */
-	gain: number;
-}
-
-/**
- * Slider range config for each equalizer control.
- * @deprecated Use the EqualizerPlugin API in new code.
- */
-export interface EQSliderValues {
-	pan: { min: number; max: number; step: number; default: number };
-	pre: { min: number; max: number; step: number; default: number };
-	band: { min: number; max: number; step: number; default: number };
-}
-
-/**
- * Named equalizer preset.
- * @deprecated Use the EqualizerPlugin API in new code.
- */
-export interface EqualizerPreset {
-	name: string;
-	values: Array<{ frequency: number; gain: number }>;
-}
-
-/**
- * Simple id + name item used by server list endpoints (genres, directors, etc.).
- *
- * @deprecated Declare this interface in your own app types.
- */
-export interface Item {
-	id: number | string;
-	name: string;
-	[key: string]: unknown;
 }

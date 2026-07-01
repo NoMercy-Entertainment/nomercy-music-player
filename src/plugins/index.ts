@@ -19,9 +19,6 @@ export type { LyricsEvents, LyricsOptions } from './lyrics';
 
 export { mediaSessionPlugin, MediaSessionPlugin } from './media-session';
 
-// Migration shim — TEMPORARY, remove after v1→v2 migration window closes
-export { v1MusicCompatPlugin, V1MusicCompatPlugin } from './v1-compat';
-export type { V1MusicCompatEvents } from './v1-compat';
 // Audio-graph plugins re-exported from core for ergonomic imports.
 // Layered composition: addPlugin(audioGraphPlugin) → addPlugin(equalizerPlugin / mixerPlugin / spectrumPlugin / canvasPlugin / visualizers).
 // All opt-in — none allocate AudioContext / canvas / RAF unless registered.

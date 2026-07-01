@@ -34,7 +34,6 @@ import type {
 	PlaybackMetrics,
 	PlayerExperimental,
 	PlayerPhase,
-	PlayStateToken,
 	Plugin,
 	PluginCtorWithId,
 	QualityLevel,
@@ -50,14 +49,10 @@ import type {
 	AudioBackendKind,
 	AudioTrackState,
 	CrossfadeOptions,
-	EQBand,
-	EQSliderValues,
-	EqualizerPreset,
 	IMusicPlayer,
 	MusicEventMap,
 	MusicPlayerConfig,
 	MusicPlaylistItem,
-	PlayState,
 	QualityState,
 	RepeatState,
 	ShuffleState,
@@ -77,7 +72,7 @@ import {
 import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from './adapters/audio-backend/web-audio';
 import { MusicPreloadStrategy } from './player/preload';
-import { V1MusicCompatPlugin } from './plugins/v1-compat';
+import { PlayState } from './types';
 
 export { MusicPreloadStrategy } from './player/preload';
 
@@ -85,11 +80,7 @@ export type {
 	AudioBackendKind,
 	CrossfadeCurve,
 	CrossfadeOptions,
-	EQBand,
-	EQSliderValues,
-	EqualizerPreset,
 	IMusicPlayer,
-	Item,
 	MusicEventMap,
 	MusicPlayerConfig,
 	MusicPlaylistItem,
@@ -117,7 +108,7 @@ const _instances = new Map<string, NMMusicPlayer<any>>();
  */
 interface WireInternals {
 	_phase: PlayerPhase;
-	_playState: PlayStateToken;
+	_playState: PlayState;
 	_transitionPhase: (next: PlayerPhase) => void;
 	_checkItemEndingSoon: (currentTime: number, duration: number) => void;
 }
@@ -430,8 +421,8 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		});
 
 		instance.on('play', () => {
-			if (internals._playState !== 'playing') {
-				internals._playState = 'playing';
+			if (internals._playState !== PlayState.PLAYING) {
+				internals._playState = PlayState.PLAYING;
 				this.emit('play', undefined);
 			}
 
@@ -449,8 +440,8 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		});
 
 		instance.on('pause', () => {
-			if (internals._playState === 'playing') {
-				internals._playState = 'paused';
+			if (internals._playState === PlayState.PLAYING) {
+				internals._playState = PlayState.PAUSED;
 				this.emit('pause', undefined);
 			}
 		});
@@ -464,8 +455,8 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 		const onResetToPaused = (): void => {
 			this._firstFrameEmitted = false;
-			if (internals._playState === 'playing') {
-				internals._playState = 'paused';
+			if (internals._playState === PlayState.PLAYING) {
+				internals._playState = PlayState.PAUSED;
 				this.emit('pause', undefined);
 			}
 		};
@@ -724,9 +715,8 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 }
 
 // Wrap the kit-composed `setup` with the music-domain defaults every entry
-// point must get. This lives on the class, not in a factory, so
-// `nmMusicPlayer()`, `new NMMusicPlayer()` and the compat `nmMPlayer()` all
-// behave identically.
+// point must get. This lives on the class, not in a factory, so `nmplayer()`
+// and `new NMMusicPlayer()` both behave identically.
 {
 	type _KitSetupFn = (config: MusicPlayerConfig<MusicPlaylistItem>) => NMMusicPlayer<MusicPlaylistItem>;
 	const kitSetup: _KitSetupFn = NMMusicPlayer.prototype.setup as _KitSetupFn;
@@ -736,12 +726,7 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 		const leadSeconds = config.preloadLeadSeconds ?? 10;
 		const crossfadeLeadSeconds = config.crossfadeLeadSeconds ?? 3;
 		const crossfadeTailSeconds = config.crossfadeTailSeconds ?? 3;
-		// Resolve the `itemEndingSoonThreshold` from either the canonical name
-		// (new) or the deprecated `trackEndingSoonThreshold` alias (old), giving
-		// precedence to the canonical name when both are supplied.
-		const itemEndingSoonThreshold
-			= config.itemEndingSoonThreshold
-				?? (config as MusicPlayerConfig<MusicPlaylistItem> & { trackEndingSoonThreshold?: number }).trackEndingSoonThreshold;
+		const itemEndingSoonThreshold = config.itemEndingSoonThreshold;
 
 		const enrichedConfig: MusicPlayerConfig<MusicPlaylistItem> = {
 			crossfadeEnabled: true,
@@ -759,18 +744,6 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 		};
 		const instance = kitSetup.call(this, enrichedConfig);
 
-		// Wire the deprecated `trackEndingSoon` alias. Whenever core emits
-		// `itemEndingSoon` the music player also emits `trackEndingSoon` with the
-		// legacy payload shape so consumers that haven't migrated yet keep working.
-		// The threshold fallback supports `trackEndingSoonThreshold` in config as
-		// a deprecated alias for `itemEndingSoonThreshold`.
-		instance.on('itemEndingSoon', (payload) => {
-			instance.emit('trackEndingSoon' as never, {
-				remaining: payload.remaining,
-				currentTrack: payload.item,
-			} as never);
-		});
-
 		return instance;
 	};
 	Object.defineProperty(NMMusicPlayer.prototype, 'setup', {
@@ -781,320 +754,18 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 }
 
 /**
- * Canonical v2 entry point — clean, zero v1 baggage.
+ * Canonical v2 entry point.
  *
- * Returns an `NMMusicPlayer` instance with no compat shims, no compat plugin,
- * the fully typed v2 surface and nothing else. Chain `.addPlugin(V1MusicCompatPlugin)`
- * before `.setup()` to opt into the v1 transition path.
+ * Returns an `NMMusicPlayer` instance — no compat shims, the fully typed v2
+ * surface and nothing else.
  *
  * ```ts
- * // v2 canonical:
  * import nmplayer from '@nomercy-entertainment/nomercy-music-player';
- * nmplayer('my-div').setup({ ...v2Config });
- *
- * // v1 transition:
- * nmplayer('my-div').addPlugin(V1MusicCompatPlugin).setup({ ...v1Config });
+ * nmplayer('my-div').setup({ ...config });
  * ```
  */
 export function nmplayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
 	return new NMMusicPlayer<T>(id);
-}
-
-/**
- * @deprecated Use `nmplayer` instead. This name is kept for the migration window
- * so existing `nmMusicPlayer(id)` call sites continue to compile without changes.
- * Remove once all consumers are updated to `nmplayer`.
- */
-export function nmMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
-	return nmplayer<T>(id);
-}
-
-/**
- * @deprecated Use `nmplayer` instead. This name is kept for the migration window
- * so existing `nmMPlayer(id)` call sites continue to compile without changes.
- * Remove once all consumers are updated to `nmplayer`.
- */
-export function nmMPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>(id?: string | number): NMMusicPlayer<T> {
-	return nmplayer<T>(id);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// v1 compatibility — PlayerCore
-//
-// The app imports `PlayerCore` as both a value (constructor) and a type:
-//
-//   import { PlayerCore as MusicPlayer } from '@nomercy-entertainment/nomercy-music-player'
-//   export const audioPlayer = new MusicPlayer<PlaylistItem>({ ... })
-//   import type PlayerCore from '@nomercy-entertainment/nomercy-music-player'
-//   player: PlayerCore<PlaylistItem>
-//
-// Design decision (Spine, 2026-06-10):
-//   `PlayerCore<T>` uses the TypeScript interface + class merge pattern.
-//   The INTERFACE declares the full v1 API surface (all NMMusicPlayer<T> methods
-//   via `extends NMMusicPlayer<T>` PLUS v1 compat aliases and equalizer stubs).
-//   The CLASS constructor returns a real NMMusicPlayer<T> instance (constructor
-//   return override) with v1 method aliases attached at runtime.
-//
-//   TypeScript merges the interface and class declarations — so
-//   `player: PlayerCore<T>` gives the full typed surface, and
-//   `new PlayerCore(opts)` returns an instance satisfying that surface.
-//
-// @deprecated Use `NMMusicPlayer` directly in new code.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * v1 PlayerOptions shape — accepted by `PlayerCore` constructor.
- * @deprecated Use `MusicPlayerConfig` in new code.
- */
-export interface V1MusicPlayerOptions {
-	/** @deprecated Not used in v2 — visualization is a consumer concern. */
-	motionConfig?: Record<string, unknown>;
-	/** @deprecated Not used in v2 — visualization is a consumer concern. */
-	motionColors?: string[];
-	/**
-	 * @deprecated Set `document.title` directly or use MediaSessionPlugin.
-	 * Accepted silently and ignored in v2.
-	 */
-	siteTitle?: string;
-	/**
-	 * When true, exposes `window.musicPlayer` for console debugging.
-	 * Mapped to `MusicPlayerConfig.expose`.
-	 */
-	expose?: boolean;
-	/**
-	 * When true, the player will not auto-advance to the next track.
-	 * Mapped to `MusicPlayerConfig.disableAutoAdvance`.
-	 */
-	disableAutoPlayback?: boolean;
-	/** @deprecated Not used in v2 core. Wire MediaSession actions via MediaSessionPlugin. */
-	actions?: {
-		play?: () => void;
-		pause?: () => void;
-		stop?: () => void;
-		previous?: () => void;
-		next?: () => void;
-		seek?: (position: number) => void;
-	};
-	/** @deprecated Use `MusicPlayerConfig.crossfadeDefaults`. */
-	onCrossfadeStart?: () => void;
-	/** @deprecated Use `MusicPlayerConfig.crossfadeDefaults`. */
-	onCrossfadeComplete?: () => void;
-	/** @deprecated Use `MusicPlayerConfig.baseUrl`. */
-	baseUrl?: string;
-}
-
-/**
- * @deprecated Use `NMMusicPlayer` directly.
- *
- * Instance interface for `PlayerCore<T>`. Merges with the class declaration
- * below so TypeScript sees all `NMMusicPlayer<T>` methods + v1 compat aliases
- * as the resolved type for `new PlayerCore(opts)`.
- *
- * This is the canonical interface for the default export so that:
- *   `import type PlayerCore from '@nomercy-entertainment/nomercy-music-player'`
- * gives a type where `player: PlayerCore<T>` resolves correctly.
- */
-export interface PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> extends Omit<NMMusicPlayer<T>, 'on'> {
-	// ── v1 transport aliases ──
-	/** @deprecated Use `player.time(position)` in v2. */
-	seek(position: number): void;
-	/** @deprecated Use `player.volume(v)` in v2. */
-	setVolume(value: number): void;
-	/** @deprecated Use `player.repeatState(state)` in v2. */
-	repeat(state: string): void;
-	/** @deprecated Use `player.shuffleState(enabled)` in v2. */
-	shuffle(enabled: boolean): void;
-	/** @deprecated Use `player.toggleMute()` in v2. */
-	toggleMute(): void;
-	/** @deprecated Accepted silently; auto-advance is config-level in v2. */
-	setAutoPlayback(enabled: boolean): void;
-
-	// ── v1 queue aliases ──
-	/** @deprecated Use `player.item()` in v2. */
-	readonly currentSong: T | undefined;
-	/** @deprecated Use `player.queue()` in v2. */
-	getQueue(): T[];
-	/** @deprecated Use `player.item(item)` in v2. */
-	setCurrentSong(item: T): void;
-	/** @deprecated Use `player.queueRemove(item.id)` in v2. */
-	removeFromQueue(item: T): void;
-	/** @deprecated Use `player.backlogAppend(item)` in v2. */
-	addToBackLog(item: T | undefined): void;
-	/** @deprecated Use `player.queue(q)` + `player.item(item)` + `player.play()` in v2. */
-	playTrack(item: T, queue?: T[]): void;
-
-	// ── v1 auth / config setters ──
-	/** @deprecated Use `player.auth({ bearerToken: token })` in v2. */
-	setAccessToken(token: string | (() => string) | undefined): void;
-	/** @deprecated Use `player.baseUrl(url)` in v2. */
-	setBaseUrl(url: string | undefined): void;
-	/** Convenience getter — truthy when an auth token is configured. @deprecated Check via `player.auth()` in v2. */
-	readonly accessToken: string | undefined;
-
-	// ── v1 queue aliases (additional) ──
-	/** @deprecated Use `player.queue(items)` in v2. */
-	setQueue(items: T[]): void;
-	/** @deprecated Use `player.queueAppend(item)` in v2. */
-	addToQueue(item: T): void;
-	/**
-	 * @deprecated Use `player.crossfadeTo(item)` in v2.
-	 * Pre-load an item into the secondary audio buffer for gapless crossfade.
-	 */
-	prepareCrossfade(item?: T): void;
-
-	// ── v1 internal audio element access ──
-	/**
-	 * @deprecated Direct audio-element access. Used for visualization engine attachment.
-	 * Shape is `unknown` — the actual value is the audio backend's element wrapper
-	 * (includes `.motion` for audiomotion-analyzer). Do not depend on this in new code.
-	 */
-	_audioElement1: unknown;
-	/** @deprecated Direct audio-element access — secondary crossfade buffer. @see _audioElement1 */
-	_audioElement2: unknown;
-
-	// ── v1 event on() overloads ───────────────────────────────────────────────
-	// v2 events fire objects; v1 consumer code reads the payload as a primitive.
-	// The v1-compat plugin reshapes these at runtime; these overloads give
-	// consumer TypeScript the correct types.
-
-	/** Compat overload: `time` event — payload includes `time`, `position`, `duration`, `remaining`, `percentage`. */
-	on(event: 'time', fn: (data: { time: number; position: number; duration: number; remaining: number; percentage: number }) => void): void;
-	/** Compat overload: `song` event — payload is the current track item or `null`. */
-	on(event: 'song', fn: (item: T | null) => void): void;
-	/** Compat overload: `queue` event — payload is the current queue array. */
-	on(event: 'queue', fn: (data: T[]) => void): void;
-	/** Compat overload: `backlog` event — payload is the current backlog array. */
-	on(event: 'backlog', fn: (data: T[]) => void): void;
-	/** Compat overload: `play` event — no payload. */
-	on(event: 'play', fn: () => void): void;
-	/** Compat overload: `pause` event — no payload. */
-	on(event: 'pause', fn: () => void): void;
-	/** Compat overload: `stop` event — no payload. */
-	on(event: 'stop', fn: () => void): void;
-	/** Compat overload: `seeked` event — payload is `{ position, time }`. */
-	on(event: 'seeked', fn: (data: { position: number; time: number }) => void): void;
-	/** Compat overload: `mute` event — payload is the boolean directly (canonical: `{ muted }`). */
-	on(event: 'mute', fn: (muted: boolean) => void): void;
-	/** Compat overload: `shuffle` event — payload is the boolean directly (canonical: `{ state }`). */
-	on(event: 'shuffle', fn: (enabled: boolean) => void): void;
-	/** Compat overload: `repeat` event — payload is the `RepeatState` string directly (canonical: `{ state }`). */
-	on(event: 'repeat', fn: (state: RepeatState) => void): void;
-	/** Compat overload: `volume` event — payload is the number directly (canonical: `{ level }`). */
-	on(event: 'volume', fn: (level: number) => void): void;
-
-	// ── v1 equalizer stubs ──
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	equalizerPanning: number;
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	equalizerBands: EQBand[];
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	equalizerPresets: EqualizerPreset[];
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	equalizerSliderValues: EQSliderValues;
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	setPanner(value: number): void;
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	setPreGain(value: number): void;
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	setFilter(band: EQBand): void;
-	/** @deprecated Not implemented in v2 core. Use EqualizerPlugin. */
-	saveEqualizerSettings(): void;
-
-	// ── v1 Helpers data-property shims ──
-	// These were plain readable properties on v1's Helpers class.
-	// v2 exposes equivalent values as method calls. The V1MusicCompatPlugin
-	// installs property getters at runtime; these declarations let consumer
-	// TypeScript see them on `PlayerCore<T>` without a cast.
-
-	/** @deprecated Use `player.time()` in v2. */
-	readonly currentTime: number;
-	/** @deprecated Use `player.volumeState() === VolumeState.MUTED` in v2. */
-	readonly muted: boolean;
-	/** @deprecated Use `player.volumeState() === VolumeState.MUTED` in v2. */
-	readonly isMuted: boolean;
-	/** @deprecated Use `player.playState() === PlayState.PLAYING` in v2. */
-	readonly isPlaying: boolean;
-	/** @deprecated Use `player.playState() === PlayState.PAUSED` in v2. */
-	readonly isPaused: boolean;
-	/** @deprecated Use `player.playState() === PlayState.STOPPED` in v2. */
-	readonly isStopped: boolean;
-	/** @deprecated No v2 equivalent — always false. Listen to time events instead. */
-	readonly isSeeking: boolean;
-	/** @deprecated Use `player.repeatState() !== 'off'` in v2. */
-	readonly isRepeating: boolean;
-	/** @deprecated Use `player.shuffleState() === 'on'` in v2. */
-	readonly isShuffling: boolean;
-	/** @deprecated Use `player.playState()` in v2 (returns PlayState enum). */
-	readonly state: string;
-	/** @deprecated Always 0 in v2. Configure via `crossfadeDefaults.duration` in setup(). */
-	readonly fadeDuration: number;
-	/** @deprecated No v2 equivalent — always false. Listen to the `item` event instead. */
-	readonly newSourceLoaded: boolean;
-	/** @deprecated Use `player.audioContext()` in v2. */
-	readonly context: AudioContext | undefined;
-}
-
-/**
- * @deprecated Use `NMMusicPlayer` directly.
- *
- * `PlayerCore<T>` is a constructable v1 compatibility wrapper around
- * `NMMusicPlayer<T>`. It accepts the v1 config shape and returns an
- * `NMMusicPlayer<T>` instance extended with v1 method aliases.
- *
- * The TypeScript interface above merges with this class declaration so the
- * resolved instance type includes every `NMMusicPlayer<T>` method and every
- * v1 compat alias — no casts required at call sites.
- */
-// eslint-disable-next-line ts/no-unsafe-declaration-merging -- intentional v1 compat merge: interface above extends the class type so call sites get full NMMusicPlayer<T> + v1 aliases without casts
-export class PlayerCore<T extends MusicPlaylistItem = MusicPlaylistItem> {
-	constructor(config: V1MusicPlayerOptions) {
-		// Map v1 config to v2 config shape.
-		const v2Config: MusicPlayerConfig<T> & { expose?: boolean } = {
-			expose: config.expose,
-		};
-
-		if (config.baseUrl) {
-			v2Config.baseUrl = config.baseUrl;
-		}
-
-		// v2 requires a DOM element; v1 PlayerCore was headless. Mount on a
-		// detached invisible div so the player instance can be created without
-		// any visible container. The music player never touches the DOM for
-		// rendering — the div is only needed to satisfy the registry contract.
-		const containerId = `_nm_playercore_${Date.now()}_${Math.random().toString(36)
-			.slice(2)}`;
-		let mountDiv: HTMLDivElement | null = null;
-		if (typeof document !== 'undefined') {
-			mountDiv = document.createElement('div');
-			mountDiv.id = containerId;
-			mountDiv.style.display = 'none';
-			document.body.appendChild(mountDiv);
-		}
-
-		const player = nmMPlayer<T>(mountDiv ? containerId : undefined);
-		player.setup(v2Config as MusicPlayerConfig<T>);
-
-		// Remove the invisible mount div once the player is set up — it served
-		// its only purpose (satisfying the registry constructor requirement).
-		if (mountDiv) {
-			mountDiv.remove();
-		}
-
-		// Install V1MusicCompatPlugin so the instance exposes the full v1 method surface
-		// (aliases, EQ stubs, event-name bridging) with deprecation warnings.
-		// Pass config.actions so any v1 inline callbacks are wired to v2 events.
-		player.addPlugin(V1MusicCompatPlugin, { actions: config.actions });
-
-		// Expose window.musicPlayer when expose: true, mirroring v1 behaviour.
-		if (config.expose && typeof window !== 'undefined') {
-			(window as unknown as Record<string, unknown>)['musicPlayer'] = player;
-		}
-
-		// Return the underlying NMMusicPlayer instance (with v1 aliases attached).
-		// TypeScript sees PlayerCore<T> as the merged interface type, so all methods
-		// are visible. At runtime, the instance IS an NMMusicPlayer<T>.
-		return player as unknown as PlayerCore<T>;
-	}
 }
 
 /**

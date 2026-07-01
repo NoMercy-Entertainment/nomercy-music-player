@@ -16,7 +16,7 @@
  * Slice-09 additions:
  *  - LyricsPlugin line-entry / line-exit plugin events via CueTracker
  *  - LyricsPlugin.current() returns the active cue payload
- *  - AutoAdvancePlugin crossfade:true calls crossfadeTo() on trackEndingSoon
+ *  - AutoAdvancePlugin crossfade:true calls crossfadeTo() on itemEndingSoon
  */
 
 import type { CueList, ICueParser } from '@nomercy-entertainment/nomercy-player-core';
@@ -249,7 +249,7 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			expect(nextFired).toBe(true);
 		});
 
-		it('crossfade:true calls crossfadeTo() with next track on trackEndingSoon', async () => {
+		it('crossfade:true calls crossfadeTo() with next track on itemEndingSoon', async () => {
 			const p = setup();
 			p.addPlugin(autoAdvancePlugin);
 			await p.ready();
@@ -261,10 +261,10 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 			const instance = p.getPlugin(AutoAdvancePlugin)!;
 			instance.options({ crossfade: true, crossfadeDuration: 3 });
 
-			// crossfadeTo is called by onTrackEndingSoon, not onEnded.
+			// crossfadeTo is called by onItemEndingSoon, not onEnded.
 			const crossfadeSpy = vi.spyOn(p, 'crossfadeTo').mockResolvedValue(undefined);
 
-			p.emit('trackEndingSoon' as any, undefined as any);
+			p.emit('itemEndingSoon' as any, undefined as any);
 			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(crossfadeSpy).toHaveBeenCalledOnce();

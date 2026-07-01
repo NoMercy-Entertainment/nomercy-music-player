@@ -14,9 +14,9 @@ import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
 export interface AutoAdvanceOptions {
 	/** Master toggle. Default `true`. */
 	enabled?: boolean;
-	/** On `trackEndingSoon`, peek + load the next track into the next slot. Default `false`. */
+	/** On `itemEndingSoon`, peek + load the next track into the next slot. Default `false`. */
 	preloadNextOnEnding?: boolean;
-	/** On `trackEndingSoon`, hand off to `player.crossfadeTo`. Default `false`. */
+	/** On `itemEndingSoon`, hand off to `player.crossfadeTo`. Default `false`. */
 	crossfade?: boolean;
 	/** Crossfade duration in seconds. Default `0` (hard cut). */
 	crossfadeDuration?: number;
@@ -28,7 +28,7 @@ type CrossfadeHandler = (next: MusicPlaylistItem | undefined, duration: number) 
 
 /**
  * Autonomous-advance plugin. Listens to the player's `ended` event to advance
- * the queue, and `trackEndingSoon` to optionally preload + crossfade. Don't
+ * the queue, and `itemEndingSoon` to optionally preload + crossfade. Don't
  * register this plugin if your app drives the player from a websocket or
  * Cast sync layer — let the orchestrator drive `next()` instead.
  */
@@ -48,10 +48,10 @@ export class AutoAdvancePlugin extends Plugin<NMMusicPlayer, AutoAdvanceOptions>
 			void this.onEnded();
 		});
 
-		this.on('trackEndingSoon', () => {
+		this.on('itemEndingSoon', () => {
 			if (this.opts?.enabled === false)
 				return;
-			void this.onTrackEndingSoon();
+			void this.onItemEndingSoon();
 		});
 	}
 
@@ -82,12 +82,12 @@ export class AutoAdvancePlugin extends Plugin<NMMusicPlayer, AutoAdvanceOptions>
 		this.endedHandlers.push(fn);
 	}
 
-	/** Register an additional `trackEndingSoon` handler for preload behaviour. */
+	/** Register an additional `itemEndingSoon` handler for preload behaviour. */
 	addPreloadHandler(fn: PreloadHandler): void {
 		this.preloadHandlers.push(fn);
 	}
 
-	/** Register an additional `trackEndingSoon` handler for crossfade behaviour. */
+	/** Register an additional `itemEndingSoon` handler for crossfade behaviour. */
 	addCrossfadeHandler(fn: CrossfadeHandler): void {
 		this.crossfadeHandlers.push(fn);
 	}
@@ -106,7 +106,7 @@ export class AutoAdvancePlugin extends Plugin<NMMusicPlayer, AutoAdvanceOptions>
 		}
 	}
 
-	private async onTrackEndingSoon(): Promise<void> {
+	private async onItemEndingSoon(): Promise<void> {
 		const next = this.player.peekNext();
 		const duration = this.opts?.crossfadeDuration ?? 0;
 

@@ -16,13 +16,11 @@
  *   MediaSessionPlugin  — lifecycle + getMetadata() music field mapping
  *   KeyHandlerPlugin    — lifecycle + music-specific key bindings present
  *   CastSenderPlugin    — lifecycle + isConnected() false before connect()
- *   V1MusicCompatPlugin — lifecycle + on-interceptor / method shims / dispose cleanup
  */
 
 import type { CueList, ICueParser } from '@nomercy-entertainment/nomercy-player-core';
 import { createCueList } from '@nomercy-entertainment/nomercy-player-core';
 import {
-	createStubPlayer,
 	describePlugin,
 } from '@nomercy-entertainment/nomercy-player-core/testing';
 import { expect, it, vi } from 'vitest';
@@ -31,7 +29,6 @@ import { CastSenderPlugin } from '../../plugins/cast-sender';
 import { KeyHandlerPlugin } from '../../plugins/key-handler';
 import { LyricsPlugin } from '../../plugins/lyrics';
 import { MediaSessionPlugin } from '../../plugins/media-session';
-import { V1MusicCompatPlugin } from '../../plugins/v1-compat';
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -251,86 +248,3 @@ describePlugin(CastSenderPlugin, (ctx) => {
 		expect(contentType).toBe('audio/mpeg');
 	});
 });
-
-// ---------------------------------------------------------------------------
-// V1MusicCompatPlugin
-// ---------------------------------------------------------------------------
-
-describePlugin(
-	V1MusicCompatPlugin,
-	(ctx) => {
-		it('installs on() interceptor — v1 event name "song" bridged to v2 "item"', () => {
-			const received: unknown[] = [];
-			ctx.player.on('song' as never, (d: unknown) => { received.push(d); });
-
-			const track = { id: 'a', name: 'Track A' };
-			ctx.player.emit('item' as never, { item: track, index: 0 } as never);
-
-			expect(received).toHaveLength(1);
-			expect(received[0]).toMatchObject({ id: 'a', name: 'Track A' });
-		});
-
-		it('shims setVolume() to delegate to player.volume()', () => {
-			const volumeSpy = vi.spyOn(ctx.player, 'volume').mockImplementation((_v?: number) => {});
-			const setVolume = (ctx.player as unknown as Record<string, unknown>)['setVolume'];
-			expect(setVolume).toBeTypeOf('function');
-			(setVolume as (v: number) => void)(42);
-			expect(volumeSpy).toHaveBeenCalledWith(42);
-			volumeSpy.mockRestore();
-		});
-
-		it('shims getQueue() to delegate to player.queue()', () => {
-			ctx.player.queue([{ id: 'x', url: '' } as never]);
-			const getQueue = (ctx.player as unknown as Record<string, unknown>)['getQueue'];
-			expect(getQueue).toBeTypeOf('function');
-			const result = (getQueue as () => unknown)();
-			expect(Array.isArray(result)).toBe(true);
-		});
-
-		it('shims isPlaying getter — returns false when playState is idle', () => {
-			const isPlaying = (ctx.player as unknown as Record<string, unknown>)['isPlaying'];
-			expect(isPlaying).toBe(false);
-		});
-
-		it('dispose() removes patched methods', () => {
-			ctx.plugin.dispose();
-			expect((ctx.player as unknown as Record<string, unknown>)['setVolume']).toBeUndefined();
-			expect((ctx.player as unknown as Record<string, unknown>)['getQueue']).toBeUndefined();
-		});
-	},
-	{
-		createPlayer: () => {
-			const p = createStubPlayer();
-			const volumeFn = vi.fn((v?: number) => v === undefined ? 100 : undefined) as unknown as typeof p.volume;
-			Object.defineProperty(p, 'volume', { value: volumeFn, writable: true, configurable: true });
-			(p as unknown as Record<string, unknown>)['repeatState'] = vi.fn((s?: unknown) => s === undefined ? 'off' : undefined);
-			(p as unknown as Record<string, unknown>)['shuffleState'] = vi.fn((s?: unknown) => s === undefined ? 'off' : undefined);
-			(p as unknown as Record<string, unknown>)['playState'] = vi.fn(() => 'idle');
-			(p as unknown as Record<string, unknown>)['duration'] = vi.fn(() => 0);
-			(p as unknown as Record<string, unknown>)['time'] = vi.fn((t?: number) => t === undefined ? 0 : Promise.resolve());
-			(p as unknown as Record<string, unknown>)['buffered'] = vi.fn(() => 0);
-			(p as unknown as Record<string, unknown>)['timeData'] = vi.fn(() => ({ position: 0, duration: 0, buffered: 0, remaining: 0, percentage: 0 }));
-			(p as unknown as Record<string, unknown>)['playbackRate'] = vi.fn((r?: number) => r === undefined ? 1 : undefined);
-			(p as unknown as Record<string, unknown>)['volumeState'] = vi.fn(() => 'unmuted');
-			const queueFn = vi.fn((items?: unknown) => items === undefined ? [] : undefined);
-			Object.defineProperty(p, 'queue', { value: queueFn, writable: true, configurable: true });
-			(p as unknown as Record<string, unknown>)['queueAppend'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['queuePrepend'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['queueRemove'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['backlog'] = vi.fn((items?: unknown) => items === undefined ? [] : undefined);
-			(p as unknown as Record<string, unknown>)['backlogAppend'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['backlogRemove'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['item'] = vi.fn((i?: unknown) => i === undefined ? undefined : undefined);
-			(p as unknown as Record<string, unknown>)['peekNext'] = vi.fn(() => undefined);
-			(p as unknown as Record<string, unknown>)['play'] = vi.fn(() => Promise.resolve());
-			(p as unknown as Record<string, unknown>)['mute'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['unmute'] = vi.fn();
-			(p as unknown as Record<string, unknown>)['auth'] = vi.fn((c?: unknown) => c === undefined ? undefined : undefined);
-			(p as unknown as Record<string, unknown>)['baseUrl'] = vi.fn((u?: string) => u === undefined ? undefined : undefined);
-			(p as unknown as Record<string, unknown>)['crossfadeTo'] = vi.fn(() => Promise.resolve());
-			(p as unknown as Record<string, unknown>)['audioContext'] = vi.fn(() => undefined);
-			return p;
-		},
-		skipLeakAssertion: true,
-	},
-);

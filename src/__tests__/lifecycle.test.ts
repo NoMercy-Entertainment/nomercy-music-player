@@ -13,7 +13,7 @@
 
 import { PlayerError, StateError } from '@nomercy-entertainment/nomercy-player-core';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { nmMPlayer, NMMusicPlayer } from '../index';
+import { NMMusicPlayer, nmplayer } from '../index';
 
 describe('NMMusicPlayer — lifecycle', () => {
 	beforeEach(() => {
@@ -37,7 +37,7 @@ describe('NMMusicPlayer — lifecycle', () => {
 		});
 
 		it('factory function returns a player', () => {
-			const player = nmMPlayer('test');
+			const player = nmplayer('test');
 			expect(player).toBeInstanceOf(NMMusicPlayer);
 		});
 	});

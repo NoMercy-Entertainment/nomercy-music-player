@@ -6,4 +6,4 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
-export { nmMPlayer as default } from './index';
+export { nmplayer as default } from './index';

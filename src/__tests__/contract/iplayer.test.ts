@@ -8,7 +8,7 @@
 
 import { runIPlayerContract } from '@nomercy-entertainment/nomercy-player-core/testing';
 import { afterEach, beforeEach } from 'vitest';
-import { nmMPlayer, NMMusicPlayer } from '../../index';
+import { NMMusicPlayer, nmplayer } from '../../index';
 
 /**
  * Validates that `NMMusicPlayer` satisfies the `IPlayer` **behavior** contract.
@@ -29,6 +29,6 @@ afterEach(() => {
 });
 
 runIPlayerContract({
-	create: () => nmMPlayer('contract-music').setup({}),
+	create: () => nmplayer('contract-music').setup({}),
 	label: 'NMMusicPlayer',
 });

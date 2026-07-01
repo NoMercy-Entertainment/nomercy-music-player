@@ -44,8 +44,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 import { NMMusicPlayer } from '../index';
-import { V1MusicCompatPlugin } from '../plugins/v1-compat';
-
 // ── Shared DOM helpers ────────────────────────────────────────────────────────
 
 function makeContainer(): HTMLDivElement {
@@ -505,101 +503,5 @@ describe('NMMusicPlayer.crossfadeTo() — item cursor update', () => {
 
 		// The item event carries { item, index } — what lyrics/mediaSession listen to.
 		expect(itemEvents.length).toBeGreaterThan(0);
-	});
-});
-
-// =============================================================================
-// 4. V1MusicCompatPlugin._toV1TimeState — Infinity / non-finite duration branch
-// =============================================================================
-
-describe('V1MusicCompatPlugin._toV1TimeState — non-finite duration', () => {
-	beforeEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
-		const div = document.createElement('div');
-		div.id = 'v1-finite-test';
-		document.body.appendChild(div);
-		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-	});
-
-	afterEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
-		document.body.innerHTML = '';
-		vi.restoreAllMocks();
-	});
-
-	function shimOn(player: NMMusicPlayer, event: string, fn: (d: unknown) => void): void {
-		const onFn = (player as unknown as Record<string, unknown>)['on'];
-		if (typeof onFn !== 'function')
-			throw new TypeError('on() not found');
-		(onFn as (ev: string, cb: (d: unknown) => void) => void)(event, fn);
-	}
-
-	it('_toV1TimeState yields percentage=0 and remaining=0 when duration is Infinity', async () => {
-		const player = new NMMusicPlayer('v1-finite-test').setup({});
-		player.addPlugin(V1MusicCompatPlugin);
-		await player.ready();
-
-		// Set duration to Infinity — the module-level _currentDuration is updated by the
-		// 'duration' event listener installed in V1MusicCompatPlugin.use().
-		player.emit('duration' as never, { duration: Infinity } as never);
-
-		const received: unknown[] = [];
-		shimOn(player, 'time', d => received.push(d));
-
-		player.emit('time' as never, { time: 30 } as never);
-
-		expect(received).toHaveLength(1);
-		const payload = received[0] as Record<string, number>;
-
-		// safeD = 0 because !isFinite(Infinity) is false but duration > 0 check passes...
-		// Actually Infinity IS finite check: Number.isFinite(Infinity) === false, so safeD = 0.
-		expect(payload['duration']).toBe(0);
-		expect(payload['percentage']).toBe(0);
-		expect(payload['remaining']).toBe(0);
-		expect(payload['position']).toBe(30);
-
-		player.dispose();
-	});
-
-	it('_toV1TimeState yields percentage=0 and remaining=0 when duration is NaN', async () => {
-		const player = new NMMusicPlayer('v1-finite-test').setup({});
-		player.addPlugin(V1MusicCompatPlugin);
-		await player.ready();
-
-		// NaN duration — the duration listener stores it but safeD will be 0.
-		player.emit('duration' as never, { duration: Number.NaN } as never);
-
-		const received: unknown[] = [];
-		shimOn(player, 'time', d => received.push(d));
-
-		player.emit('time' as never, { time: 10 } as never);
-
-		const payload = received[0] as Record<string, number>;
-		expect(payload['duration']).toBe(0);
-		expect(payload['percentage']).toBe(0);
-		expect(payload['remaining']).toBe(0);
-
-		player.dispose();
-	});
-
-	it('_toV1TimeState computes percentage correctly when duration is finite and > 0', async () => {
-		const player = new NMMusicPlayer('v1-finite-test').setup({});
-		player.addPlugin(V1MusicCompatPlugin);
-		await player.ready();
-
-		player.emit('duration' as never, { duration: 200 } as never);
-
-		const received: unknown[] = [];
-		shimOn(player, 'time', d => received.push(d));
-
-		player.emit('time' as never, { time: 50 } as never);
-
-		const payload = received[0] as Record<string, number>;
-		expect(payload['duration']).toBe(200);
-		expect(payload['percentage']).toBeCloseTo(25, 5);
-		expect(payload['remaining']).toBeCloseTo(150, 5);
-		expect(payload['position']).toBe(50);
-
-		player.dispose();
 	});
 });
