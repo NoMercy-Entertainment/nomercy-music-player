@@ -7,17 +7,11 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Single AudioContext invariant — regression suite for Bug 1 (total silence).
+ * Single AudioContext invariant — regression suite.
  *
- * Root cause: WebAudioBackend created its own AudioContext (A) at construction
- * time but never registered it on the player. AudioGraphPlugin.use() found
- * player.audioContext() === undefined, created a second context (B), and then
- * tried to connect backend nodes (context A) to plugin chain nodes (context B).
- * Chrome threw InvalidAccessError on the cross-context connect, caught it, and
- * aborted the chain — leaving the source routed to nothing.
- *
- * Fix: _wireBackend() calls setPlayerAudioContext(player, backend.audioContext())
- * immediately after creation, before any plugin's use() runs.
+ * _wireBackend() must call setPlayerAudioContext(player, backend.audioContext())
+ * before any plugin's use() runs. Without this, AudioGraphPlugin creates a
+ * second context and cross-context connect causes silent playback failure.
  *
  * What these tests verify:
  *   1. After wiring a WebAudioBackend, player.audioContext() returns the

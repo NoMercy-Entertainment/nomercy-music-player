@@ -31,8 +31,8 @@ interface WebkitAudioContextGlobal {
 }
 
 function resolveAudioContext(existing?: AudioContext): AudioContext {
-	const g = globalThis as unknown as WebkitAudioContextGlobal;
-	const Ctor = g.AudioContext ?? g.webkitAudioContext;
+	const global = globalThis as unknown as WebkitAudioContextGlobal; // webkit prefix not in the TS DOM lib
+	const Ctor = global.AudioContext ?? global.webkitAudioContext;
 
 	if (!Ctor) {
 		throw new BrowserPolicyError({

@@ -42,10 +42,10 @@ import { NMMusicPlayer } from '../index';
 class MockGainNode {
 	gain = {
 		value: 1,
-		setTargetAtTime: vi.fn((v: number) => { this.gain.value = v; }),
+		setTargetAtTime: vi.fn((level: number) => { this.gain.value = level; }),
 		cancelScheduledValues: vi.fn(),
-		setValueAtTime: vi.fn((v: number) => { this.gain.value = v; }),
-		linearRampToValueAtTime: vi.fn((v: number) => { this.gain.value = v; }),
+		setValueAtTime: vi.fn((level: number) => { this.gain.value = level; }),
+		linearRampToValueAtTime: vi.fn((level: number) => { this.gain.value = level; }),
 	};
 
 	connect = vi.fn();
@@ -369,8 +369,8 @@ describe('WebAudioBackend — crossfade preserves volume control in the new prim
 		// After crossfade, the backend's gainNode is what was _secondaryGain.
 		// It's the 2nd GainNode created (first = primary volume, second = secondary gain).
 		const gainNodes = ctx.createGain.mock.results
-			.filter((r): r is { type: 'return'; value: MockGainNode } => r.type === 'return')
-			.map(r => r.value);
+			.filter((result): result is { type: 'return'; value: MockGainNode } => result.type === 'return')
+			.map(result => result.value);
 		// Primary GainNode was created in ensureGraph() (index 0).
 		// Secondary GainNode was created in loadSecondary() (index 1).
 		// After crossfade, gainNode = _secondaryGain = index 1.

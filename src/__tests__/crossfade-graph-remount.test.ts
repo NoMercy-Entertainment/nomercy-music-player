@@ -7,18 +7,12 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Post-crossfade graph remount regression suite (Bug 3).
+ * Post-crossfade graph remount regression suite.
  *
- * Root cause: After WebAudioBackend.crossfade() promoted the secondary element
- * to primary, AudioGraphPlugin.source still referenced the old (disconnected)
- * source node. The EQ / mixer / analyser chain was fed by a dead source while
- * the new element routed through the crossfade's own secondary gain → destination
- * path, bypassing the plugin chain entirely.
- *
- * Fix: WebAudioBackend emits 'backend:sourceswap' with { sourceNode } after the
- * promote step. AudioGraphPlugin listens for this event in use() and calls
- * remountSource + rebuildChain on receipt, replacing its internal source
- * reference with the new node and reconnecting the full chain.
+ * After crossfade() promotes the secondary element to primary, the backend
+ * emits 'backend:sourceswap' with { sourceNode }. AudioGraphPlugin must
+ * remount its source and rebuild the chain on receipt — without this, the
+ * plugin chain routes through a disconnected (dead) source node.
  *
  * What these tests verify:
  *   1. 'backend:sourceswap' is emitted after crossfade(0) with the new source node.
@@ -37,10 +31,10 @@ import { NMMusicPlayer } from '../index';
 class MockGainNode {
 	gain = {
 		value: 1,
-		setTargetAtTime: vi.fn((v: number) => { this.gain.value = v; }),
+		setTargetAtTime: vi.fn((level: number) => { this.gain.value = level; }),
 		cancelScheduledValues: vi.fn(),
-		setValueAtTime: vi.fn((v: number) => { this.gain.value = v; }),
-		linearRampToValueAtTime: vi.fn((v: number) => { this.gain.value = v; }),
+		setValueAtTime: vi.fn((level: number) => { this.gain.value = level; }),
+		linearRampToValueAtTime: vi.fn((level: number) => { this.gain.value = level; }),
 	};
 
 	connect = vi.fn();

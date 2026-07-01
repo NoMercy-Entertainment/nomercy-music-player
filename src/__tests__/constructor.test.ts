@@ -62,8 +62,8 @@ describe('NMMusicPlayer constructor', () => {
 		});
 
 		it('numeric form: nmplayer(0) returns first registered instance', () => {
-			const a = document.createElement('div'); a.id = 'idx-a'; document.body.appendChild(a);
-			const b = document.createElement('div'); b.id = 'idx-b'; document.body.appendChild(b);
+			const divA = document.createElement('div'); divA.id = 'idx-a'; document.body.appendChild(divA);
+			const divB = document.createElement('div'); divB.id = 'idx-b'; document.body.appendChild(divB);
 			const first = nmplayer('idx-a');
 			nmplayer('idx-b');
 			expect(nmplayer(0)).toBe(first);
@@ -159,8 +159,8 @@ describe('NMMusicPlayer constructor', () => {
 		});
 
 		it('different ids produce different instances', () => {
-			const a = document.createElement('div'); a.id = 'pa'; document.body.appendChild(a);
-			const b = document.createElement('div'); b.id = 'pb'; document.body.appendChild(b);
+			const divA = document.createElement('div'); divA.id = 'pa'; document.body.appendChild(divA);
+			const divB = document.createElement('div'); divB.id = 'pb'; document.body.appendChild(divB);
 
 			const first = nmplayer('pa');
 			const second = nmplayer('pb');

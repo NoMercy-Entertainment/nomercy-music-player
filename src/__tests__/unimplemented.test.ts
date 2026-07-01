@@ -156,7 +156,7 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			const musicPlayer = player();
 			await musicPlayer.ready();
 			const flags = [musicPlayer.isTv(), musicPlayer.isMobile(), musicPlayer.isDesktop()];
-			expect(flags.every(f => typeof f === 'boolean')).toBe(true);
+			expect(flags.every(flag => typeof flag === 'boolean')).toBe(true);
 			// At most one of (tv, mobile, desktop) is true (desktop is the default fallback).
 			expect(flags.filter(Boolean).length).toBeGreaterThanOrEqual(1);
 		});
@@ -189,9 +189,8 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 		it('bandwidthEstimator replaces the estimator (kit-level overload)', async () => {
 			const musicPlayer = player();
 			await musicPlayer.ready();
-			// The library's `setBandwidthEstimator` declare is stale — the kit
-			// renamed it to `bandwidthEstimator(fn?)` per spec §11. Test the real
-			// runtime surface via `any` cast.
+			// `setBandwidthEstimator` was renamed to `bandwidthEstimator(fn?)` —
+			// the declare is stale; test the runtime surface via `any` cast.
 			const anyP = musicPlayer as unknown as { bandwidthEstimator: (fn?: () => number) => (() => number) | void };
 			expect(() => anyP.bandwidthEstimator(() => 12345)).not.toThrow();
 			expect(typeof anyP.bandwidthEstimator()).toBe('function');
@@ -388,9 +387,9 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await musicPlayer.ready();
 			musicPlayer.recordMetric('droppedFrames', 12);
 			musicPlayer.recordMetric('customCounter', 7);
-			const m = musicPlayer.metrics() as any;
-			expect(m.droppedFrames).toBe(12);
-			expect(m.customCounter).toBe(7);
+			const metrics = musicPlayer.metrics() as any;
+			expect(metrics.droppedFrames).toBe(12);
+			expect(metrics.customCounter).toBe(7);
 		});
 		it('now() returns clockSource() if configured, else Date.now()', async () => {
 			const musicPlayer = player();

@@ -61,7 +61,7 @@ describe('NMMusicPlayer — transport', () => {
 		it('passes a mutable ActionOptions in BeforeEvent.data', async () => {
 			const musicPlayer = setup();
 			let captured: { source?: string } | undefined;
-			musicPlayer.on('beforePlay' as any, (e: any) => { captured = e.data; });
+			musicPlayer.on('beforePlay' as any, (evt: any) => { captured = evt.data; });
 			await musicPlayer.play({ source: 'user' });
 			expect(captured?.source).toBe('user');
 		});
@@ -69,7 +69,7 @@ describe('NMMusicPlayer — transport', () => {
 		it('listener can mutate data, post-event sees mutated value', async () => {
 			const musicPlayer = setup();
 			let received: { source?: string } | undefined;
-			musicPlayer.on('beforePlay' as any, (e: any) => { e.data.source = 'remote'; });
+			musicPlayer.on('beforePlay' as any, (evt: any) => { evt.data.source = 'remote'; });
 			musicPlayer.on('play' as any, (data: any) => { received = data; });
 			await musicPlayer.play({ source: 'user' });
 			expect(received?.source).toBe('remote');
@@ -79,7 +79,7 @@ describe('NMMusicPlayer — transport', () => {
 			const musicPlayer = setup();
 			let playFired = false;
 			let preventedReason: string | undefined;
-			musicPlayer.on('beforePlay' as any, (e: any) => { e.preventDefault(); });
+			musicPlayer.on('beforePlay' as any, (evt: any) => { evt.preventDefault(); });
 			musicPlayer.on('play' as any, () => { playFired = true; });
 			musicPlayer.on('playPrevented' as any, (data: any) => { preventedReason = data.reason; });
 			await musicPlayer.play();
@@ -90,7 +90,7 @@ describe('NMMusicPlayer — transport', () => {
 		it('stopImmediatePropagation skips later listeners on the same event', async () => {
 			const musicPlayer = setup();
 			const calls: string[] = [];
-			musicPlayer.on('beforePlay' as any, (e: any) => { calls.push('first'); e.stopImmediatePropagation(); });
+			musicPlayer.on('beforePlay' as any, (evt: any) => { calls.push('first'); evt.stopImmediatePropagation(); });
 			musicPlayer.on('beforePlay' as any, () => calls.push('second'));
 			await musicPlayer.play();
 			expect(calls).toEqual(['first']);
@@ -120,7 +120,7 @@ describe('NMMusicPlayer — transport', () => {
 			const musicPlayer = setup();
 			let pauseFired = false;
 			let preventedReason: string | undefined;
-			musicPlayer.on('beforePause' as any, (e: any) => { e.preventDefault(); });
+			musicPlayer.on('beforePause' as any, (evt: any) => { evt.preventDefault(); });
 			musicPlayer.on('pause' as any, () => { pauseFired = true; });
 			musicPlayer.on('pausePrevented' as any, (data: any) => { preventedReason = data.reason; });
 			await musicPlayer.pause();
@@ -175,7 +175,7 @@ describe('NMMusicPlayer — transport', () => {
 		it('rewind emits beforeSeek with negative delta', () => {
 			const musicPlayer = setup();
 			let beforeSeekTime: number | undefined;
-			musicPlayer.on('beforeSeek' as any, (e: any) => { beforeSeekTime = e.data.time; });
+			musicPlayer.on('beforeSeek' as any, (evt: any) => { beforeSeekTime = evt.data.time; });
 			musicPlayer.rewind(5);
 			expect(beforeSeekTime).toBe(-5);
 		});
@@ -183,7 +183,7 @@ describe('NMMusicPlayer — transport', () => {
 		it('forward emits beforeSeek with positive delta', () => {
 			const musicPlayer = setup();
 			let beforeSeekTime: number | undefined;
-			musicPlayer.on('beforeSeek' as any, (e: any) => { beforeSeekTime = e.data.time; });
+			musicPlayer.on('beforeSeek' as any, (evt: any) => { beforeSeekTime = evt.data.time; });
 			musicPlayer.forward(10);
 			expect(beforeSeekTime).toBe(10);
 		});

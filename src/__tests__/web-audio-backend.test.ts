@@ -176,11 +176,11 @@ describe('WebAudioBackend', () => {
 			const backend = new WebAudioBackend(container);
 			const ctx = lastCtx();
 
-			const a = backend.outputNode(ctx as unknown as AudioContext);
-			const b = backend.outputNode(ctx as unknown as AudioContext);
+			const firstNode = backend.outputNode(ctx as unknown as AudioContext);
+			const secondNode = backend.outputNode(ctx as unknown as AudioContext);
 
-			expect(a).toBe(b);
-			expect(a).toBe(ctx.gainNode);
+			expect(firstNode).toBe(secondNode);
+			expect(firstNode).toBe(ctx.gainNode);
 			expect(ctx.createMediaElementSource).toHaveBeenCalledTimes(1);
 		});
 	});

@@ -41,7 +41,7 @@ describe('NMMusicPlayer — time', () => {
 		it('emits beforeSeek with the requested time', () => {
 			const musicPlayer = setup();
 			let beforeTime: number | undefined;
-			musicPlayer.on('beforeSeek' as any, (e: any) => { beforeTime = e.data.time; });
+			musicPlayer.on('beforeSeek' as any, (evt: any) => { beforeTime = evt.data.time; });
 			musicPlayer.time(42);
 			expect(beforeTime).toBe(42);
 		});
@@ -64,7 +64,7 @@ describe('NMMusicPlayer — time', () => {
 			const musicPlayer = setup();
 			await musicPlayer.time(10);
 			let preventedReason: string | undefined;
-			musicPlayer.on('beforeSeek' as any, (e: any) => { e.preventDefault(); });
+			musicPlayer.on('beforeSeek' as any, (evt: any) => { evt.preventDefault(); });
 			musicPlayer.on('seekPrevented' as any, (data: any) => { preventedReason = data.reason; });
 			await musicPlayer.time(99);
 			expect(musicPlayer.time()).toBe(10);

@@ -304,13 +304,13 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		// early, and re-initializing core state on a live instance corrupts it.
 		const resolved = resolvePlayerConstructor(id, _instances, 'NMMusicPlayer');
 		if (resolved.kind === 'existing') {
-			return resolved.instance as unknown as this;
+			return resolved.instance as unknown as this; // polymorphic return: resolved instance IS this subclass
 		}
 
 		initPlayerCoreState(this, { className: 'NMMusicPlayer' });
 		(this as { playerId: string }).playerId = resolved.id;
 		this.container = resolved.div;
-		_instances.set(resolved.id, this as unknown as NMMusicPlayer<MusicPlaylistItem>);
+		_instances.set(resolved.id, this as unknown as NMMusicPlayer<MusicPlaylistItem>); // registry stores the base item type; subclass is assignment-compatible
 	}
 
 	/** Test-only: clear the registry. Not part of the public API. */
@@ -406,7 +406,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	}
 
 	private _makePlayStateHandlers(instance: IAudioBackend): void {
-		const internals = this as unknown as WireInternals;
+		const internals = this as unknown as WireInternals; // accesses private phase fields not on the public type
 
 		instance.on('canplay', () => {
 			if (this._firstFrameEmitted)
@@ -692,7 +692,7 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 {
 	const composedDispose: () => void = NMMusicPlayer.prototype.dispose;
 	NMMusicPlayer.prototype.dispose = function (this: NMMusicPlayer<MusicPlaylistItem>): void {
-		const self = this as unknown as { _backend?: IAudioBackend };
+		const self = this as unknown as { _backend?: IAudioBackend }; // dispose needs write access to the private _backend field
 		try { self._backend?.dispose?.(); }
 		catch { /* defensive — kit must still finish disposing */ }
 		self._backend = undefined;

@@ -117,8 +117,8 @@ describePlugin(LyricsPlugin, (ctx) => {
 		);
 
 		let loadedPayload: { count: number } | undefined;
-		ctx.player.once('plugin:lyrics:loaded' as never, (d: unknown) => {
-			loadedPayload = d as { count: number };
+		ctx.player.once('plugin:lyrics:loaded' as never, (payload: unknown) => {
+			loadedPayload = payload as { count: number };
 		});
 
 		await ctx.plugin.fetchLyrics('https://example.com/track.lrc');
@@ -187,28 +187,28 @@ describePlugin(MediaSessionPlugin, (ctx) => {
 
 describePlugin(KeyHandlerPlugin, (ctx) => {
 	it('installs kit default bindings: space / arrows / m', () => {
-		const b = ctx.plugin.bindings();
-		expect(b.has(' ')).toBe(true);
-		expect(b.has('m')).toBe(true);
-		expect(b.has('ArrowLeft')).toBe(true);
-		expect(b.has('ArrowRight')).toBe(true);
-		expect(b.has('ArrowUp')).toBe(true);
-		expect(b.has('ArrowDown')).toBe(true);
+		const bindings = ctx.plugin.bindings();
+		expect(bindings.has(' ')).toBe(true);
+		expect(bindings.has('m')).toBe(true);
+		expect(bindings.has('ArrowLeft')).toBe(true);
+		expect(bindings.has('ArrowRight')).toBe(true);
+		expect(bindings.has('ArrowUp')).toBe(true);
+		expect(bindings.has('ArrowDown')).toBe(true);
 	});
 
 	it('installs music-specific bindings: n / p / r / s', () => {
-		const b = ctx.plugin.bindings();
-		expect(b.has('n')).toBe(true);
-		expect(b.has('p')).toBe(true);
-		expect(b.has('r')).toBe(true);
-		expect(b.has('s')).toBe(true);
+		const bindings = ctx.plugin.bindings();
+		expect(bindings.has('n')).toBe(true);
+		expect(bindings.has('p')).toBe(true);
+		expect(bindings.has('r')).toBe(true);
+		expect(bindings.has('s')).toBe(true);
 	});
 
 	it('r binding calls repeatState setter with next cycle value', () => {
 		const setStateSpy = vi.spyOn(ctx.player, 'repeatState');
 
-		const b = ctx.plugin.bindings();
-		const rHandler = b.get('r');
+		const bindings = ctx.plugin.bindings();
+		const rHandler = bindings.get('r');
 		if (!rHandler)
 			throw new Error('r binding not found');
 

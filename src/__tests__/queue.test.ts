@@ -154,7 +154,7 @@ describe('NMMusicPlayer — queue', () => {
 			musicPlayer.queue([track('c'), track('a'), track('b')]);
 			let sorted = false;
 			musicPlayer.on('queue:sort' as any, () => { sorted = true; });
-			musicPlayer.queueSort((a, b) => String(a.id).localeCompare(String(b.id)));
+			musicPlayer.queueSort((itemA, itemB) => String(itemA.id).localeCompare(String(itemB.id)));
 			expect(musicPlayer.queue().map(i => i.id)).toEqual(['a', 'b', 'c']);
 			expect(sorted).toBe(true);
 		});

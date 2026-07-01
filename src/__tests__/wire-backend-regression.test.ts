@@ -7,24 +7,15 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Regression tests for _wireBackend bugs fixed in the phase-3 music investigation.
+ * Regression tests for _wireBackend correctness.
  *
- * Bug 1 — Phase stuck at 'starting' after play().
- *   Root cause: canplay fired during backend.load() (setting _firstFrameEmitted=true)
- *   and was guarded on re-fire. The phase 'starting'→'playing' transition only
- *   happened inside the canplay handler, so calling play() later left the phase
- *   stuck at 'starting'.
- *   Fix: phase transition also fires from the backend 'play' event handler.
- *
- * Bug 2 — Duration always 0:00.
- *   Root cause: _wireBackend loadedmetadata handler read data.duration from the
- *   payload, but the backend emits a raw DOM Event (not { duration: number }).
- *   Fix: handler calls instance.duration() directly.
- *
- * Bug 3 — Backend config 'webaudio' ignored on lazy init.
- *   Root cause: backend() getter always created AudioElementBackend regardless of
- *   this.options.backend.
- *   Fix: check config on first lazy init.
+ * Three invariants that must hold:
+ *   1. Phase transition 'starting'→'playing' fires from the backend 'play' event,
+ *      not only from canplay — canplay may not re-fire if audio was already buffered.
+ *   2. The 'duration' event reads instance.duration() directly; the backend emits
+ *      a raw DOM Event, not { duration: number }.
+ *   3. backend() lazy init respects MusicPlayerConfig.backend — 'webaudio' creates
+ *      WebAudioBackend, not the default AudioElementBackend.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -119,9 +110,9 @@ describe('_wireBackend regression', () => {
 		removeAudioContext();
 	});
 
-	// ── Bug 1: Phase 'starting' → 'playing' ─────────────────────────────────
+	// ── Phase 'starting' → 'playing' ────────────────────────────────────────
 
-	describe('Bug 1 — phase transitions to "playing" from backend play event', () => {
+	describe('phase transitions to "playing" from backend play event', () => {
 		it('transitions "starting" → "playing" when DOM play fires after _firstFrameEmitted is true', async () => {
 			const { player, audioEl } = await makeReadyPlayer('wire-backend-test');
 
@@ -167,9 +158,9 @@ describe('_wireBackend regression', () => {
 		});
 	});
 
-	// ── Bug 2: Duration from instance.duration() ─────────────────────────────
+	// ── Duration from instance.duration() ────────────────────────────────────
 
-	describe('Bug 2 — "duration" event carries value from backend.duration()', () => {
+	describe('"duration" event carries value from backend.duration()', () => {
 		it('emits "duration" with the audio element\'s duration after loadedmetadata', async () => {
 			const { player, audioEl } = await makeReadyPlayer('wire-backend-test');
 
@@ -209,9 +200,9 @@ describe('_wireBackend regression', () => {
 		});
 	});
 
-	// ── Bug 3: Backend config 'webaudio' honored on lazy init ────────────────
+	// ── Backend config 'webaudio' honored on lazy init ───────────────────────
 
-	describe('Bug 3 — backend() lazy init respects MusicPlayerConfig.backend', () => {
+	describe('backend() lazy init respects MusicPlayerConfig.backend', () => {
 		it('creates AudioElementBackend by default (no backend config)', () => {
 			const player = new NMMusicPlayer('wire-backend-test').setup({});
 			expect(player.backend()).toBeInstanceOf(AudioElementBackend);

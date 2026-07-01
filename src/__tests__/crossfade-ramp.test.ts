@@ -85,7 +85,7 @@ function makeMockGain(initial = 1): {
 	let _v = initial;
 	return {
 		get value(): number { return _v; },
-		set value(v: number) { _v = v; },
+		set value(level: number) { _v = level; },
 		setValueAtTime: vi.fn((target: number) => { _v = target; }),
 		linearRampToValueAtTime: vi.fn((target: number) => { _v = target; }),
 		cancelScheduledValues: vi.fn(),

@@ -7,15 +7,11 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Secondary-load auth regression suite (Bug 2).
+ * Secondary-load auth regression suite.
  *
- * Root cause: WebAudioBackend.loadSecondary() assigned `el.src = url` raw,
- * without applying the auth token. On authenticated NoMercy servers the
- * secondary load returned HTTP 401 → MediaError code 4 → crossfade failure.
- *
- * Fix: loadSecondary resolves `_authHeaderProvider?.()` and applies
- * `appendAuthTokenParam` (or hls.js xhrSetup for HLS URLs) identically to
- * the primary load() path.
+ * loadSecondary() must apply auth (appendAuthTokenParam / hls.js xhrSetup)
+ * identically to the primary load() path — omitting it causes HTTP 401
+ * → MediaError code 4 → crossfade failure on authenticated servers.
  *
  * What these tests verify:
  *   1. When an auth provider is wired and the URL is non-HLS, loadSecondary

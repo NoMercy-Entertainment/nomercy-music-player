@@ -44,7 +44,7 @@ implements IPlaylistGenerator<T> {
 			return 0;
 
 		const candidates = items
-			.map((_, idx) => idx)
+			.map((_item, idx) => idx)
 			.filter(idx => idx !== currentIndex);
 
 		if (candidates.length === 0)
@@ -66,7 +66,7 @@ implements IPlaylistGenerator<T> {
 			};
 		});
 
-		scored.sort((a, b) => b.score - a.score);
+		scored.sort((itemA, itemB) => itemB.score - itemA.score);
 
 		const topScore = scored[0]!.score;
 		const top = scored.filter(item => item.score >= topScore - 0.1);

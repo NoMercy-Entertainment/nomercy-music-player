@@ -201,7 +201,7 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 
 		it('mirrors receiver IS_PAUSED_CHANGED back as a player pause with {source:cast, silent:true}', async () => {
 			const requestSession = vi.fn().mockResolvedValue(undefined);
-			const handlers: Record<string, (e: { value: unknown }) => void> = {};
+			const handlers: Record<string, (castEvent: { value: unknown }) => void> = {};
 			class StubRemote {
 				isConnected = true;
 				isPaused = false;
@@ -212,7 +212,7 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 				mediaInfo: { contentId?: string } | null = null;
 			}
 			class StubController {
-				addEventListener = (event: string, handler: (e: { value: unknown }) => void): void => {
+				addEventListener = (event: string, handler: (castEvent: { value: unknown }) => void): void => {
 					handlers[event] = handler;
 				};
 

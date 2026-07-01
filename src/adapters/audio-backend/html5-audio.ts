@@ -467,13 +467,13 @@ export class AudioElementBackend
 			const startTime = performance.now();
 			const tick = (): void => {
 				const elapsed = performance.now() - startTime;
-				const t = Math.min(1, elapsed / durationMs);
+				const progress = Math.min(1, elapsed / durationMs);
 
-				this.element.volume = startVolume * (1 - t);
-				secondary.volume = startVolume * t;
+				this.element.volume = startVolume * (1 - progress);
+				secondary.volume = startVolume * progress;
 				this._secondaryVol = secondary.volume;
 
-				if (t < 1) {
+				if (progress < 1) {
 					requestAnimationFrame(tick);
 				}
 				else {
