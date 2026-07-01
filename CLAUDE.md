@@ -13,8 +13,9 @@ Headless, plugin-driven, event-driven music player engine. Built on `@nomercy-en
 
 ```
 src/
-  player/
+  adapters/
     audio-backend/        # IAudioBackend + audio-element + webaudio impls
+  player/
     *.ts                  # mixins composed onto NMMusicPlayer prototype
   plugins/                # auto-advance, equalizer, spectrum, lyrics, + re-exports
   streams/                # re-exports of kit's streams/ for ergonomic imports
