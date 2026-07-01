@@ -36,11 +36,13 @@
  *    via shim property)
  */
 
-import type { BackendState, IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
+import type {
+	BackendState,
+	IAudioBackend,
+} from '../adapters/audio-backend/IAudioBackend';
 import type { MusicPlaylistItem } from '../types';
-import { perceptualGain } from '@nomercy-entertainment/nomercy-player-core';
+import { attachDomBridgesTo, attachHlsOrFallback, isHls, perceptualGain,	supportsNativeHls } from '@nomercy-entertainment/nomercy-player-core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { attachDomBridgesTo, attachHlsOrFallback, isHls, supportsNativeHls } from '../adapters/audio-backend/hls-loader';
 import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from '../adapters/audio-backend/web-audio';
 import { MediaSessionArtProvider } from '../adapters/now-playing-art/media-session';
@@ -59,9 +61,13 @@ import { resolveNameList } from '../utils/resolve-name-list';
 class MockGainNode {
 	gain = {
 		value: 1,
-		setTargetAtTime: vi.fn((_target: number, _start: number, _tau: number) => undefined),
+		setTargetAtTime: vi.fn(
+			(_target: number, _start: number, _tau: number) => undefined,
+		),
 		setValueAtTime: vi.fn((_target: number, _time: number) => undefined),
-		linearRampToValueAtTime: vi.fn((_target: number, _end: number) => undefined),
+		linearRampToValueAtTime: vi.fn(
+			(_target: number, _end: number) => undefined,
+		),
 		cancelScheduledValues: vi.fn((_start: number) => undefined),
 	};
 
@@ -96,9 +102,17 @@ class MockAudioContext {
 	createMediaElementSource = vi.fn(() => new MockSourceNode());
 	resume = vi.fn(() => Promise.resolve());
 
-	get gainNode(): MockGainNode { return this._gain; }
-	get analyserNode(): MockAnalyserNode { return this._analyser; }
-	get sourceNode(): MockSourceNode { return this._source; }
+	get gainNode(): MockGainNode {
+		return this._gain;
+	}
+
+	get analyserNode(): MockAnalyserNode {
+		return this._analyser;
+	}
+
+	get sourceNode(): MockSourceNode {
+		return this._source;
+	}
 
 	constructor() {
 		MockAudioContext.lastInstance = this;
@@ -106,7 +120,9 @@ class MockAudioContext {
 }
 
 function installAudioContext(): void {
-	(globalThis as unknown as { AudioContext: typeof MockAudioContext }).AudioContext = MockAudioContext;
+	(
+		globalThis as unknown as { AudioContext: typeof MockAudioContext }
+	).AudioContext = MockAudioContext;
 	MockAudioContext.lastInstance = null;
 }
 
@@ -130,7 +146,10 @@ function fireMetadata(container: HTMLElement): void {
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-function shim(player: NMMusicPlayer, name: string): (...args: unknown[]) => unknown {
+function shim(
+	player: NMMusicPlayer,
+	name: string,
+): (...args: unknown[]) => unknown {
 	const target = player as unknown as Record<string, unknown>;
 	const method = target[name];
 	if (typeof method !== 'function') {
@@ -139,7 +158,11 @@ function shim(player: NMMusicPlayer, name: string): (...args: unknown[]) => unkn
 	return method as (...args: unknown[]) => unknown;
 }
 
-function shimOn(player: NMMusicPlayer, event: string, fn: (data: unknown) => void): void {
+function shimOn(
+	player: NMMusicPlayer,
+	event: string,
+	fn: (data: unknown) => void,
+): void {
 	const target = player as unknown as Record<string, unknown>;
 	const onFn = target['on'];
 	if (typeof onFn !== 'function')
@@ -379,20 +402,32 @@ describe('WebAudioBackend — additional coverage', () => {
 	// ── sinkId ────────────────────────────────────────────────────────────────
 
 	describe('setSinkId / getSinkId', () => {
-		it('getSinkId() throws BrowserPolicyError when sinkId not supported', () => {
+		it('getSinkId() returns empty string when sinkId is not present', () => {
 			const container = makeContainer();
 			const backend = new WebAudioBackend(container);
-			const el = backend.mediaElement() as HTMLAudioElement & { sinkId?: string };
-			Object.defineProperty(el, 'sinkId', { value: undefined, configurable: true, writable: true });
+			const el = backend.mediaElement() as HTMLAudioElement & {
+				sinkId?: string;
+			};
+			Object.defineProperty(el, 'sinkId', {
+				value: undefined,
+				configurable: true,
+				writable: true,
+			});
 
-			expect(() => backend.getSinkId()).toThrow();
+			expect(backend.getSinkId()).toBe('');
 		});
 
 		it('setSinkId() throws BrowserPolicyError when setSinkId not supported', async () => {
 			const container = makeContainer();
 			const backend = new WebAudioBackend(container);
-			const el = backend.mediaElement() as HTMLAudioElement & { setSinkId?: unknown };
-			Object.defineProperty(el, 'setSinkId', { value: undefined, configurable: true, writable: true });
+			const el = backend.mediaElement() as HTMLAudioElement & {
+				setSinkId?: unknown;
+			};
+			Object.defineProperty(el, 'setSinkId', {
+				value: undefined,
+				configurable: true,
+				writable: true,
+			});
 
 			// setSinkId throws synchronously when the method is absent — wrap in a
 			// Promise-based assertion that catches both thrown errors and rejections.
@@ -414,7 +449,9 @@ describe('WebAudioBackend — additional coverage', () => {
 			const container = makeContainer();
 			const backend = new WebAudioBackend(container);
 			const result = backend.mediaKeys();
-			expect(result === undefined || result === null || typeof result === 'object').toBe(true);
+			expect(
+				result === undefined || result === null || typeof result === 'object',
+			).toBe(true);
 		});
 	});
 
@@ -466,7 +503,10 @@ describe('WebAudioBackend — additional coverage', () => {
 
 			const raw = backend as unknown as { _secondaryEl?: HTMLAudioElement };
 			const el = raw._secondaryEl!;
-			Object.defineProperty(el, 'readyState', { get: () => 3, configurable: true });
+			Object.defineProperty(el, 'readyState', {
+				get: () => 3,
+				configurable: true,
+			});
 
 			await expect(backend.primeSecondary()).resolves.toBeUndefined();
 		});
@@ -481,7 +521,10 @@ describe('WebAudioBackend — additional coverage', () => {
 
 			const raw = backend as unknown as { _secondaryEl?: HTMLAudioElement };
 			const el = raw._secondaryEl!;
-			Object.defineProperty(el, 'readyState', { get: () => 3, configurable: true });
+			Object.defineProperty(el, 'readyState', {
+				get: () => 3,
+				configurable: true,
+			});
 
 			await backend.primeSecondary(2000);
 			expect(el.currentTime).toBe(2);
@@ -515,7 +558,9 @@ describe('WebAudioBackend — additional coverage', () => {
 		it('throws when called without a loaded secondary', async () => {
 			const container = makeContainer();
 			const backend = new WebAudioBackend(container);
-			await expect(backend.crossfade(500)).rejects.toThrow('crossfade() called without a loaded secondary');
+			await expect(backend.crossfade(500)).rejects.toThrow(
+				'crossfade() called without a loaded secondary',
+			);
 		});
 	});
 
@@ -623,7 +668,10 @@ describe('AudioElementBackend — additional coverage', () => {
 
 			const raw = backend as unknown as { _secondary?: HTMLAudioElement };
 			if (raw._secondary) {
-				Object.defineProperty(raw._secondary, 'readyState', { get: () => 3, configurable: true });
+				Object.defineProperty(raw._secondary, 'readyState', {
+					get: () => 3,
+					configurable: true,
+				});
 			}
 
 			await expect(backend.primeSecondary()).resolves.toBeUndefined();
@@ -642,7 +690,10 @@ describe('AudioElementBackend — additional coverage', () => {
 
 			const raw = backend as unknown as { _secondary?: HTMLAudioElement };
 			if (raw._secondary) {
-				Object.defineProperty(raw._secondary, 'readyState', { get: () => 3, configurable: true });
+				Object.defineProperty(raw._secondary, 'readyState', {
+					get: () => 3,
+					configurable: true,
+				});
 			}
 
 			await backend.primeSecondary(5000);
@@ -683,8 +734,14 @@ describe('AudioElementBackend — additional coverage', () => {
 		it('setMediaKeys() throws BrowserPolicyError when not supported', async () => {
 			const container = makeContainer();
 			const backend = new AudioElementBackend(container);
-			const el = backend.mediaElement() as HTMLMediaElement & { setMediaKeys?: unknown };
-			Object.defineProperty(el, 'setMediaKeys', { value: undefined, configurable: true, writable: true });
+			const el = backend.mediaElement() as HTMLMediaElement & {
+				setMediaKeys?: unknown;
+			};
+			Object.defineProperty(el, 'setMediaKeys', {
+				value: undefined,
+				configurable: true,
+				writable: true,
+			});
 
 			await expect(backend.setMediaKeys({} as MediaKeys)).rejects.toThrow();
 		});
@@ -706,8 +763,14 @@ describe('AudioElementBackend — additional coverage', () => {
 		it('throws BrowserPolicyError when captureStream absent', () => {
 			const container = makeContainer();
 			const backend = new AudioElementBackend(container);
-			const el = backend.mediaElement() as HTMLAudioElement & { captureStream?: unknown };
-			Object.defineProperty(el, 'captureStream', { value: undefined, configurable: true, writable: true });
+			const el = backend.mediaElement() as HTMLAudioElement & {
+				captureStream?: unknown;
+			};
+			Object.defineProperty(el, 'captureStream', {
+				value: undefined,
+				configurable: true,
+				writable: true,
+			});
 
 			expect(() => backend.captureStream()).toThrow();
 		});
@@ -719,8 +782,14 @@ describe('AudioElementBackend — additional coverage', () => {
 		it('returns empty string when sinkId is not a string', () => {
 			const container = makeContainer();
 			const backend = new AudioElementBackend(container);
-			const el = backend.mediaElement() as HTMLAudioElement & { sinkId?: undefined };
-			Object.defineProperty(el, 'sinkId', { value: undefined, configurable: true, writable: true });
+			const el = backend.mediaElement() as HTMLAudioElement & {
+				sinkId?: undefined;
+			};
+			Object.defineProperty(el, 'sinkId', {
+				value: undefined,
+				configurable: true,
+				writable: true,
+			});
 			expect(backend.getSinkId()).toBe('');
 		});
 	});
@@ -729,8 +798,14 @@ describe('AudioElementBackend — additional coverage', () => {
 		it('throws BrowserPolicyError when setSinkId absent', async () => {
 			const container = makeContainer();
 			const backend = new AudioElementBackend(container);
-			const el = backend.mediaElement() as HTMLAudioElement & { setSinkId?: unknown };
-			Object.defineProperty(el, 'setSinkId', { value: undefined, configurable: true, writable: true });
+			const el = backend.mediaElement() as HTMLAudioElement & {
+				setSinkId?: unknown;
+			};
+			Object.defineProperty(el, 'setSinkId', {
+				value: undefined,
+				configurable: true,
+				writable: true,
+			});
 			await expect(backend.setSinkId('device')).rejects.toThrow();
 		});
 	});
@@ -758,7 +833,13 @@ describe('AudioElementBackend — additional coverage', () => {
 			const backend = new AudioElementBackend(container);
 			const stopLoad = vi.fn();
 			const startLoad = vi.fn();
-			const raw = backend as unknown as { hlsInstance?: { stopLoad: typeof stopLoad; startLoad: typeof startLoad; destroy: () => void } };
+			const raw = backend as unknown as {
+				hlsInstance?: {
+					stopLoad: typeof stopLoad;
+					startLoad: typeof startLoad;
+					destroy: () => void;
+				};
+			};
 			raw.hlsInstance = { stopLoad, startLoad, destroy: vi.fn() };
 
 			backend.pauseLoader();
@@ -842,7 +923,9 @@ describe('AudioElementBackend — additional coverage', () => {
 		it('throws when no secondary is loaded', async () => {
 			const container = makeContainer();
 			const backend = new AudioElementBackend(container);
-			await expect(backend.crossfade(500)).rejects.toThrow('crossfade() called without a loaded secondary');
+			await expect(backend.crossfade(500)).rejects.toThrow(
+				'crossfade() called without a loaded secondary',
+			);
 		});
 	});
 });
@@ -882,10 +965,12 @@ describe('hls-loader utilities', () => {
 		it('returns true when canPlayType is "maybe" and MediaSource is undefined', () => {
 			const el = document.createElement('audio');
 			vi.spyOn(el, 'canPlayType').mockReturnValue('maybe');
-			const savedMs = (globalThis as unknown as { MediaSource?: unknown }).MediaSource;
+			const savedMs = (globalThis as unknown as { MediaSource?: unknown })
+				.MediaSource;
 			delete (globalThis as unknown as { MediaSource?: unknown }).MediaSource;
 			expect(supportsNativeHls(el)).toBe(true);
-			(globalThis as unknown as { MediaSource?: unknown }).MediaSource = savedMs;
+			(globalThis as unknown as { MediaSource?: unknown }).MediaSource
+				= savedMs;
 		});
 	});
 
@@ -897,15 +982,12 @@ describe('hls-loader utilities', () => {
 			document.body.appendChild(el);
 
 			const FakeHls = { isSupported: () => false };
-			const appendAuthTokenParam = (url: string, _token: string | undefined): string => url;
-
 			const result = attachHlsOrFallback(
 				FakeHls,
 				el,
 				'https://cdn/audio.mp3',
 				undefined,
 				{},
-				appendAuthTokenParam,
 			);
 
 			expect(result).toBeUndefined();
@@ -934,9 +1016,8 @@ describe('hls-loader utilities', () => {
 			function FakeHlsCtor(this: FakeHlsInstance): void {
 				Object.assign(this, new FakeHlsInstance());
 			}
-			(FakeHlsCtor as unknown as { isSupported: () => boolean }).isSupported = () => true;
-
-			const appendAuthTokenParam = (url: string, _token: string | undefined): string => url;
+			(FakeHlsCtor as unknown as { isSupported: () => boolean }).isSupported
+				= () => true;
 
 			const result = attachHlsOrFallback(
 				FakeHlsCtor,
@@ -944,7 +1025,6 @@ describe('hls-loader utilities', () => {
 				'https://cdn/stream.m3u8',
 				undefined,
 				{},
-				appendAuthTokenParam,
 			);
 
 			expect(result).toBeDefined();
@@ -966,8 +1046,10 @@ describe('hls-loader utilities', () => {
 
 			attachDomBridgesTo(
 				el,
-				(event, data) => emitted.push([event, data]),
-				(s) => { state = s; },
+				(event: string, data: unknown) => emitted.push([event, data]),
+				(s: string) => {
+					state = s as BackendState;
+				},
 				() => state,
 			);
 
@@ -985,7 +1067,9 @@ describe('hls-loader utilities', () => {
 			attachDomBridgesTo(
 				el,
 				() => undefined,
-				(s) => { state = s; },
+				(s: string) => {
+					state = s as BackendState;
+				},
 				() => state,
 			);
 
@@ -1003,7 +1087,9 @@ describe('hls-loader utilities', () => {
 			attachDomBridgesTo(
 				el,
 				() => undefined,
-				(s) => { state = s; },
+				(s: string) => {
+					state = s as BackendState;
+				},
 				() => state,
 			);
 
@@ -1021,7 +1107,9 @@ describe('hls-loader utilities', () => {
 			attachDomBridgesTo(
 				el,
 				() => undefined,
-				(s) => { state = s; },
+				(s: string) => {
+					state = s as BackendState;
+				},
 				() => state,
 			);
 
@@ -1037,7 +1125,10 @@ describe('hls-loader utilities', () => {
 // =============================================================================
 
 describe('SmartShuffleGenerator', () => {
-	type TaggedTrack = MusicPlaylistItem & { genre?: string | string[]; decade?: number };
+	type TaggedTrack = MusicPlaylistItem & {
+		genre?: string | string[];
+		decade?: number;
+	};
 
 	const tracks = (overrides: TaggedTrack[] = []): TaggedTrack[] =>
 		overrides.length > 0
@@ -1069,7 +1160,10 @@ describe('SmartShuffleGenerator', () => {
 
 	it('next() returns undefined when all candidates are excluded (single item list, idx 0)', () => {
 		const gen = new SmartShuffleGenerator();
-		const list = [{ id: 'x', name: 'X' }, { id: 'y', name: 'Y' }];
+		const list = [
+			{ id: 'x', name: 'X' },
+			{ id: 'y', name: 'Y' },
+		];
 		const result = gen.next(list, 0);
 		expect(result).toBe(1);
 	});
@@ -1150,26 +1244,39 @@ describe('SmartShuffleGenerator', () => {
 describe('LinearPlaylistGenerator — edge cases', () => {
 	it('next() returns undefined at the last index', () => {
 		const gen = new LinearPlaylistGenerator();
-		const list = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
+		const list = [
+			{ id: 'a', name: 'A' },
+			{ id: 'b', name: 'B' },
+		];
 		expect(gen.next(list, 1)).toBeUndefined();
 	});
 
 	it('previous() returns undefined at index 0', () => {
 		const gen = new LinearPlaylistGenerator();
-		const list = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
+		const list = [
+			{ id: 'a', name: 'A' },
+			{ id: 'b', name: 'B' },
+		];
 		expect(gen.previous(list, 0)).toBeUndefined();
 	});
 
 	it('next() returns the next sequential index', () => {
 		const gen = new LinearPlaylistGenerator();
-		const list = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }];
+		const list = [
+			{ id: 'a', name: 'A' },
+			{ id: 'b', name: 'B' },
+			{ id: 'c', name: 'C' },
+		];
 		expect(gen.next(list, 0)).toBe(1);
 		expect(gen.next(list, 1)).toBe(2);
 	});
 
 	it('previous() returns the prior sequential index', () => {
 		const gen = new LinearPlaylistGenerator();
-		const list = [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }];
+		const list = [
+			{ id: 'a', name: 'A' },
+			{ id: 'b', name: 'B' },
+		];
 		expect(gen.previous(list, 1)).toBe(0);
 	});
 });
@@ -1182,22 +1289,37 @@ describe('MusicPreloadStrategy.assetsToPreload()', () => {
 	const strategy = new MusicPreloadStrategy(10);
 
 	it('returns empty array for item with no url/cover/lyricsUrl', () => {
-		const assets = strategy.assetsToPreload({ id: 'x', name: 'X' } as MusicPlaylistItem);
+		const assets = strategy.assetsToPreload({
+			id: 'x',
+			name: 'X',
+		} as MusicPlaylistItem);
 		expect(assets).toHaveLength(0);
 	});
 
 	it('includes media asset when url is present', () => {
-		const assets = strategy.assetsToPreload({ id: 'x', name: 'X', url: 'https://cdn/track.mp3' } as MusicPlaylistItem);
+		const assets = strategy.assetsToPreload({
+			id: 'x',
+			name: 'X',
+			url: 'https://cdn/track.mp3',
+		} as MusicPlaylistItem);
 		expect(assets.some(a => a.category === 'media')).toBe(true);
 	});
 
 	it('includes poster asset when cover is present', () => {
-		const assets = strategy.assetsToPreload({ id: 'x', name: 'X', cover: 'https://cdn/cover.jpg' } as MusicPlaylistItem);
+		const assets = strategy.assetsToPreload({
+			id: 'x',
+			name: 'X',
+			cover: 'https://cdn/cover.jpg',
+		} as MusicPlaylistItem);
 		expect(assets.some(a => a.category === 'poster')).toBe(true);
 	});
 
 	it('includes lyrics asset when lyricsUrl is present', () => {
-		const assets = strategy.assetsToPreload({ id: 'x', name: 'X', lyricsUrl: 'https://cdn/lyrics.lrc' } as MusicPlaylistItem);
+		const assets = strategy.assetsToPreload({
+			id: 'x',
+			name: 'X',
+			lyricsUrl: 'https://cdn/lyrics.lrc',
+		} as MusicPlaylistItem);
 		expect(assets.some(a => a.category === 'lyrics')).toBe(true);
 	});
 
@@ -1236,24 +1358,36 @@ describe('MediaSessionArtProvider', () => {
 		// happy-dom lacks MediaMetadata — stub it so the provider code path executes.
 		let setMeta: unknown = null;
 		const mockMediaSession = {
-			get metadata(): unknown { return setMeta; },
-			set metadata(v: unknown) { setMeta = v; },
+			get metadata(): unknown {
+				return setMeta;
+			},
+			set metadata(v: unknown) {
+				setMeta = v;
+			},
 		};
 
 		// Stub MediaMetadata so `new MediaMetadata(...)` doesn't throw.
-		const savedMediaMetadata = (globalThis as unknown as { MediaMetadata?: unknown }).MediaMetadata;
-		(globalThis as unknown as { MediaMetadata: unknown }).MediaMetadata = class {
-			title: string;
-			artist: string;
-			album: string;
-			artwork: unknown[];
-			constructor(opts: { title: string; artist: string; album: string; artwork: unknown[] }) {
-				this.title = opts.title;
-				this.artist = opts.artist;
-				this.album = opts.album;
-				this.artwork = opts.artwork;
-			}
-		};
+		const savedMediaMetadata = (
+			globalThis as unknown as { MediaMetadata?: unknown }
+		).MediaMetadata;
+		(globalThis as unknown as { MediaMetadata: unknown }).MediaMetadata
+			= class {
+				title: string;
+				artist: string;
+				album: string;
+				artwork: unknown[];
+				constructor(opts: {
+					title: string;
+					artist: string;
+					album: string;
+					artwork: unknown[];
+				}) {
+					this.title = opts.title;
+					this.artist = opts.artist;
+					this.album = opts.album;
+					this.artwork = opts.artwork;
+				}
+			};
 
 		Object.defineProperty(navigator, 'mediaSession', {
 			get: () => mockMediaSession,
@@ -1263,16 +1397,24 @@ describe('MediaSessionArtProvider', () => {
 		await provider.publish(item, 'https://cdn/art.jpg');
 		expect(setMeta).toBeDefined();
 
-		Object.defineProperty(navigator, 'mediaSession', { get: () => undefined, configurable: true });
-		(globalThis as unknown as { MediaMetadata?: unknown }).MediaMetadata = savedMediaMetadata;
+		Object.defineProperty(navigator, 'mediaSession', {
+			get: () => undefined,
+			configurable: true,
+		});
+		(globalThis as unknown as { MediaMetadata?: unknown }).MediaMetadata
+			= savedMediaMetadata;
 	});
 
 	it('clear() sets mediaSession.metadata to null when present', () => {
 		const provider = new MediaSessionArtProvider();
 		let setMeta: unknown = {} as MediaMetadata;
 		const mockMediaSession = {
-			get metadata(): unknown { return setMeta; },
-			set metadata(v: unknown) { setMeta = v; },
+			get metadata(): unknown {
+				return setMeta;
+			},
+			set metadata(v: unknown) {
+				setMeta = v;
+			},
 		};
 		Object.defineProperty(navigator, 'mediaSession', {
 			get: () => mockMediaSession,
@@ -1282,7 +1424,10 @@ describe('MediaSessionArtProvider', () => {
 		provider.clear();
 		expect(setMeta).toBeNull();
 
-		Object.defineProperty(navigator, 'mediaSession', { get: () => undefined, configurable: true });
+		Object.defineProperty(navigator, 'mediaSession', {
+			get: () => undefined,
+			configurable: true,
+		});
 	});
 });
 
@@ -1308,7 +1453,9 @@ describe('resolveNameList()', () => {
 	});
 
 	it('filters out entries with no name', () => {
-		expect(resolveNameList([{ name: 'A' }, { name: '' }, { name: 'B' }])).toBe('A, B');
+		expect(resolveNameList([{ name: 'A' }, { name: '' }, { name: 'B' }])).toBe(
+			'A, B',
+		);
 	});
 });
 
@@ -1318,14 +1465,18 @@ describe('resolveNameList()', () => {
 
 describe('NMMusicPlayer — _createBackend / wrappedSetup', () => {
 	beforeEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		const div = document.createElement('div');
 		div.id = 'factory-test';
 		document.body.appendChild(div);
 	});
 
 	afterEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		document.body.innerHTML = '';
 	});
 
@@ -1348,17 +1499,17 @@ describe('NMMusicPlayer — _createBackend / wrappedSetup', () => {
 			currentTime: vi.fn(() => 0) as IAudioBackend['currentTime'],
 			duration: vi.fn(() => 0),
 			buffered: vi.fn(() => 0),
-			bufferedRanges: vi.fn(() => ({ length: 0 } as unknown as TimeRanges)),
-			seekable: vi.fn(() => ({ length: 0 } as unknown as TimeRanges)),
+			bufferedRanges: vi.fn(() => ({ length: 0 }) as unknown as TimeRanges),
+			seekable: vi.fn(() => ({ length: 0 }) as unknown as TimeRanges),
 			playbackRate: vi.fn(() => 1) as IAudioBackend['playbackRate'],
 			volume: vi.fn(() => 0.8) as IAudioBackend['volume'],
 			mute: vi.fn(),
 			unmute: vi.fn(),
 			state: vi.fn(() => 'idle' as const),
-			outputNode: vi.fn(() => ({} as AudioNode)),
-			analyserSource: vi.fn(() => ({} as AudioNode)),
+			outputNode: vi.fn(() => ({}) as AudioNode),
+			analyserSource: vi.fn(() => ({}) as AudioNode),
 			mediaElement: vi.fn(() => document.createElement('audio')),
-			captureStream: vi.fn(() => ({} as MediaStream)),
+			captureStream: vi.fn(() => ({}) as MediaStream),
 			setSinkId: vi.fn(() => Promise.resolve()),
 			getSinkId: vi.fn(() => ''),
 			mediaKeys: vi.fn(() => undefined),
@@ -1378,7 +1529,9 @@ describe('NMMusicPlayer — _createBackend / wrappedSetup', () => {
 		};
 
 		const factory = vi.fn(() => fakeBackend);
-		const player = new NMMusicPlayer('factory-test').setup({ backendFactory: factory });
+		const player = new NMMusicPlayer('factory-test').setup({
+			backendFactory: factory,
+		});
 		await player.ready();
 
 		const b = player.backend();
@@ -1395,7 +1548,9 @@ describe('NMMusicPlayer — _createBackend / wrappedSetup', () => {
 	});
 
 	it('wrappedSetup respects consumer-provided preloadLeadSeconds', async () => {
-		const player = new NMMusicPlayer('factory-test').setup({ preloadLeadSeconds: 20 });
+		const player = new NMMusicPlayer('factory-test').setup({
+			preloadLeadSeconds: 20,
+		});
 		await player.ready();
 		player.dispose();
 	});
@@ -1407,19 +1562,26 @@ describe('NMMusicPlayer — _createBackend / wrappedSetup', () => {
 
 describe('AutoAdvancePlugin — additional coverage', () => {
 	beforeEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		const div = document.createElement('div');
 		div.id = 'aa-test';
 		document.body.appendChild(div);
 	});
 
 	afterEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		document.body.innerHTML = '';
 	});
 
 	const setup = (): NMMusicPlayer => new NMMusicPlayer('aa-test').setup({});
-	const track = (id: string): MusicPlaylistItem => ({ id, name: `Track ${id}` });
+	const track = (id: string): MusicPlaylistItem => ({
+		id,
+		name: `Track ${id}`,
+	});
 
 	it('addEndedHandler — custom handler fires after built-in advance on ended', async () => {
 		const p = setup();
@@ -1429,7 +1591,9 @@ describe('AutoAdvancePlugin — additional coverage', () => {
 
 		const instance = p.getPlugin(AutoAdvancePlugin)!;
 		const customCalled: boolean[] = [];
-		instance.addEndedHandler(async () => { customCalled.push(true); });
+		instance.addEndedHandler(async () => {
+			customCalled.push(true);
+		});
 
 		p.emit('ended' as never, undefined as never);
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -1445,7 +1609,9 @@ describe('AutoAdvancePlugin — additional coverage', () => {
 
 		const instance = p.getPlugin(AutoAdvancePlugin)!;
 		const preloadCalled: unknown[] = [];
-		instance.addPreloadHandler(async (next) => { preloadCalled.push(next); });
+		instance.addPreloadHandler(async (next) => {
+			preloadCalled.push(next);
+		});
 
 		p.emit('trackEndingSoon' as never, undefined as never);
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -1461,7 +1627,9 @@ describe('AutoAdvancePlugin — additional coverage', () => {
 
 		const instance = p.getPlugin(AutoAdvancePlugin)!;
 		const crossfadeCalled: unknown[] = [];
-		instance.addCrossfadeHandler(async (next, dur) => { crossfadeCalled.push({ next, dur }); });
+		instance.addCrossfadeHandler(async (next, dur) => {
+			crossfadeCalled.push({ next, dur });
+		});
 
 		p.emit('trackEndingSoon' as never, undefined as never);
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -1504,7 +1672,9 @@ describe('AutoAdvancePlugin — additional coverage', () => {
 		const instance = p.getPlugin(AutoAdvancePlugin)!;
 		instance.options({ enabled: false, crossfade: true, crossfadeDuration: 2 });
 
-		const crossfadeSpy = vi.spyOn(p, 'crossfadeTo').mockResolvedValue(undefined);
+		const crossfadeSpy = vi
+			.spyOn(p, 'crossfadeTo')
+			.mockResolvedValue(undefined);
 
 		p.emit('trackEndingSoon' as never, undefined as never);
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
@@ -1519,14 +1689,18 @@ describe('AutoAdvancePlugin — additional coverage', () => {
 
 describe('LyricsPlugin — additional coverage', () => {
 	beforeEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		const div = document.createElement('div');
 		div.id = 'lyric-test';
 		document.body.appendChild(div);
 	});
 
 	afterEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		document.body.innerHTML = '';
 		vi.restoreAllMocks();
 	});
@@ -1538,7 +1712,13 @@ describe('LyricsPlugin — additional coverage', () => {
 		p.addPlugin(LyricsPlugin, { autoFetch: false });
 		await p.ready();
 
-		p.emit('item' as never, { item: { id: 'a', name: 'A', lyricsUrl: 'https://cdn/a.lrc' }, index: 0 } as never);
+		p.emit(
+			'item' as never,
+			{
+				item: { id: 'a', name: 'A', lyricsUrl: 'https://cdn/a.lrc' },
+				index: 0,
+			} as never,
+		);
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 		expect(fetchSpy).not.toHaveBeenCalled();
@@ -1555,14 +1735,18 @@ describe('LyricsPlugin — additional coverage', () => {
 	});
 
 	it('fetchLyrics() reports an error on network failure', async () => {
-		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('network fail'));
+		const fetchSpy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockRejectedValueOnce(new Error('network fail'));
 
 		const p = new NMMusicPlayer('lyric-test').setup({
-			cueParsers: [{
-				id: 'stub',
-				canParse: () => true,
-				parse: () => ({ cues: [] }) as never,
-			}],
+			cueParsers: [
+				{
+					id: 'stub',
+					canParse: () => true,
+					parse: () => ({ cues: [] }) as never,
+				},
+			],
 		});
 		p.addPlugin(LyricsPlugin);
 		await p.ready();
@@ -1575,17 +1759,21 @@ describe('LyricsPlugin — additional coverage', () => {
 	});
 
 	it('getLyricsUrl option overrides default resolution', async () => {
-		const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-			new Response('[00:01.00]Hello\n', { status: 200 }),
-		);
+		const fetchSpy = vi
+			.spyOn(globalThis, 'fetch')
+			.mockResolvedValueOnce(
+				new Response('[00:01.00]Hello\n', { status: 200 }),
+			);
 
 		const resolverCalled: string[] = [];
 		const p = new NMMusicPlayer('lyric-test').setup({
-			cueParsers: [{
-				id: 'stub',
-				canParse: () => true,
-				parse: () => ({ cues: [] }) as never,
-			}],
+			cueParsers: [
+				{
+					id: 'stub',
+					canParse: () => true,
+					parse: () => ({ cues: [] }) as never,
+				},
+			],
 		});
 		p.addPlugin(LyricsPlugin, {
 			getLyricsUrl: (track) => {
@@ -1595,7 +1783,10 @@ describe('LyricsPlugin — additional coverage', () => {
 		});
 		await p.ready();
 
-		p.emit('item' as never, { item: { id: 'track1', name: 'T1' }, index: 0 } as never);
+		p.emit(
+			'item' as never,
+			{ item: { id: 'track1', name: 'T1' }, index: 0 } as never,
+		);
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 		expect(resolverCalled).toContain('track1');
@@ -1650,14 +1841,18 @@ describe('LyricsPlugin — additional coverage', () => {
 
 describe('KeyHandlerPlugin — music-specific key bindings', () => {
 	beforeEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		const div = document.createElement('div');
 		div.id = 'kh-test';
 		document.body.appendChild(div);
 	});
 
 	afterEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		document.body.innerHTML = '';
 	});
 
@@ -1668,7 +1863,9 @@ describe('KeyHandlerPlugin — music-specific key bindings', () => {
 
 		const nextSpy = vi.spyOn(p, 'next').mockResolvedValue(undefined);
 
-		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', bubbles: true }));
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'n', bubbles: true }),
+		);
 
 		expect(nextSpy).toHaveBeenCalled();
 	});
@@ -1680,7 +1877,9 @@ describe('KeyHandlerPlugin — music-specific key bindings', () => {
 
 		const prevSpy = vi.spyOn(p, 'previous').mockResolvedValue(undefined);
 
-		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }));
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'p', bubbles: true }),
+		);
 
 		expect(prevSpy).toHaveBeenCalled();
 	});
@@ -1692,7 +1891,9 @@ describe('KeyHandlerPlugin — music-specific key bindings', () => {
 
 		const repeatSpy = vi.spyOn(p, 'repeatState');
 
-		document.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true }));
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 'r', bubbles: true }),
+		);
 
 		expect(repeatSpy).toHaveBeenCalled();
 	});
@@ -1704,7 +1905,9 @@ describe('KeyHandlerPlugin — music-specific key bindings', () => {
 
 		const shuffleSpy = vi.spyOn(p, 'shuffleState');
 
-		document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', bubbles: true }));
+		document.dispatchEvent(
+			new KeyboardEvent('keydown', { key: 's', bubbles: true }),
+		);
 
 		expect(shuffleSpy).toHaveBeenCalled();
 	});
@@ -1716,7 +1919,9 @@ describe('KeyHandlerPlugin — music-specific key bindings', () => {
 
 describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 	beforeEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		const div = document.createElement('div');
 		div.id = 'v1-extra';
 		document.body.appendChild(div);
@@ -1724,13 +1929,16 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 	});
 
 	afterEach(() => {
-		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
+		(
+			NMMusicPlayer as unknown as { _resetRegistry: () => void }
+		)._resetRegistry();
 		document.body.innerHTML = '';
 		vi.restoreAllMocks();
 	});
 
 	const setup = (): NMMusicPlayer => new NMMusicPlayer('v1-extra').setup({});
-	const prop = (p: NMMusicPlayer, name: string): unknown => (p as unknown as Record<string, unknown>)[name];
+	const prop = (p: NMMusicPlayer, name: string): unknown =>
+		(p as unknown as Record<string, unknown>)[name];
 
 	// ── state property shims ──────────────────────────────────────────────────
 
@@ -2045,7 +2253,10 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		const p = setup();
 		p.addPlugin(V1MusicCompatPlugin);
 		await p.ready();
-		p.queue([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }]);
+		p.queue([
+			{ id: 'a', name: 'A' },
+			{ id: 'b', name: 'B' },
+		]);
 		expect(prop(p, 'hasNextQueued')).toBe(true);
 		p.dispose();
 	});
@@ -2149,7 +2360,9 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		p.addPlugin(V1MusicCompatPlugin);
 		await p.ready();
 		const target = p as unknown as Record<string, unknown>;
-		expect(() => { target['equalizerBands'] = []; }).not.toThrow();
+		expect(() => {
+			target['equalizerBands'] = [];
+		}).not.toThrow();
 		p.dispose();
 	});
 
@@ -2160,7 +2373,9 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		p.addPlugin(V1MusicCompatPlugin);
 		await p.ready();
 		const target = p as unknown as Record<string, unknown>;
-		expect(() => { target['equalizerPresets'] = []; }).not.toThrow();
+		expect(() => {
+			target['equalizerPresets'] = [];
+		}).not.toThrow();
 		p.dispose();
 	});
 
@@ -2295,7 +2510,10 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		const received: unknown[] = [];
 		shimOn(p, 'crossfadeStart', d => received.push(d));
 
-		p.emit('crossfadeStart' as never, { from: 'trackA', to: 'trackB', duration: 5000 } as never);
+		p.emit(
+			'crossfadeStart' as never,
+			{ from: 'trackA', to: 'trackB', duration: 5000 } as never,
+		);
 		expect(received).toHaveLength(1);
 		const payload = received[0] as Record<string, unknown>;
 		expect(payload['from']).toBe('trackA');
@@ -2314,7 +2532,10 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		const received: unknown[] = [];
 		shimOn(p, 'crossfadeComplete', d => received.push(d));
 
-		p.emit('crossfadeComplete' as never, { track: { id: 'x', name: 'X' } } as never);
+		p.emit(
+			'crossfadeComplete' as never,
+			{ track: { id: 'x', name: 'X' } } as never,
+		);
 		expect(received).toHaveLength(1);
 		expect((received[0] as { id: string }).id).toBe('x');
 		p.dispose();
@@ -2376,9 +2597,14 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		p.addPlugin(V1MusicCompatPlugin);
 		await p.ready();
 
-		p.queue([{ id: 'a', name: 'A', url: 'https://cdn/a.mp3' }, { id: 'b', name: 'B', url: 'https://cdn/b.mp3' }]);
+		p.queue([
+			{ id: 'a', name: 'A', url: 'https://cdn/a.mp3' },
+			{ id: 'b', name: 'B', url: 'https://cdn/b.mp3' },
+		]);
 
-		const crossfadeSpy = vi.spyOn(p, 'crossfadeTo').mockResolvedValue(undefined);
+		const crossfadeSpy = vi
+			.spyOn(p, 'crossfadeTo')
+			.mockResolvedValue(undefined);
 		shim(p, 'prepareCrossfade')();
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
 
@@ -2391,7 +2617,9 @@ describe('V1MusicCompatPlugin — remaining uncovered shims', () => {
 		p.addPlugin(V1MusicCompatPlugin);
 		await p.ready();
 
-		const crossfadeSpy = vi.spyOn(p, 'crossfadeTo').mockResolvedValue(undefined);
+		const crossfadeSpy = vi
+			.spyOn(p, 'crossfadeTo')
+			.mockResolvedValue(undefined);
 		shim(p, 'prepareCrossfade')();
 		await new Promise<void>(resolve => setTimeout(resolve, 0));
 

@@ -15,112 +15,98 @@ import type {
 
 import {
 	appendAuthTokenParam,
-	BrowserPolicyError,
-	EventEmitter,
-	perceptualGain,
-} from '@nomercy-entertainment/nomercy-player-core';
-import {
-	attachDomBridgesTo,
 	attachHlsOrFallback,
+	createSecondaryAudioElement,
 	isHls,
+	MediaElementBackend,
+	perceptualGain,
+	primeSecondaryElement,
 	supportsNativeHls,
-} from './hls-loader';
+} from '@nomercy-entertainment/nomercy-player-core';
 
 /**
- * HTML5 audio backend (fallback). Uses an HTMLAudioElement for transport. Lazily creates a
- * MediaElementAudioSourceNode the first time a plugin requests the analyser
- * graph (so consumers without EQ/spectrum pay zero Web Audio cost).
- *
- * HLS support comes from the kit's stream registry — the registry resolves
- * the URL to an IStreamSource (native or hls.js) and `attach()`es it to the
- * underlying `<audio>` element.
+ * HTML5 audio backend (fallback). Uses an HTMLAudioElement for transport.
+ * Lazily creates a `MediaElementAudioSourceNode` the first time a plugin
+ * requests the analyser graph (so consumers without EQ/spectrum pay zero
+ * Web Audio cost).
  *
  * Use `WebAudioBackend` when sample-accurate crossfades or full Web Audio
- * graph access are required. This backend is the safe fallback for environments
- * where Web Audio is restricted or undesired.
+ * graph access are required. This backend is the safe fallback for
+ * environments where Web Audio is restricted or undesired.
  */
-export class AudioElementBackend extends EventEmitter<BackendEventPayload> implements IAudioBackend {
+export class AudioElementBackend
+	extends MediaElementBackend<HTMLAudioElement, BackendEventPayload>
+	implements IAudioBackend {
 	readonly kind = 'audio-element' as const;
 
-	private element: HTMLAudioElement;
-	private ownsElement: boolean;
 	private readonly container?: HTMLElement;
-	private hlsInstance?: { destroy: () => void; startLoad?: (pos?: number) => void; stopLoad?: () => void };
 	private currentState: BackendState = 'idle';
 
-	/** Resolves the full `Authorization` header value, or undefined when unauthenticated. */
-	private _authHeaderProvider: (() => string | undefined | Promise<string | undefined>) | undefined;
-
-	/**
-	 * Wire the provider whose return value goes into the `Authorization`
-	 * header of every hls.js manifest/segment request. Called by the player
-	 * at backend init from the `auth` config.
-	 */
-	setAuthHeaderProvider(provider: () => string | undefined | Promise<string | undefined>): void {
-		this._authHeaderProvider = provider;
-	}
-
 	private prevVolume: number = 1;
-	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
-	private disposed = false;
 	private sourceNode?: MediaElementAudioSourceNode;
 	private sourceCtx?: AudioContext;
 	private analyserNode?: AnalyserNode;
 	private outputGain?: GainNode;
-	private loaderRunning: BackendLoaderState = 'running';
 
 	// ── Crossfade secondary ──────────────────────────────────────────────────
 	private _secondary?: HTMLAudioElement;
 	private _secondaryVol: number = 0;
 
 	constructor(container?: HTMLElement, opts?: { element?: HTMLAudioElement }) {
-		super();
+		const resolved = AudioElementBackend.resolveElement(container, opts);
+		super(resolved.element, resolved.ownsElement, 'audio-element');
 		this.container = container;
-		if (opts?.element) {
-			this.element = opts.element;
-			this.ownsElement = false;
-		}
-		else {
-			let existing: HTMLAudioElement | null = null;
-			if (container) {
-				existing = container.querySelector('audio');
-			}
-			if (existing) {
-				this.element = existing;
-				this.ownsElement = false;
-			}
-			else {
-				this.element = document.createElement('audio');
-				this.element.preload = 'metadata';
-				// crossOrigin is left unset on purpose: forcing 'anonymous' breaks
-				// playback on servers that don't send CORS headers (P-2 regression).
-				// It is set lazily in ensureSourceGraph() only when a plugin taps the
-				// Web Audio graph, where CORS is actually required.
-				this.ownsElement = true;
-				if (container)
-					container.appendChild(this.element);
-			}
-		}
-		this.attachDomBridges();
-	}
 
-	private attachDomBridges(): void {
-		this.domHandlers = attachDomBridgesTo(
-			this.element,
-			(event, data) => this.emit(event as never, data as never),
-			(state) => { this.currentState = state; },
+		this.attachDomBridges(
+			(state: string) => {
+				this.currentState = state as BackendState;
+			},
 			() => this.currentState,
 		);
 	}
 
-	private detachDomBridges(el: HTMLAudioElement): void {
-		for (const { event, handler } of this.domHandlers) {
-			el.removeEventListener(event, handler);
+	private static resolveElement(
+		container?: HTMLElement,
+		opts?: { element?: HTMLAudioElement },
+	): { element: HTMLAudioElement; ownsElement: boolean } {
+		if (opts?.element) {
+			return {
+				element: opts.element,
+				ownsElement: false,
+			};
 		}
-		this.domHandlers = [];
+
+		if (container) {
+			const existing = container.querySelector<HTMLAudioElement>('audio');
+			if (existing) {
+				return {
+					element: existing,
+					ownsElement: false,
+				};
+			}
+		}
+
+		const created = document.createElement('audio');
+		created.preload = 'metadata';
+		// crossOrigin is left unset on purpose: forcing 'anonymous' breaks
+		// playback on servers that don't send CORS headers (P-2 regression).
+		// It is set lazily in ensureSourceGraph() only when a plugin taps the
+		// Web Audio graph, where CORS is actually required.
+		if (container) {
+			container.appendChild(created);
+		}
+		return {
+			element: created,
+			ownsElement: true,
+		};
 	}
 
-	async load(url: string, opts?: { preload: 'auto' | 'metadata' | 'none' }): Promise<void> {
+	// ── Lifecycle ─────────────────────────────────────────────────────────────
+
+	async load(
+		url: string,
+		opts?: { preload: 'auto' | 'metadata' | 'none' },
+	): Promise<void> {
 		this.element.preload = opts?.preload ?? 'auto';
 		this.currentState = 'loading';
 		this.emit('backend:loading', {
@@ -129,8 +115,12 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		});
 
 		if (this.hlsInstance) {
-			try { this.hlsInstance.destroy(); }
-			catch { /* ignore */ }
+			try {
+				this.hlsInstance.destroy();
+			}
+			catch {
+				/* ignore */
+			}
 			this.hlsInstance = undefined;
 		}
 
@@ -158,12 +148,8 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs && hlsMod) {
-				this.hlsInstance = attachHlsOrFallback(
-					hlsMod.default,
-					this.element,
-					url,
-					headerValue,
-					{
+				this.hlsInstance
+					= attachHlsOrFallback(hlsMod.default, this.element, url, headerValue, {
 						autoStartLoad: true,
 						enableWorker: true,
 						lowLatencyMode: false,
@@ -173,9 +159,7 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 								xhr.setRequestHeader('Authorization', headerValue);
 							}
 						},
-					},
-					appendAuthTokenParam,
-				) ?? undefined;
+					}) ?? undefined;
 			}
 			else {
 				this.element.src = appendAuthTokenParam(url, headerValue);
@@ -183,27 +167,41 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			}
 		});
 
-		const duration = Number.isFinite(this.element.duration) ? this.element.duration : 0;
+		const dur = Number.isFinite(this.element.duration)
+			? this.element.duration
+			: 0;
 		this.currentState = 'ready';
 		this.emit('backend:loaded', {
 			url,
 			kind: this.kind,
-			duration,
+			duration: dur,
 		});
 	}
 
 	unload(): void {
 		this.disposeSecondary();
-		try { this.element.pause(); }
-		catch { /* ignore */ }
+		try {
+			this.element.pause();
+		}
+		catch {
+			/* ignore */
+		}
 		if (this.hlsInstance) {
-			try { this.hlsInstance.destroy(); }
-			catch { /* ignore */ }
+			try {
+				this.hlsInstance.destroy();
+			}
+			catch {
+				/* ignore */
+			}
 			this.hlsInstance = undefined;
 		}
 		this.element.removeAttribute('src');
-		try { this.element.load(); }
-		catch { /* ignore */ }
+		try {
+			this.element.load();
+		}
+		catch {
+			/* ignore */
+		}
 		this.currentState = 'idle';
 	}
 
@@ -219,70 +217,17 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		}
 	}
 
-	play(): Promise<void> {
-		const result = this.element.play();
-		return result instanceof Promise ? result : Promise.resolve();
-	}
+	// ── Volume overrides (adds prevVolume bookkeeping) ─────────────────────────
 
-	pause(): void {
-		this.element.pause();
-	}
-
-	stop(): void {
-		this.element.pause();
-		try { this.element.currentTime = 0; }
-		catch { /* ignore */ }
-	}
-
-	currentTime(): number;
-	currentTime(t: number): void;
-	currentTime(t?: number): number | void {
-		if (t === undefined)
-			return this.element.currentTime;
-		try { this.element.currentTime = t; }
-		catch { /* element not ready — best effort */ }
-	}
-
-	duration(): number {
-		const d = this.element.duration;
-		return Number.isFinite(d) ? d : 0;
-	}
-
-	buffered(): number {
-		const ranges = this.element.buffered;
-		if (!ranges || ranges.length === 0)
-			return 0;
-		return ranges.end(ranges.length - 1);
-	}
-
-	bufferedRanges(): TimeRanges {
-		return this.element.buffered;
-	}
-
-	seekable(): TimeRanges {
-		return this.element.seekable;
-	}
-
-	playbackRate(): number;
-	playbackRate(rate: number): void;
-	playbackRate(rate?: number): number | void {
-		if (rate === undefined)
-			return this.element.playbackRate;
-		this.element.playbackRate = rate;
-	}
-
-	volume(): number;
-	volume(v: number): void;
-	volume(v?: number): number | void {
+	override volume(): number;
+	override volume(v: number): void;
+	override volume(v?: number): number | void {
 		if (v === undefined) {
-			// Returns the curved gain amplitude on element.volume — NOT the 0..1
-			// slider position. The player mixin owns the position in _internalVolume.
 			return this.element.volume;
 		}
 
 		const clamped = Math.max(0, Math.min(1, v));
 		const gain = perceptualGain(clamped);
-
 		this.element.volume = gain;
 
 		if (clamped > 0) {
@@ -290,20 +235,20 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		}
 	}
 
-	mute(): void {
+	override mute(): void {
 		if (!this.element.muted) {
 			this.prevVolume = this.element.volume || this.prevVolume;
 			this.element.muted = true;
 		}
 	}
 
-	unmute(): void {
-		this.element.muted = false;
-	}
+	// ── State ─────────────────────────────────────────────────────────────────
 
 	state(): BackendState {
 		return this.currentState;
 	}
+
+	// ── Web Audio graph tap ───────────────────────────────────────────────────
 
 	outputNode(ctx: AudioContext): AudioNode {
 		this.ensureSourceGraph(ctx);
@@ -321,12 +266,24 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		// Different context (consumer swapped AudioContext) — drop the old graph.
 		if (this.sourceNode && this.sourceCtx !== ctx) {
-			try { this.sourceNode.disconnect(); }
-			catch { /* defensive */ }
-			try { this.analyserNode?.disconnect(); }
-			catch { /* defensive */ }
-			try { this.outputGain?.disconnect(); }
-			catch { /* defensive */ }
+			try {
+				this.sourceNode.disconnect();
+			}
+			catch {
+				/* defensive */
+			}
+			try {
+				this.analyserNode?.disconnect();
+			}
+			catch {
+				/* defensive */
+			}
+			try {
+				this.outputGain?.disconnect();
+			}
+			catch {
+				/* defensive */
+			}
 		}
 
 		// A graph tap is being requested. The element's output now flows through
@@ -372,74 +329,29 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 			return;
 
 		const restore = (): void => {
-			try { this.element.currentTime = position; }
-			catch { /* element not seekable yet — best effort */ }
-			if (wasPlaying)
-				void this.element.play().catch(() => { /* autoplay policy — best effort */ });
+			try {
+				this.element.currentTime = position;
+			}
+			catch {
+				/* element not seekable yet — best effort */
+			}
+			if (wasPlaying) {
+				void this.element.play().catch(() => {
+					/* autoplay policy — best effort */
+				});
+			}
 		};
 		this.element.addEventListener('loadedmetadata', restore, { once: true });
 		this.element.load();
 	}
 
-	mediaElement(): HTMLMediaElement {
-		return this.element;
-	}
+	// ── IAudioBackend-required methods not on base ────────────────────────────
 
-	captureStream(): MediaStream {
-		const fn = (this.element as HTMLAudioElement & { captureStream?: () => MediaStream }).captureStream;
-		if (typeof fn !== 'function') {
-			throw new BrowserPolicyError({
-				code: 'core:policy/captureStreamUnsupported',
-				severity: 'error',
-				scope: {
-					kind: 'backend',
-					id: 'audio-element',
-				},
-				message: 'HTMLAudioElement.captureStream() is not available in this environment.',
-			});
-		}
-		return fn.call(this.element);
-	}
-
-	async setSinkId(deviceId: string): Promise<void> {
-		const fn = (this.element as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> }).setSinkId;
-		if (typeof fn !== 'function') {
-			throw new BrowserPolicyError({
-				code: 'core:policy/setSinkIdUnsupported',
-				severity: 'error',
-				scope: {
-					kind: 'backend',
-					id: 'audio-element',
-				},
-				message: 'HTMLAudioElement.setSinkId() is not available in this environment.',
-			});
-		}
-		await fn.call(this.element, deviceId);
-	}
-
-	getSinkId(): string {
-		const v = (this.element as HTMLAudioElement & { sinkId?: string }).sinkId;
-		return v ?? '';
-	}
-
-	mediaKeys(): MediaKeys | undefined {
-		return this.element.mediaKeys ?? undefined;
-	}
-
-	async setMediaKeys(keys: MediaKeys): Promise<void> {
-		const fn = (this.element as HTMLMediaElement & { setMediaKeys?: (k: MediaKeys) => Promise<void> }).setMediaKeys;
-		if (typeof fn !== 'function') {
-			throw new BrowserPolicyError({
-				code: 'core:policy/emeUnsupported',
-				severity: 'error',
-				scope: {
-					kind: 'backend',
-					id: 'audio-element',
-				},
-				message: 'HTMLMediaElement.setMediaKeys() is not available in this environment.',
-			});
-		}
-		await fn.call(this.element, keys);
+	buffered(): number {
+		const ranges = this.element.buffered;
+		if (!ranges || ranges.length === 0)
+			return 0;
+		return ranges.end(ranges.length - 1);
 	}
 
 	outputProtectionState(): 'unrestricted' | 'restricted' | 'unsupported' {
@@ -448,27 +360,12 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		return 'unsupported';
 	}
 
-	pauseLoader(): void {
-		const stop = this.hlsInstance?.stopLoad;
-		if (typeof stop === 'function')
-			stop.call(this.hlsInstance);
-		this.loaderRunning = 'paused';
-	}
-
-	resumeLoader(): void {
-		const start = this.hlsInstance?.startLoad;
-		if (typeof start === 'function')
-			start.call(this.hlsInstance);
-		this.loaderRunning = 'running';
-	}
-
-	loaderState(): BackendLoaderState {
+	override loaderState(): BackendLoaderState {
 		return this.loaderRunning;
 	}
 
 	// ── Crossfade ─────────────────────────────────────────────────────────────
 
-	/** Both `<audio>`-element backends can allocate a second element. */
 	supportsCrossfade(): boolean {
 		return true;
 	}
@@ -487,23 +384,23 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 
 		this.disposeSecondary();
 
-		const el = document.createElement('audio');
-		el.preload = 'auto';
-		// crossOrigin matches the primary: only set when the graph is tapped
-		// (see ensureSourceGraph). Forcing it here breaks CORS-less servers.
-		if (this.element.crossOrigin === 'anonymous')
-			el.crossOrigin = 'anonymous';
+		const el = createSecondaryAudioElement(
+			this.container,
+			this.element.crossOrigin,
+		);
 		el.volume = 0;
-		el.style.display = 'none';
-		if (this.container) {
-			this.container.appendChild(el);
-		}
 		this._secondary = el;
 		this._secondaryVol = 0;
 
 		await new Promise<void>((resolve, reject) => {
-			const onMeta = (): void => { cleanup(); resolve(); };
-			const onErr = (): void => { cleanup(); reject(el.error ?? new Error('secondary load error')); };
+			const onMeta = (): void => {
+				cleanup();
+				resolve();
+			};
+			const onErr = (): void => {
+				cleanup();
+				reject(el.error ?? new Error('secondary load error'));
+			};
 			const cleanup = (): void => {
 				el.removeEventListener('loadedmetadata', onMeta);
 				el.removeEventListener('error', onErr);
@@ -515,15 +412,16 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		});
 	}
 
-	/**
-	 * Pause + remove the secondary `<audio>` element from the DOM and clear
-	 * the reference. Idempotent.
-	 */
+	/** Pause + remove the secondary element and clear the reference. Idempotent. */
 	disposeSecondary(): void {
 		if (!this._secondary)
 			return;
-		try { this._secondary.pause(); }
-		catch { /* ignore */ }
+		try {
+			this._secondary.pause();
+		}
+		catch {
+			/* ignore */
+		}
 		this._secondary.removeAttribute('src');
 		if (this._secondary.parentNode) {
 			this._secondary.parentNode.removeChild(this._secondary);
@@ -532,37 +430,19 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		this._secondaryVol = 0;
 	}
 
-	/**
-	 * Wait for the secondary to be ready to play, then optionally seek to
-	 * `seekMs`. Resolves immediately if `canplay` already fired.
-	 *
-	 * @param seekMs - Start position in milliseconds (default 0).
-	 */
+	/** Wait for the secondary to be ready to play, then optionally seek to `seekMs`. */
 	async primeSecondary(seekMs?: number): Promise<void> {
 		const el = this._secondary;
 		if (!el)
 			return;
-
-		await new Promise<void>((resolve) => {
-			if (el.readyState >= 3) {
-				resolve();
-				return;
-			}
-			el.addEventListener('canplay', () => resolve(), { once: true });
-		});
-
-		if (seekMs != null && seekMs > 0) {
-			el.currentTime = seekMs / 1000;
-		}
+		await primeSecondaryElement(el, seekMs);
 	}
 
 	/**
 	 * Ramp primary volume → 0 and secondary volume → primary's pre-fade
 	 * volume over `durationMs`. Starts secondary playback at t = 0.
-	 * On completion the secondary `<audio>` element becomes the new primary;
-	 * the old primary element is disposed.
-	 *
-	 * @param durationMs - Crossfade duration in milliseconds. 0 = instant swap.
+	 * On completion the secondary element becomes the new primary; the old
+	 * primary element is disposed.
 	 */
 	async crossfade(durationMs: number): Promise<void> {
 		const secondary = this._secondary;
@@ -606,8 +486,12 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		// Swap: old primary is silenced; secondary takes the primary slot.
 		const old = this.element;
 		this.detachDomBridges(old);
-		try { old.pause(); }
-		catch { /* ignore */ }
+		try {
+			old.pause();
+		}
+		catch {
+			/* ignore */
+		}
 		old.removeAttribute('src');
 		if (this.ownsElement && old.parentNode) {
 			old.parentNode.removeChild(old);
@@ -619,22 +503,24 @@ export class AudioElementBackend extends EventEmitter<BackendEventPayload> imple
 		this._secondaryVol = 0;
 
 		// Re-attach DOM bridges to the new primary element.
-		this.attachDomBridges();
+		this.attachDomBridges(
+			(state: string) => {
+				this.currentState = state as BackendState;
+			},
+			() => this.currentState,
+		);
 	}
 
 	secondaryGain(): number;
 	secondaryGain(value: number): void;
 	secondaryGain(value?: number): number | void {
 		if (value === undefined) {
-			// Returns the curved gain currently on the secondary element.
 			return this._secondary ? this._secondary.volume : 0;
 		}
 
 		const clamped = Math.max(0, Math.min(1, value));
 		const gain = perceptualGain(clamped);
-
 		this._secondaryVol = gain;
-
 		if (this._secondary) {
 			this._secondary.volume = gain;
 		}

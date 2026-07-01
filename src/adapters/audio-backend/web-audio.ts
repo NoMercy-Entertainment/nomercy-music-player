@@ -15,16 +15,14 @@ import type {
 
 import {
 	appendAuthTokenParam,
-	BrowserPolicyError,
-	EventEmitter,
-	perceptualGain,
-} from '@nomercy-entertainment/nomercy-player-core';
-import {
-	attachDomBridgesTo,
 	attachHlsOrFallback,
+	BrowserPolicyError,
 	isHls,
+	MediaElementBackend,
+	perceptualGain,
+	primeSecondaryElement,
 	supportsNativeHls,
-} from './hls-loader';
+} from '@nomercy-entertainment/nomercy-player-core';
 
 /** Safari ships the Web Audio API under the vendor-prefixed name. */
 interface WebkitAudioContextGlobal {
@@ -44,7 +42,8 @@ function resolveAudioContext(existing?: AudioContext): AudioContext {
 				id: 'webaudio',
 			},
 			message: 'Web Audio API is not available in this environment.',
-			suggestion: 'Use a browser that supports the Web Audio API (all modern browsers).',
+			suggestion:
+        'Use a browser that supports the Web Audio API (all modern browsers).',
 		});
 	}
 
@@ -65,41 +64,19 @@ function resolveAudioContext(existing?: AudioContext): AudioContext {
  * Construction throws `BrowserPolicyError` immediately when AudioContext is
  * unavailable — this backend requires Web Audio, never silently degrades.
  */
-export class WebAudioBackend extends EventEmitter<BackendEventPayload> implements IAudioBackend {
+export class WebAudioBackend
+	extends MediaElementBackend<HTMLAudioElement, BackendEventPayload>
+	implements IAudioBackend {
 	readonly kind = 'webaudio' as const;
 
-	private element: HTMLAudioElement;
-	private ownsElement: boolean;
 	private readonly container?: HTMLElement;
-	private domHandlers: Array<{ event: string; handler: EventListener }> = [];
-
-	/** Resolves the full `Authorization` header value, or undefined when unauthenticated. */
-	private _authHeaderProvider: (() => string | undefined | Promise<string | undefined>) | undefined;
-
-	/**
-	 * Wire the provider whose return value goes into the `Authorization`
-	 * header of every hls.js manifest/segment request. Called by the player
-	 * at backend init from the `auth` config.
-	 */
-	setAuthHeaderProvider(provider: () => string | undefined | Promise<string | undefined>): void {
-		this._authHeaderProvider = provider;
-	}
-
 	private ctx: AudioContext;
+	private currentState: BackendState = 'idle';
+	private prevVolume: number = 1;
+
 	private sourceNode?: MediaElementAudioSourceNode;
 	private analyserNode?: AnalyserNode;
 	private gainNode?: GainNode;
-
-	private hlsInstance?: {
-		destroy: () => void;
-		stopLoad: () => void;
-		startLoad: (pos?: number) => void;
-	};
-
-	private loaderPaused = false;
-	private currentState: BackendState = 'idle';
-	private prevVolume: number = 1;
-	private disposed = false;
 
 	// ── Crossfade secondary ──────────────────────────────────────────────────
 	// Each crossfade allocates a fresh <audio> element + MediaElementAudioSourceNode
@@ -110,31 +87,44 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	private _secondaryGain?: GainNode;
 
 	constructor(container?: HTMLElement, opts?: { audioContext?: AudioContext }) {
-		super();
+		const resolved = WebAudioBackend.resolveElement(container);
+		super(resolved.element, resolved.ownsElement, 'webaudio');
 		this.ctx = resolveAudioContext(opts?.audioContext);
-
 		this.container = container;
 
-		// Reuse or create the <audio> element exactly as AudioElementBackend does.
-		let existing: HTMLAudioElement | null = null;
+		this.attachDomBridges(
+			(state: string) => {
+				this.currentState = state as BackendState;
+			},
+			() => this.currentState,
+		);
+	}
+
+	private static resolveElement(container?: HTMLElement): {
+		element: HTMLAudioElement;
+		ownsElement: boolean;
+	} {
 		if (container) {
-			existing = container.querySelector('audio');
-		}
-		if (existing) {
-			this.element = existing;
-			this.ownsElement = false;
-		}
-		else {
-			this.element = document.createElement('audio');
-			this.element.preload = 'metadata';
-			// crossOrigin required for createMediaElementSource on cross-origin URLs.
-			this.element.crossOrigin = 'anonymous';
-			this.ownsElement = true;
-			if (container)
-				container.appendChild(this.element);
+			const existing = container.querySelector<HTMLAudioElement>('audio');
+			if (existing) {
+				return {
+					element: existing,
+					ownsElement: false,
+				};
+			}
 		}
 
-		this.attachDomBridges();
+		const created = document.createElement('audio');
+		created.preload = 'metadata';
+		// crossOrigin required for createMediaElementSource on cross-origin URLs.
+		created.crossOrigin = 'anonymous';
+		if (container) {
+			container.appendChild(created);
+		}
+		return {
+			element: created,
+			ownsElement: true,
+		};
 	}
 
 	// ── Web Audio graph init ────────────────────────────────────────────────
@@ -142,10 +132,6 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	/**
 	 * Lazily build the Web Audio graph on first call. Safe to call multiple
 	 * times — subsequent calls return the already-created gain node.
-	 *
-	 * NOTE: createMediaElementSource can only be called once per element. If
-	 * the element was previously connected to a different context this will
-	 * throw; callers sharing an element must pass in the same AudioContext.
 	 *
 	 * Baseline routing: source → gainNode(volume) → analyserNode → destination.
 	 * `gainNode` is the volume-control node and the public output point exposed
@@ -163,10 +149,6 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		this.analyserNode = this.ctx.createAnalyser();
 		this.analyserNode.fftSize = 2048;
 
-		// source → gainNode(volume) → analyserNode → destination.
-		// gainNode is the volume tap. AudioGraphPlugin picks up from gainNode
-		// via outputNode() and splices its effect chain between gainNode and
-		// destination, replacing the gainNode → analyserNode → destination leg.
 		this.sourceNode.connect(this.gainNode);
 		this.gainNode.connect(this.analyserNode);
 		this.analyserNode.connect(this.ctx.destination);
@@ -174,20 +156,12 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		return this.gainNode;
 	}
 
-	// ── DOM event bridging ──────────────────────────────────────────────────
-
-	private attachDomBridges(): void {
-		this.domHandlers = attachDomBridgesTo(
-			this.element,
-			(event, data) => this.emit(event as never, data as never),
-			(state) => { this.currentState = state; },
-			() => this.currentState,
-		);
-	}
-
 	// ── Lifecycle ───────────────────────────────────────────────────────────
 
-	async load(url: string, opts?: { preload: 'auto' | 'metadata' | 'none' }): Promise<void> {
+	async load(
+		url: string,
+		opts?: { preload: 'auto' | 'metadata' | 'none' },
+	): Promise<void> {
 		this.element.preload = opts?.preload ?? 'auto';
 		this.currentState = 'loading';
 		this.emit('backend:loading', {
@@ -196,8 +170,12 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		});
 
 		if (this.hlsInstance) {
-			try { this.hlsInstance.destroy(); }
-			catch { /* ignore */ }
+			try {
+				this.hlsInstance.destroy();
+			}
+			catch {
+				/* ignore */
+			}
 			this.hlsInstance = undefined;
 		}
 
@@ -210,7 +188,10 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 		await new Promise<void>((resolve, reject) => {
-			const onLoaded = (): void => { cleanup(); resolve(); };
+			const onLoaded = (): void => {
+				cleanup();
+				resolve();
+			};
 			const onError = (): void => {
 				cleanup();
 				reject(this.element.error ?? new Error('audio element load error'));
@@ -223,20 +204,14 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			this.element.addEventListener('error', onError, { once: true });
 
 			if (useHlsJs && hlsMod) {
-				this.hlsInstance = attachHlsOrFallback(
-					hlsMod.default,
-					this.element,
-					url,
-					headerValue,
-					{
+				this.hlsInstance
+					= attachHlsOrFallback(hlsMod.default, this.element, url, headerValue, {
 						xhrSetup: (xhr: XMLHttpRequest) => {
 							if (headerValue) {
 								xhr.setRequestHeader('Authorization', headerValue);
 							}
 						},
-					},
-					appendAuthTokenParam,
-				) ?? undefined;
+					}) ?? undefined;
 			}
 			else {
 				this.element.src = appendAuthTokenParam(url, headerValue);
@@ -244,27 +219,41 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			}
 		});
 
-		const duration = Number.isFinite(this.element.duration) ? this.element.duration : 0;
+		const dur = Number.isFinite(this.element.duration)
+			? this.element.duration
+			: 0;
 		this.currentState = 'ready';
 		this.emit('backend:loaded', {
 			url,
 			kind: this.kind,
-			duration,
+			duration: dur,
 		});
 	}
 
 	unload(): void {
 		this.disposeSecondary();
-		try { this.element.pause(); }
-		catch { /* ignore */ }
+		try {
+			this.element.pause();
+		}
+		catch {
+			/* ignore */
+		}
 		if (this.hlsInstance) {
-			try { this.hlsInstance.destroy(); }
-			catch { /* ignore */ }
+			try {
+				this.hlsInstance.destroy();
+			}
+			catch {
+				/* ignore */
+			}
 			this.hlsInstance = undefined;
 		}
 		this.element.removeAttribute('src');
-		try { this.element.load(); }
-		catch { /* ignore */ }
+		try {
+			this.element.load();
+		}
+		catch {
+			/* ignore */
+		}
 		this.currentState = 'idle';
 	}
 
@@ -276,94 +265,53 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		this.unload();
 
 		// Disconnect the Web Audio graph.
-		try { this.sourceNode?.disconnect(); }
-		catch { /* ignore */ }
-		try { this.gainNode?.disconnect(); }
-		catch { /* ignore */ }
-		try { this.analyserNode?.disconnect(); }
-		catch { /* ignore */ }
+		try {
+			this.sourceNode?.disconnect();
+		}
+		catch {
+			/* ignore */
+		}
+		try {
+			this.gainNode?.disconnect();
+		}
+		catch {
+			/* ignore */
+		}
+		try {
+			this.analyserNode?.disconnect();
+		}
+		catch {
+			/* ignore */
+		}
 		this.sourceNode = undefined;
 		this.gainNode = undefined;
 		this.analyserNode = undefined;
 
-		for (const { event, handler } of this.domHandlers) {
-			this.element.removeEventListener(event, handler);
-		}
-		this.domHandlers = [];
+		this.detachDomBridges(this.element);
 
 		if (this.ownsElement && this.element.parentNode) {
 			this.element.parentNode.removeChild(this.element);
 		}
 	}
 
-	// ── Transport ───────────────────────────────────────────────────────────
+	// ── Transport override (AudioContext resume before element play) ──────────
 
-	play(): Promise<void> {
+	override play(): Promise<void> {
 		// Resume suspended context on play — required by browser autoplay policy.
 		if (this.ctx.state === 'suspended') {
-			this.ctx.resume().catch(() => { /* best-effort */ });
+			this.ctx.resume().catch(() => {
+				/* best-effort */
+			});
 		}
 		const result = this.element.play();
 		return result instanceof Promise ? result : Promise.resolve();
 	}
 
-	pause(): void {
-		this.element.pause();
-	}
+	// ── Volume overrides (GainNode path + prevVolume bookkeeping) ─────────────
 
-	stop(): void {
-		this.element.pause();
-		try { this.element.currentTime = 0; }
-		catch { /* ignore */ }
-	}
-
-	// ── Time / position ─────────────────────────────────────────────────────
-
-	currentTime(): number;
-	currentTime(t: number): void;
-	currentTime(t?: number): number | void {
-		if (t === undefined)
-			return this.element.currentTime;
-		try { this.element.currentTime = t; }
-		catch { /* element not ready — best effort */ }
-	}
-
-	duration(): number {
-		const d = this.element.duration;
-		return Number.isFinite(d) ? d : 0;
-	}
-
-	buffered(): number {
-		const ranges = this.element.buffered;
-		if (!ranges || ranges.length === 0)
-			return 0;
-		return ranges.end(ranges.length - 1);
-	}
-
-	bufferedRanges(): TimeRanges {
-		return this.element.buffered;
-	}
-
-	seekable(): TimeRanges {
-		return this.element.seekable;
-	}
-
-	playbackRate(): number;
-	playbackRate(rate: number): void;
-	playbackRate(rate?: number): number | void {
-		if (rate === undefined)
-			return this.element.playbackRate;
-		this.element.playbackRate = rate;
-	}
-
-	// ── Volume ──────────────────────────────────────────────────────────────
-	//
-	// Volume is applied via the GainNode when the graph is live so we get
-	// sample-accurate ramping. Falls back to element volume before first load.
-
-	volume(): number;
-	volume(v: number): void;
-	volume(v?: number): number | void {
+	override volume(): number;
+	override volume(v: number): void;
+	override volume(v?: number): number | void {
 		if (v === undefined) {
 			// Returns the curved gain amplitude currently on the node — NOT the
 			// 0..1 slider position. The player mixin owns the position in
@@ -388,18 +336,16 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		}
 	}
 
-	mute(): void {
+	override mute(): void {
 		if (!this.element.muted) {
 			this.prevVolume = this.gainNode
 				? this.gainNode.gain.value
-				: (this.element.volume || this.prevVolume);
+				: this.element.volume || this.prevVolume;
 			this.element.muted = true;
 		}
 	}
 
-	unmute(): void {
-		this.element.muted = false;
-	}
+	// ── State ─────────────────────────────────────────────────────────────────
 
 	state(): BackendState {
 		return this.currentState;
@@ -419,12 +365,6 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	/**
 	 * Returns the volume `GainNode` — the public chain entry point for plugins.
 	 *
-	 * Baseline wiring is `source → gainNode → analyserNode → destination`.
-	 * `AudioGraphPlugin` disconnects `gainNode` from the rest and re-routes
-	 * it through the effect chain (`EQ → mixer → destination`). Because
-	 * `gainNode` is always the first node after the media source, `volume()`
-	 * controls audible output both with and without the plugin stack active.
-	 *
 	 * The parameter `_ctx` is accepted for interface compatibility but ignored —
 	 * this backend owns its `AudioContext` at construction time.
 	 */
@@ -437,9 +377,7 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 * frequency and time-domain data from this node without disrupting the
 	 * main signal path.
 	 *
-	 * The analyser sits between `gainNode` and `destination` in the baseline
-	 * chain. When plugins are active it is wired parallel to `gainNode` by
-	 * `AudioGraphPlugin.analyserSource()`, so it continues to receive signal.
+	 * The parameter `_ctx` is accepted for interface compatibility but ignored.
 	 */
 	analyserSource(_ctx: AudioContext): AudioNode {
 		this.ensureGraph();
@@ -451,114 +389,49 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 * volume `GainNode`. `AudioGraphPlugin` taps its `AnalyserNode` here so
 	 * spectrum/FFT magnitudes are not scaled by the volume fader.
 	 *
-	 * The parameter `_ctx` is accepted for interface compatibility but ignored —
-	 * this backend owns its `AudioContext` at construction time.
+	 * The parameter `_ctx` is accepted for interface compatibility but ignored.
 	 */
 	analysisNode(_ctx: AudioContext): AudioNode {
 		this.ensureGraph();
 		return this.sourceNode!;
 	}
 
-	// ── Raw element access ──────────────────────────────────────────────────
+	// ── IAudioBackend-required methods not on base ────────────────────────────
 
-	mediaElement(): HTMLMediaElement {
-		return this.element;
+	buffered(): number {
+		const ranges = this.element.buffered;
+		if (!ranges || ranges.length === 0)
+			return 0;
+		return ranges.end(ranges.length - 1);
 	}
 
-	// ── MediaStream capture (for cast sender / recording plugins) ──────────
-
-	captureStream(): MediaStream {
-		const el = this.element as HTMLAudioElement & { captureStream?: () => MediaStream };
-		if (typeof el.captureStream === 'function') {
-			return el.captureStream();
-		}
-		throw new BrowserPolicyError({
-			code: 'core:policy/captureStreamUnsupported',
-			scope: {
-				kind: 'backend',
-				id: 'webaudio',
-			},
-			message: 'captureStream() is not supported in this browser.',
-			suggestion: 'Use Chrome or another Chromium-based browser for stream capture.',
-		});
-	}
-
-	// ── Audio output device routing ─────────────────────────────────────────
-
-	setSinkId(deviceId: string): Promise<void> {
-		const el = this.element as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
-		if (typeof el.setSinkId !== 'function') {
-			throw new BrowserPolicyError({
-				code: 'core:policy/sinkIdUnsupported',
-				scope: {
-					kind: 'backend',
-					id: 'webaudio',
-				},
-				message: 'setSinkId() is not supported in this browser.',
-				suggestion: 'Use Chrome 49+ for audio output device selection.',
-			});
-		}
-		return el.setSinkId(deviceId);
-	}
-
-	getSinkId(): string {
-		const el = this.element as HTMLAudioElement & { sinkId?: string };
-		if (typeof el.sinkId !== 'string') {
-			throw new BrowserPolicyError({
-				code: 'core:policy/sinkIdUnsupported',
-				scope: {
-					kind: 'backend',
-					id: 'webaudio',
-				},
-				message: 'sinkId is not supported in this browser.',
-				suggestion: 'Use Chrome 49+ for audio output device selection.',
-			});
-		}
-		return el.sinkId;
-	}
-
-	// ── EME / DRM ───────────────────────────────────────────────────────────
-
-	mediaKeys(): MediaKeys | undefined {
-		return this.element.mediaKeys ?? undefined;
-	}
-
-	setMediaKeys(keys: MediaKeys): Promise<void> {
-		return this.element.setMediaKeys(keys);
-	}
-
-	/**
-	 * Returns 'unrestricted' as a placeholder. Real HDCP output-protection
-	 * queries are platform-specific (CDM) and out of scope for the base backend.
-	 * DRM plugins that need the real value override this via their own integration.
-	 */
 	outputProtectionState(): 'unrestricted' | 'restricted' | 'unsupported' {
+		// Returns 'unrestricted' as a placeholder. Real HDCP output-protection
+		// queries are platform-specific (CDM) and out of scope for the base backend.
+		// DRM plugins that need the real value override this via their own integration.
 		return 'unrestricted';
 	}
 
-	// ── Loader backpressure ─────────────────────────────────────────────────
+	override loaderState(): BackendLoaderState {
+		return this.loaderPaused ? 'paused' : 'running';
+	}
 
-	pauseLoader(): void {
+	override pauseLoader(): void {
 		if (!this.hlsInstance)
 			return;
 		this.hlsInstance.stopLoad();
 		this.loaderPaused = true;
 	}
 
-	resumeLoader(): void {
+	override resumeLoader(): void {
 		if (!this.hlsInstance)
 			return;
 		this.hlsInstance.startLoad();
 		this.loaderPaused = false;
 	}
 
-	loaderState(): BackendLoaderState {
-		return this.loaderPaused ? 'paused' : 'running';
-	}
-
 	// ── Crossfade ─────────────────────────────────────────────────────────────
 
-	/** GainNode-based crossfade is sample-accurate via the Web Audio scheduler. */
 	supportsCrossfade(): boolean {
 		return true;
 	}
@@ -571,8 +444,6 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 * Each crossfade requires a new `<audio>` + `MediaElementAudioSourceNode`
 	 * pair because `createMediaElementSource()` permanently binds an element to
 	 * its context.
-	 *
-	 * @param url - Fully-resolved media URL for the incoming track.
 	 */
 	async loadSecondary(url: string): Promise<void> {
 		if (this._secondaryEl && this._secondaryEl.currentSrc === url)
@@ -598,14 +469,15 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		this._secondarySource = sourceNode;
 		this._secondaryGain = gainNode;
 
-		// Build the load promise first — listeners are registered synchronously
-		// inside the executor so test stubs that fire 'loadedmetadata' immediately
-		// after loadSecondary() resolves the outer promise are never missed.
-		// Auth resolution and src assignment happen inside the executor too,
-		// but the auth provider call is awaited so we spin a mini async wrapper.
 		await new Promise<void>((resolve, reject) => {
-			const onMeta = (): void => { cleanup(); resolve(); };
-			const onErr = (): void => { cleanup(); reject(el.error ?? new Error('secondary load error')); };
+			const onMeta = (): void => {
+				cleanup();
+				resolve();
+			};
+			const onErr = (): void => {
+				cleanup();
+				reject(el.error ?? new Error('secondary load error'));
+			};
 			const cleanup = (): void => {
 				el.removeEventListener('loadedmetadata', onMeta);
 				el.removeEventListener('error', onErr);
@@ -623,27 +495,18 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			// runs without losing the resolve/reject handles.
 			void (async (): Promise<void> => {
 				try {
-					// Resolve auth identically to the primary load path so
-					// authenticated NoMercy servers serve the secondary without a 401.
 					const headerValue = await this._authHeaderProvider?.();
 					const useHlsJs = isHls(url) && !supportsNativeHls(el);
 					const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 					if (useHlsJs && hlsMod) {
-						attachHlsOrFallback(
-							hlsMod.default,
-							el,
-							url,
-							headerValue,
-							{
-								xhrSetup: (xhr: XMLHttpRequest) => {
-									if (headerValue) {
-										xhr.setRequestHeader('Authorization', headerValue);
-									}
-								},
+						attachHlsOrFallback(hlsMod.default, el, url, headerValue, {
+							xhrSetup: (xhr: XMLHttpRequest) => {
+								if (headerValue) {
+									xhr.setRequestHeader('Authorization', headerValue);
+								}
 							},
-							appendAuthTokenParam,
-						);
+						});
 					}
 					else {
 						el.src = appendAuthTokenParam(url, headerValue);
@@ -674,17 +537,31 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 				const now = this.ctx.currentTime;
 				gain.gain.setTargetAtTime(0, now, 0.005);
 			}
-			catch { /* context may be closed */ }
-			try { gain.disconnect(); }
-			catch { /* ignore */ }
+			catch {
+				/* context may be closed */
+			}
+			try {
+				gain.disconnect();
+			}
+			catch {
+				/* ignore */
+			}
 		}
 		if (source) {
-			try { source.disconnect(); }
-			catch { /* ignore */ }
+			try {
+				source.disconnect();
+			}
+			catch {
+				/* ignore */
+			}
 		}
 
-		try { el.pause(); }
-		catch { /* ignore */ }
+		try {
+			el.pause();
+		}
+		catch {
+			/* ignore */
+		}
 		el.removeAttribute('src');
 		if (el.parentNode) {
 			el.parentNode.removeChild(el);
@@ -695,28 +572,12 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		this._secondaryGain = undefined;
 	}
 
-	/**
-	 * Wait for the secondary element to reach `readyState >= 3`, then
-	 * optionally seek to `seekMs`.
-	 *
-	 * @param seekMs - Start position in milliseconds (default 0).
-	 */
+	/** Wait for the secondary element to reach `readyState >= 3`, then optionally seek to `seekMs`. */
 	async primeSecondary(seekMs?: number): Promise<void> {
 		const el = this._secondaryEl;
 		if (!el)
 			return;
-
-		await new Promise<void>((resolve) => {
-			if (el.readyState >= 3) {
-				resolve();
-				return;
-			}
-			el.addEventListener('canplay', () => resolve(), { once: true });
-		});
-
-		if (seekMs != null && seekMs > 0) {
-			el.currentTime = seekMs / 1000;
-		}
+		await primeSecondaryElement(el, seekMs);
 	}
 
 	/**
@@ -725,8 +586,6 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	 * `durationMs`. Starts secondary playback immediately.
 	 *
 	 * Uses `linearRampToValueAtTime` — sample-accurate per the Web Audio spec.
-	 *
-	 * @param durationMs - Crossfade duration in milliseconds. 0 = instant swap.
 	 */
 	async crossfade(durationMs: number): Promise<void> {
 		const secondaryEl = this._secondaryEl;
@@ -737,7 +596,9 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 
 		// Resume suspended context (autoplay policy).
 		if (this.ctx.state === 'suspended') {
-			await this.ctx.resume().catch(() => { /* best-effort */ });
+			await this.ctx.resume().catch(() => {
+				/* best-effort */
+			});
 		}
 
 		const primaryGain = this.gainNode;
@@ -764,38 +625,47 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			secondaryGain.gain.linearRampToValueAtTime(targetVolume, endTime);
 		}
 
-		secondaryEl.play().catch(() => { /* best-effort — autoplay may block */ });
+		secondaryEl.play().catch(() => {
+			/* best-effort — autoplay may block */
+		});
 
 		if (durationMs > 0) {
 			await new Promise<void>(resolve => setTimeout(resolve, durationMs));
 		}
 
 		// ── Promote secondary → primary ────────────────────────────────────────
-		// Contract (IAudioBackend): on completion the secondary becomes the
-		// primary; the old primary is disposed. Mirror the HTML5 backend swap.
 
 		// 1. Disconnect and clear the old primary's Web Audio graph.
 		const oldSource = this.sourceNode;
 		const oldGain = this.gainNode;
 		if (oldSource) {
-			try { oldSource.disconnect(); }
-			catch { /* ignore */ }
+			try {
+				oldSource.disconnect();
+			}
+			catch {
+				/* ignore */
+			}
 		}
 		if (oldGain) {
-			try { oldGain.disconnect(); }
-			catch { /* ignore */ }
+			try {
+				oldGain.disconnect();
+			}
+			catch {
+				/* ignore */
+			}
 		}
 
 		// 2. Detach DOM event bridges from the old primary.
 		const oldEl = this.element;
-		for (const { event, handler } of this.domHandlers) {
-			oldEl.removeEventListener(event, handler);
-		}
-		this.domHandlers = [];
+		this.detachDomBridges(oldEl);
 
 		// 3. Pause and release the old primary element.
-		try { oldEl.pause(); }
-		catch { /* ignore */ }
+		try {
+			oldEl.pause();
+		}
+		catch {
+			/* ignore */
+		}
 		oldEl.removeAttribute('src');
 		if (this.ownsElement && oldEl.parentNode) {
 			oldEl.parentNode.removeChild(oldEl);
@@ -813,15 +683,16 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 		this._secondaryGain = undefined;
 
 		// 6. Re-attach DOM bridges to the new primary element.
-		this.attachDomBridges();
+		this.attachDomBridges(
+			(state: string) => {
+				this.currentState = state as BackendState;
+			},
+			() => this.currentState,
+		);
 
 		// 7. Notify plugins that the active source changed. AudioGraphPlugin
 		// listens for 'backend:sourceswap' to remount its chain on the new
 		// volume gain node, keeping EQ / mixer routed through the correct graph.
-		// We emit gainNode (not sourceNode) because gainNode is the volume tap
-		// and the plugin chain's entry point — matching what outputNode() returns.
-		// We also emit the new sourceNode as analysisNode so AudioGraphPlugin can
-		// retap its AnalyserNode pre-volume (volume-independent spectrum).
 		this.emit('backend:sourceswap', {
 			sourceNode: this.gainNode!,
 			analysisNode: this.sourceNode,
@@ -832,7 +703,6 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 	secondaryGain(value: number): void;
 	secondaryGain(value?: number): number | void {
 		if (value === undefined) {
-			// Returns the curved gain currently on the secondary node.
 			return this._secondaryGain ? this._secondaryGain.gain.value : 0;
 		}
 
@@ -844,4 +714,8 @@ export class WebAudioBackend extends EventEmitter<BackendEventPayload> implement
 			this._secondaryGain.gain.setTargetAtTime(gain, now, 0.01);
 		}
 	}
+
+	// ── Private loaderPaused field (replaces base loaderRunning for this backend) ──
+
+	private loaderPaused: boolean = false;
 }
