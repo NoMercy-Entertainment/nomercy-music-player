@@ -96,7 +96,7 @@ export {
 } from './types';
 export { NotImplementedError } from '@nomercy-entertainment/nomercy-player-core';
 
-const _instances = new Map<string, NMMusicPlayer<any>>();
+const _instances = new Map<string, NMMusicPlayer<MusicPlaylistItem>>();
 
 /**
  * Narrow view of the composed kit internals accessed by `_wireBackend`.
@@ -193,15 +193,16 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare pause: (opts?: ActionOptions) => Promise<void>;
 	declare stop: (opts?: ActionOptions) => Promise<void>;
 	declare togglePlayback: (opts?: ActionOptions) => Promise<void>;
-	declare next: (opts?: ActionOptions) => Promise<void>;
-	declare previous: (opts?: ActionOptions) => Promise<void>;
+	declare next: (opts?: LoadOptions) => Promise<void>;
+	declare previous: (opts?: LoadOptions) => Promise<void>;
 	declare rewind: (seconds?: number, opts?: ActionOptions) => Promise<void>;
 	declare forward: (seconds?: number, opts?: ActionOptions) => Promise<void>;
 	declare restart: (opts?: ActionOptions) => Promise<void>;
+	declare registerTitleTokens: (tokens: Record<string, string>) => void;
 
 	declare time: {
 		(): number;
-		(t: number, opts?: ActionOptions): Promise<void>;
+		(seconds: number, opts?: ActionOptions): Promise<void>;
 	};
 
 	declare duration: () => number;
@@ -221,7 +222,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	declare volume: {
 		(): number;
-		(v: number): void;
+		(level: number): void;
 	};
 
 	declare mute: () => void;
@@ -255,7 +256,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare queueMove: (from: number, to: number, opts?: ActionOptions) => void;
 	declare queueClear: (opts?: ActionOptions) => void;
 	declare queueShuffle: (opts?: ActionOptions) => void;
-	declare queueSort: (compare: (a: T, b: T) => number, opts?: ActionOptions) => void;
+	declare queueSort: (compare: (itemA: T, itemB: T) => number, opts?: ActionOptions) => void;
 	declare peekNext: () => T | undefined;
 	declare peekPrevious: () => T | undefined;
 	declare queueLength: () => number;
@@ -263,7 +264,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	declare item: {
 		(): T | undefined;
-		(target: T | string | number, opts?: ActionOptions): void;
+		(target: T | string | number, opts?: LoadOptions): void;
 	};
 
 	declare index: () => number;
@@ -299,9 +300,8 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	constructor(id?: string | number) {
 		super();
-		// Resolve FIRST so the existing-instance path doesn't waste state init.
-		// Spec §AB: avoid re-initializing core state on a player that's already
-		// fully constructed and possibly mid-pipeline.
+		// Resolve before initPlayerCoreState: the existing-instance branch returns
+		// early, and re-initializing core state on a live instance corrupts it.
 		const resolved = resolvePlayerConstructor(id, _instances, 'NMMusicPlayer');
 		if (resolved.kind === 'existing') {
 			return resolved.instance as unknown as this;
@@ -310,7 +310,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		initPlayerCoreState(this, { className: 'NMMusicPlayer' });
 		(this as { playerId: string }).playerId = resolved.id;
 		this.container = resolved.div;
-		_instances.set(resolved.id, this);
+		_instances.set(resolved.id, this as unknown as NMMusicPlayer<MusicPlaylistItem>);
 	}
 
 	/** Test-only: clear the registry. Not part of the public API. */
@@ -477,11 +477,8 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			return token ? `Bearer ${token}` : undefined;
 		});
 
-		// Bug 1 fix — single AudioContext invariant:
-		// When the backend owns an AudioContext (WebAudioBackend), register it
-		// on the player immediately so AudioGraphPlugin.use() finds it via
-		// player.audioContext() and reuses it instead of creating a second one.
-		// AudioElementBackend has no audioContext() method; guard for it.
+		// AudioElementBackend has no audioContext(); only WebAudioBackend does.
+		// Registering it here keeps AudioGraphPlugin on the one shared context.
 		if (typeof instance.audioContext === 'function') {
 			setPlayerAudioContext(this, instance.audioContext());
 		}
@@ -496,17 +493,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare loadQueue: (url: string, parser?: (raw: string) => T[]) => Promise<void>;
 
 	// ── Crossfade — dual-element implementation ──
-	//
-	// Spec §M / spec §3 example. Two `<audio>` elements ramp gain in opposite
-	// directions over `opts.duration` seconds (default 5). Primary fades to 0
-	// while secondary ramps from 0 to the player's current volume. At
-	// completion the backends swap: secondary becomes primary, old primary
-	// unloads + disposes, secondary's slot is freed for the next preload.
-	//
-	// Short-circuits:
-	//   - `_isTransitioning === true` → ignore (no nested crossfade).
-	//   - duration <= 0 → instant swap, no ramp.
-	//   - track resolves to no URL → throws MediaFormatError.
+	/** Fade the active element out while a second element fades in, then swap them. Ignored while a crossfade is already in flight. */
 	async crossfadeTo(track: T, opts?: CrossfadeOptions & ActionOptions): Promise<void> {
 		if (this._isTransitioning)
 			return; // idempotent guard — reject stacked crossfades
@@ -703,9 +690,9 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 };
 
 {
-	const composedDispose = NMMusicPlayer.prototype.dispose as () => void;
+	const composedDispose: () => void = NMMusicPlayer.prototype.dispose;
 	NMMusicPlayer.prototype.dispose = function (this: NMMusicPlayer<MusicPlaylistItem>): void {
-		const self = this as unknown as { _backend?: { dispose?: () => void } };
+		const self = this as unknown as { _backend?: IAudioBackend };
 		try { self._backend?.dispose?.(); }
 		catch { /* defensive — kit must still finish disposing */ }
 		self._backend = undefined;

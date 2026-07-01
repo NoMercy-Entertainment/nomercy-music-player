@@ -93,8 +93,8 @@ export class WebAudioBackend
 		this.container = container;
 
 		this.attachDomBridges(
-			(state: string) => {
-				this.currentState = state as BackendState;
+			(state: BackendState) => {
+				this.currentState = state;
 			},
 			() => this.currentState,
 		);
@@ -684,8 +684,8 @@ export class WebAudioBackend
 
 		// 6. Re-attach DOM bridges to the new primary element.
 		this.attachDomBridges(
-			(state: string) => {
-				this.currentState = state as BackendState;
+			(state: BackendState) => {
+				this.currentState = state;
 			},
 			() => this.currentState,
 		);

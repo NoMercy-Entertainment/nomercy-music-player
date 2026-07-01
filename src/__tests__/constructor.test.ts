@@ -7,8 +7,8 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Real-behavior constructor tests for NMMusicPlayer. Locks the v1-compatible
- * three-form factory contract and the registry pattern.
+ * Real-behavior constructor tests for NMMusicPlayer. Locks the three-form
+ * factory contract and the registry pattern.
  *
  * Locked behavior:
  *  - `nmplayer()` (no instances) → throws `core:player/no-element`

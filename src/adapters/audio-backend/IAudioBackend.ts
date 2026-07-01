@@ -6,6 +6,8 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
+import type { BackendLoaderState, BackendState } from '@nomercy-entertainment/nomercy-player-core';
+
 export const AUDIO_BACKEND_KIND = {
 	AUDIO_ELEMENT: 'audio-element',
 	WEBAUDIO: 'webaudio',
@@ -72,25 +74,8 @@ export interface BackendEventPayload {
 	'backend:sourceswap': { sourceNode: AudioNode; analysisNode?: AudioNode };
 }
 
-export const BACKEND_STATE = {
-	IDLE: 'idle',
-	LOADING: 'loading',
-	READY: 'ready',
-	PLAYING: 'playing',
-	PAUSED: 'paused',
-	ERROR: 'error',
-} as const;
-
-/** Backend lifecycle state. Returned by `state()`. */
-export type BackendState = typeof BACKEND_STATE[keyof typeof BACKEND_STATE];
-
-export const BACKEND_LOADER_STATE = {
-	RUNNING: 'running',
-	PAUSED: 'paused',
-} as const;
-
-/** Backend loader state — used for backpressure when an upstream encoder is gating output. */
-export type BackendLoaderState = typeof BACKEND_LOADER_STATE[keyof typeof BACKEND_LOADER_STATE];
+export { BACKEND_LOADER_STATE, BACKEND_STATE } from '@nomercy-entertainment/nomercy-player-core';
+export type { BackendLoaderState, BackendState };
 
 /**
  * Concrete contract every audio backend implements. The Player calls these; plugins
