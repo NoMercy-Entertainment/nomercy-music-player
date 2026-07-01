@@ -39,23 +39,23 @@ describe('NMMusicPlayer — state enums', () => {
 		});
 
 		it('transitions to PLAYING after play()', async () => {
-			const p = setup();
-			await p.play();
-			expect(p.playState()).toBe(PlayState.PLAYING);
+			const musicPlayer = setup();
+			await musicPlayer.play();
+			expect(musicPlayer.playState()).toBe(PlayState.PLAYING);
 		});
 
 		it('transitions to PAUSED after pause()', async () => {
-			const p = setup();
-			await p.play();
-			await p.pause();
-			expect(p.playState()).toBe(PlayState.PAUSED);
+			const musicPlayer = setup();
+			await musicPlayer.play();
+			await musicPlayer.pause();
+			expect(musicPlayer.playState()).toBe(PlayState.PAUSED);
 		});
 
 		it('transitions to STOPPED after stop()', async () => {
-			const p = setup();
-			await p.play();
-			await p.stop();
-			expect(p.playState()).toBe(PlayState.STOPPED);
+			const musicPlayer = setup();
+			await musicPlayer.play();
+			await musicPlayer.stop();
+			expect(musicPlayer.playState()).toBe(PlayState.STOPPED);
 		});
 	});
 
@@ -65,24 +65,24 @@ describe('NMMusicPlayer — state enums', () => {
 		});
 
 		it('transitions to MUTED after mute()', () => {
-			const p = setup();
-			p.mute();
-			expect(p.volumeState()).toBe(VolumeState.MUTED);
+			const musicPlayer = setup();
+			musicPlayer.mute();
+			expect(musicPlayer.volumeState()).toBe(VolumeState.MUTED);
 		});
 
 		it('transitions back to UNMUTED after unmute()', () => {
-			const p = setup();
-			p.mute();
-			p.unmute();
-			expect(p.volumeState()).toBe(VolumeState.UNMUTED);
+			const musicPlayer = setup();
+			musicPlayer.mute();
+			musicPlayer.unmute();
+			expect(musicPlayer.volumeState()).toBe(VolumeState.UNMUTED);
 		});
 
 		it('toggleMute flips state', () => {
-			const p = setup();
-			p.toggleMute();
-			expect(p.volumeState()).toBe(VolumeState.MUTED);
-			p.toggleMute();
-			expect(p.volumeState()).toBe(VolumeState.UNMUTED);
+			const musicPlayer = setup();
+			musicPlayer.toggleMute();
+			expect(musicPlayer.volumeState()).toBe(VolumeState.MUTED);
+			musicPlayer.toggleMute();
+			expect(musicPlayer.volumeState()).toBe(VolumeState.UNMUTED);
 		});
 	});
 
@@ -92,11 +92,11 @@ describe('NMMusicPlayer — state enums', () => {
 		});
 
 		it('round-trips through the writer', () => {
-			const p = setup();
-			p.repeatState(RepeatState.ALL);
-			expect(p.repeatState()).toBe(RepeatState.ALL);
-			p.repeatState(RepeatState.ONE);
-			expect(p.repeatState()).toBe(RepeatState.ONE);
+			const musicPlayer = setup();
+			musicPlayer.repeatState(RepeatState.ALL);
+			expect(musicPlayer.repeatState()).toBe(RepeatState.ALL);
+			musicPlayer.repeatState(RepeatState.ONE);
+			expect(musicPlayer.repeatState()).toBe(RepeatState.ONE);
 		});
 	});
 
@@ -106,17 +106,17 @@ describe('NMMusicPlayer — state enums', () => {
 		});
 
 		it('round-trips through the writer (enum value)', () => {
-			const p = setup();
-			p.shuffleState(ShuffleState.ON);
-			expect(p.shuffleState()).toBe(ShuffleState.ON);
+			const musicPlayer = setup();
+			musicPlayer.shuffleState(ShuffleState.ON);
+			expect(musicPlayer.shuffleState()).toBe(ShuffleState.ON);
 		});
 
 		it('accepts a boolean shorthand', () => {
-			const p = setup();
-			p.shuffleState(true);
-			expect(p.shuffleState()).toBe(ShuffleState.ON);
-			p.shuffleState(false);
-			expect(p.shuffleState()).toBe(ShuffleState.OFF);
+			const musicPlayer = setup();
+			musicPlayer.shuffleState(true);
+			expect(musicPlayer.shuffleState()).toBe(ShuffleState.ON);
+			musicPlayer.shuffleState(false);
+			expect(musicPlayer.shuffleState()).toBe(ShuffleState.OFF);
 		});
 	});
 });

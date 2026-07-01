@@ -82,13 +82,13 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 
 	describe('lyricsPlugin', () => {
 		it('registers and use() does not throw on a track without lyricsUrl', async () => {
-			const p = setup();
-			expect(() => p.addPlugin(lyricsPlugin)).not.toThrow();
-			await p.ready();
-			const instance = p.getPlugin(LyricsPlugin);
+			const musicPlayer = setup();
+			expect(() => musicPlayer.addPlugin(lyricsPlugin)).not.toThrow();
+			await musicPlayer.ready();
+			const instance = musicPlayer.getPlugin(LyricsPlugin);
 			expect(instance).toBeInstanceOf(LyricsPlugin);
 			// Switching cursor to a track without `lyricsUrl` must be a silent no-op.
-			p.queue([track('a')]);
+			musicPlayer.queue([track('a')]);
 			expect(instance?.current()).toBeUndefined();
 			expect(instance?.all().length).toBe(0);
 		});
@@ -98,14 +98,14 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
 			);
 
-			const p = setupWithLrcParser();
-			p.addPlugin(lyricsPlugin);
-			await p.ready();
+			const musicPlayer = setupWithLrcParser();
+			musicPlayer.addPlugin(lyricsPlugin);
+			await musicPlayer.ready();
 
 			const loadedPayloads: Array<{ count: number }> = [];
-			p.on('plugin:lyrics:loaded' as any, (data: any) => loadedPayloads.push(data));
+			musicPlayer.on('plugin:lyrics:loaded' as any, (data: any) => loadedPayloads.push(data));
 
-			const instance = p.getPlugin(LyricsPlugin)!;
+			const instance = musicPlayer.getPlugin(LyricsPlugin)!;
 			await instance.fetchLyrics('https://example.com/track.lrc');
 
 			expect(loadedPayloads).toHaveLength(1);
@@ -119,18 +119,18 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
 			);
 
-			const p = setupWithLrcParser();
-			p.addPlugin(lyricsPlugin);
-			await p.ready();
+			const musicPlayer = setupWithLrcParser();
+			musicPlayer.addPlugin(lyricsPlugin);
+			await musicPlayer.ready();
 
 			const lineEnterPayloads: unknown[] = [];
-			p.on('plugin:lyrics:lineEnter' as any, (data: unknown) => { lineEnterPayloads.push(data); });
+			musicPlayer.on('plugin:lyrics:lineEnter' as any, (data: unknown) => { lineEnterPayloads.push(data); });
 
-			const instance = p.getPlugin(LyricsPlugin)!;
+			const instance = musicPlayer.getPlugin(LyricsPlugin)!;
 			await instance.fetchLyrics('https://example.com/track.lrc');
 
 			// Cue 0 spans [1, 2). Advance past the start.
-			p.emit('time' as any, { time: 1.5 } as any);
+			musicPlayer.emit('time' as any, { time: 1.5 } as any);
 
 			expect(lineEnterPayloads).toHaveLength(1);
 			expect((lineEnterPayloads[0] as { text: string }).text).toBe('Hello');
@@ -143,19 +143,19 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
 			);
 
-			const p = setupWithLrcParser();
-			p.addPlugin(lyricsPlugin);
-			await p.ready();
+			const musicPlayer = setupWithLrcParser();
+			musicPlayer.addPlugin(lyricsPlugin);
+			await musicPlayer.ready();
 
 			const lineExitPayloads: unknown[] = [];
-			p.on('plugin:lyrics:lineExit' as any, (data: unknown) => { lineExitPayloads.push(data); });
+			musicPlayer.on('plugin:lyrics:lineExit' as any, (data: unknown) => { lineExitPayloads.push(data); });
 
-			const instance = p.getPlugin(LyricsPlugin)!;
+			const instance = musicPlayer.getPlugin(LyricsPlugin)!;
 			await instance.fetchLyrics('https://example.com/track.lrc');
 
 			// Enter cue 0 at t=1.5, then exit by advancing past end (t=2).
-			p.emit('time' as any, { time: 1.5 } as any);
-			p.emit('time' as any, { time: 2.5 } as any);
+			musicPlayer.emit('time' as any, { time: 1.5 } as any);
+			musicPlayer.emit('time' as any, { time: 2.5 } as any);
 
 			expect(lineExitPayloads).toHaveLength(1);
 			expect((lineExitPayloads[0] as { text: string }).text).toBe('Hello');
@@ -168,21 +168,21 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 				new Response(TWO_CUE_LRC, { status: 200, headers: { 'Content-Type': 'text/plain' } }),
 			);
 
-			const p = setupWithLrcParser();
-			p.addPlugin(lyricsPlugin);
-			await p.ready();
+			const musicPlayer = setupWithLrcParser();
+			musicPlayer.addPlugin(lyricsPlugin);
+			await musicPlayer.ready();
 
-			const instance = p.getPlugin(LyricsPlugin)!;
+			const instance = musicPlayer.getPlugin(LyricsPlugin)!;
 			await instance.fetchLyrics('https://example.com/track.lrc');
 
 			expect(instance.current()).toBeUndefined();
 
 			// Advance into cue 0 window [1, 2).
-			p.emit('time' as any, { time: 1.5 } as any);
+			musicPlayer.emit('time' as any, { time: 1.5 } as any);
 			expect(instance.current()?.text).toBe('Hello');
 
 			// Advance past both cues (cue 1 ends at t=3) into a gap.
-			p.emit('time' as any, { time: 3.5 } as any);
+			musicPlayer.emit('time' as any, { time: 3.5 } as any);
 			// current() returns undefined when no cue is active.
 			expect(instance.current()).toBeUndefined();
 
@@ -192,16 +192,16 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 
 	describe('autoAdvancePlugin', () => {
 		it('registers and on `ended` advances to the next track', async () => {
-			const p = setup();
-			p.addPlugin(autoAdvancePlugin);
-			await p.ready();
-			p.queue([track('a'), track('b')]);
-			expect(p.item()?.id).toBe('a');
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(autoAdvancePlugin);
+			await musicPlayer.ready();
+			musicPlayer.queue([track('a'), track('b')]);
+			expect(musicPlayer.item()?.id).toBe('a');
 
 			let nextFired = false;
-			p.on('next' as any, () => { nextFired = true; });
+			musicPlayer.on('next' as any, () => { nextFired = true; });
 
-			p.emit('ended' as any, undefined as any);
+			musicPlayer.emit('ended' as any, undefined as any);
 			// `next()` runs through the dispatch pipeline asynchronously
 			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
@@ -209,35 +209,35 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 		});
 
 		it('options({ enabled: false }) prevents auto-advance', async () => {
-			const p = setup();
-			p.addPlugin(autoAdvancePlugin);
-			await p.ready();
-			p.queue([track('a'), track('b')]);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(autoAdvancePlugin);
+			await musicPlayer.ready();
+			musicPlayer.queue([track('a'), track('b')]);
 
-			const instance = p.getPlugin(AutoAdvancePlugin);
+			const instance = musicPlayer.getPlugin(AutoAdvancePlugin);
 			expect(instance).toBeInstanceOf(AutoAdvancePlugin);
 			instance!.options({ enabled: false });
 
 			let nextFired = false;
-			p.on('next' as any, () => { nextFired = true; });
+			musicPlayer.on('next' as any, () => { nextFired = true; });
 
-			p.emit('ended' as any, undefined as any);
+			musicPlayer.emit('ended' as any, undefined as any);
 			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(nextFired).toBe(false);
 		});
 
 		it('advance() calls player.next() regardless of `enabled`', async () => {
-			const p = setup();
-			p.addPlugin(autoAdvancePlugin);
-			await p.ready();
-			p.queue([track('a', { url: 'blob:a' }), track('b', { url: 'blob:b' })]);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(autoAdvancePlugin);
+			await musicPlayer.ready();
+			musicPlayer.queue([track('a', { url: 'blob:a' }), track('b', { url: 'blob:b' })]);
 
-			const instance = p.getPlugin(AutoAdvancePlugin);
+			const instance = musicPlayer.getPlugin(AutoAdvancePlugin);
 			instance!.options({ enabled: false });
 
 			let nextFired = false;
-			p.on('next' as any, () => { nextFired = true; });
+			musicPlayer.on('next' as any, () => { nextFired = true; });
 
 			// advance() dispatches `next` before awaiting backend.load().
 			// Don't await the full Promise — backend load hangs in happy-dom (no
@@ -250,21 +250,21 @@ describe('NMMusicPlayer — lyrics + auto-advance plugins', () => {
 		});
 
 		it('crossfade:true calls crossfadeTo() with next track on itemEndingSoon', async () => {
-			const p = setup();
-			p.addPlugin(autoAdvancePlugin);
-			await p.ready();
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(autoAdvancePlugin);
+			await musicPlayer.ready();
 
 			const trackA = track('a');
 			const trackB = track('b');
-			p.queue([trackA, trackB]);
+			musicPlayer.queue([trackA, trackB]);
 
-			const instance = p.getPlugin(AutoAdvancePlugin)!;
+			const instance = musicPlayer.getPlugin(AutoAdvancePlugin)!;
 			instance.options({ crossfade: true, crossfadeDuration: 3 });
 
 			// crossfadeTo is called by onItemEndingSoon, not onEnded.
-			const crossfadeSpy = vi.spyOn(p, 'crossfadeTo').mockResolvedValue(undefined);
+			const crossfadeSpy = vi.spyOn(musicPlayer, 'crossfadeTo').mockResolvedValue(undefined);
 
-			p.emit('itemEndingSoon' as any, undefined as any);
+			musicPlayer.emit('itemEndingSoon' as any, undefined as any);
 			await new Promise<void>(resolve => setTimeout(resolve, 0));
 
 			expect(crossfadeSpy).toHaveBeenCalledOnce();

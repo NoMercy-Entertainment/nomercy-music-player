@@ -1,4 +1,5 @@
 import antfu from '@antfu/eslint-config';
+import player from '../eslint-plugin-player/index.js';
 
 export default antfu({
 	ignores: [
@@ -99,5 +100,23 @@ export default antfu({
 	rules: {
 		'style/newline-per-chained-call': 'off',
 		'style/object-curly-newline': 'off',
+	},
+}, {
+	// NoMercy player code standard (packages/eslint-plugin-player).
+	files: ['src/**/*.ts'],
+	plugins: { player },
+	rules: {
+		'player/no-single-letter-ident': 'error',
+		'player/no-compat-vocab': 'error',
+		'player/no-history-comments': 'error',
+		'player/no-object-literal-cast': 'error',
+		'player/no-unknown-cast': 'error',
+	},
+}, {
+	// Mock construction in tests legitimately casts.
+	files: ['src/**/*.test.ts', 'src/__tests__/**/*.ts'],
+	rules: {
+		'player/no-object-literal-cast': 'off',
+		'player/no-unknown-cast': 'off',
 	},
 });

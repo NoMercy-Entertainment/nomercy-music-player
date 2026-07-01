@@ -133,98 +133,98 @@ function runCrossfadeContractSuite(
 	describe(label, () => {
 		describe('supportsCrossfade()', () => {
 			it('returns true', () => {
-				const b = makeBackend();
-				expect(b.supportsCrossfade()).toBe(true);
+				const audioBackend = makeBackend();
+				expect(audioBackend.supportsCrossfade()).toBe(true);
 			});
 		});
 
 		describe('secondaryGain()', () => {
 			it('returns 0 when no secondary is allocated', () => {
-				const b = makeBackend();
-				expect(b.secondaryGain()).toBe(0);
+				const audioBackend = makeBackend();
+				expect(audioBackend.secondaryGain()).toBe(0);
 			});
 
 			it('write + read round-trips through the overload', async () => {
-				const b = makeBackend();
+				const audioBackend = makeBackend();
 
 				// Start loadSecondary and immediately fire metadata so it resolves.
-				const loadPromise = b.loadSecondary('http://test/track.mp3');
+				const loadPromise = audioBackend.loadSecondary('http://test/track.mp3');
 				fireMetadata(container());
 				await loadPromise;
 
-				b.secondaryGain(0.6);
+				audioBackend.secondaryGain(0.6);
 				// secondaryGain() returns the curved gain for position 0.6, not the raw position.
-				expect(b.secondaryGain()).toBeCloseTo(perceptualGain(0.6), 5);
+				expect(audioBackend.secondaryGain()).toBeCloseTo(perceptualGain(0.6), 5);
 			});
 
 			it('clamps values outside [0, 1]', async () => {
-				const b = makeBackend();
+				const audioBackend = makeBackend();
 
-				const loadPromise = b.loadSecondary('http://test/track.mp3');
+				const loadPromise = audioBackend.loadSecondary('http://test/track.mp3');
 				fireMetadata(container());
 				await loadPromise;
 
-				b.secondaryGain(2);
-				expect(b.secondaryGain()).toBe(1);
+				audioBackend.secondaryGain(2);
+				expect(audioBackend.secondaryGain()).toBe(1);
 
-				b.secondaryGain(-1);
-				expect(b.secondaryGain()).toBe(0);
+				audioBackend.secondaryGain(-1);
+				expect(audioBackend.secondaryGain()).toBe(0);
 			});
 		});
 
 		describe('loadSecondary()', () => {
 			it('resolves without disrupting primary', async () => {
-				const b = makeBackend();
+				const audioBackend = makeBackend();
 
-				const loadPromise = b.loadSecondary('http://test/track.mp3');
+				const loadPromise = audioBackend.loadSecondary('http://test/track.mp3');
 				fireMetadata(container());
 				await expect(loadPromise).resolves.toBeUndefined();
 			});
 
 			it('is idempotent for the same URL', async () => {
-				const b = makeBackend();
+				const audioBackend = makeBackend();
 
-				const p1 = b.loadSecondary('http://test/track.mp3');
+				const p1 = audioBackend.loadSecondary('http://test/track.mp3');
 				fireMetadata(container());
 				await p1;
 
 				// Second call with same URL must resolve immediately (no new metadata event needed).
-				await expect(b.loadSecondary('http://test/track.mp3')).resolves.toBeUndefined();
+				await expect(audioBackend.loadSecondary('http://test/track.mp3')).resolves.toBeUndefined();
 			});
 		});
 
 		describe('disposeSecondary()', () => {
 			it('is idempotent when called with no secondary allocated', () => {
-				const b = makeBackend();
-				expect(() => b.disposeSecondary()).not.toThrow();
-				expect(() => b.disposeSecondary()).not.toThrow();
+				const audioBackend = makeBackend();
+				expect(() => audioBackend.disposeSecondary()).not.toThrow();
+				expect(() => audioBackend.disposeSecondary()).not.toThrow();
 			});
 
 			it('resets secondaryGain() to 0 after disposal', async () => {
-				const b = makeBackend();
+				const audioBackend = makeBackend();
 
-				const loadPromise = b.loadSecondary('http://test/track.mp3');
+				const loadPromise = audioBackend.loadSecondary('http://test/track.mp3');
 				fireMetadata(container());
 				await loadPromise;
 
-				b.secondaryGain(0.8);
-				b.disposeSecondary();
+				audioBackend.secondaryGain(0.8);
+				audioBackend.disposeSecondary();
 
-				expect(b.secondaryGain()).toBe(0);
+				expect(audioBackend.secondaryGain()).toBe(0);
 			});
 		});
 
 		describe('crossfade(0) — instant swap', () => {
 			it('completes without throwing', async () => {
-				const b = makeBackend();
+				const audioBackend = makeBackend();
 
 				// Load secondary.
-				const loadPromise = b.loadSecondary('http://test/next.mp3');
+				const loadPromise = audioBackend.loadSecondary('http://test/next.mp3');
 				fireMetadata(container());
 				await loadPromise;
 
 				// Prime secondary (fire canplay).
-				const primePromise = b.primeSecondary();
+				const primePromise = audioBackend.primeSecondary();
 				fireCanPlay(container());
 				await primePromise;
 
@@ -232,7 +232,7 @@ function runCrossfadeContractSuite(
 				const audios = container().querySelectorAll('audio');
 				audios.forEach(el => stubPlay(el as HTMLAudioElement));
 
-				await expect(b.crossfade(0)).resolves.toBeUndefined();
+				await expect(audioBackend.crossfade(0)).resolves.toBeUndefined();
 			});
 		});
 	});

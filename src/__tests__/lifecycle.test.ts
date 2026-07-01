@@ -132,7 +132,7 @@ describe('NMMusicPlayer — lifecycle', () => {
 			player.dispose();
 			let err: unknown;
 			try { await promise; }
-			catch (e) { err = e; }
+			catch (error) { err = error; }
 			expect(err).toBeInstanceOf(PlayerError);
 			expect(err).toBeInstanceOf(StateError);
 			expect((err as PlayerError).code).toBe('core:player/disposed');
@@ -202,7 +202,7 @@ describe('NMMusicPlayer — lifecycle', () => {
 			await player.ready();
 			let err: unknown;
 			try { await player.backend('webaudio'); }
-			catch (e) { err = e; }
+			catch (error) { err = error; }
 			expect(err).toBeInstanceOf(PlayerError);
 			expect(err).toBeInstanceOf(BrowserPolicyError);
 			expect((err as PlayerError).code).toBe('core:policy/audioContextUnsupported');

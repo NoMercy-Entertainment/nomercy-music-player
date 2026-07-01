@@ -116,7 +116,7 @@ describe('WebAudioBackend', () => {
 			const container = makeContainer();
 			let err: unknown;
 			try { const _backend = new WebAudioBackend(container); void _backend; }
-			catch (e) { err = e; }
+			catch (error) { err = error; }
 			expect(err).toBeInstanceOf(BrowserPolicyError);
 			expect((err as BrowserPolicyError).code).toBe('core:policy/audioContextUnsupported');
 			expect((err as BrowserPolicyError).scope).toEqual({ kind: 'backend', id: 'webaudio' });
@@ -230,7 +230,7 @@ describe('WebAudioBackend', () => {
 
 			let err: unknown;
 			try { backend.captureStream(); }
-			catch (e) { err = e; }
+			catch (error) { err = error; }
 			finally { delete el.captureStream; }
 
 			expect(err).toBeInstanceOf(BrowserPolicyError);
@@ -271,7 +271,7 @@ describe('WebAudioBackend', () => {
 
 			let err: unknown;
 			try { await player.backend('webaudio'); }
-			catch (e) { err = e; }
+			catch (error) { err = error; }
 
 			expect(err).toBeInstanceOf(BrowserPolicyError);
 			expect((err as BrowserPolicyError).code).toBe('core:policy/audioContextUnsupported');

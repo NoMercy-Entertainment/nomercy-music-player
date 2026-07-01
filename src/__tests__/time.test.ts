@@ -39,42 +39,42 @@ describe('NMMusicPlayer — time', () => {
 
 	describe('time(t) — write', () => {
 		it('emits beforeSeek with the requested time', () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let beforeTime: number | undefined;
-			p.on('beforeSeek' as any, (e: any) => { beforeTime = e.data.time; });
-			p.time(42);
+			musicPlayer.on('beforeSeek' as any, (e: any) => { beforeTime = e.data.time; });
+			musicPlayer.time(42);
 			expect(beforeTime).toBe(42);
 		});
 
 		it('updates the read value when not prevented', async () => {
-			const p = setup();
-			await p.time(7);
-			expect(p.time()).toBe(7);
+			const musicPlayer = setup();
+			await musicPlayer.time(7);
+			expect(musicPlayer.time()).toBe(7);
 		});
 
 		it('emits seek with the new time', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let seekTime: number | undefined;
-			p.on('seek' as any, (data: any) => { seekTime = data.time; });
-			await p.time(15);
+			musicPlayer.on('seek' as any, (data: any) => { seekTime = data.time; });
+			await musicPlayer.time(15);
 			expect(seekTime).toBe(15);
 		});
 
 		it('preventDefault → emits seekPrevented, value unchanged', async () => {
-			const p = setup();
-			await p.time(10);
+			const musicPlayer = setup();
+			await musicPlayer.time(10);
 			let preventedReason: string | undefined;
-			p.on('beforeSeek' as any, (e: any) => { e.preventDefault(); });
-			p.on('seekPrevented' as any, (data: any) => { preventedReason = data.reason; });
-			await p.time(99);
-			expect(p.time()).toBe(10);
+			musicPlayer.on('beforeSeek' as any, (e: any) => { e.preventDefault(); });
+			musicPlayer.on('seekPrevented' as any, (data: any) => { preventedReason = data.reason; });
+			await musicPlayer.time(99);
+			expect(musicPlayer.time()).toBe(10);
 			expect(preventedReason).toBe('listener-prevented');
 		});
 
 		it('clamps negative values to 0', () => {
-			const p = setup();
-			p.time(-5);
-			expect(p.time()).toBe(0);
+			const musicPlayer = setup();
+			musicPlayer.time(-5);
+			expect(musicPlayer.time()).toBe(0);
 		});
 	});
 
@@ -84,16 +84,16 @@ describe('NMMusicPlayer — time', () => {
 		});
 
 		it('round-trips through the writer', () => {
-			const p = setup();
-			p.playbackRate(1.5);
-			expect(p.playbackRate()).toBe(1.5);
+			const musicPlayer = setup();
+			musicPlayer.playbackRate(1.5);
+			expect(musicPlayer.playbackRate()).toBe(1.5);
 		});
 
 		it('emits "backend:ratechange" with the new rate', () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let rate: number | undefined;
-			p.on('backend:ratechange' as any, (data: any) => { rate = data.rate; });
-			p.playbackRate(2);
+			musicPlayer.on('backend:ratechange' as any, (data: any) => { rate = data.rate; });
+			musicPlayer.playbackRate(2);
 			expect(rate).toBe(2);
 		});
 	});
@@ -118,9 +118,9 @@ describe('NMMusicPlayer — time', () => {
 
 	describe('timeData()', () => {
 		it('returns the aggregated TimeState shape', async () => {
-			const p = setup();
-			await p.time(5);
-			const data = p.timeData();
+			const musicPlayer = setup();
+			await musicPlayer.time(5);
+			const data = musicPlayer.timeData();
 			expect(data).toHaveProperty('position');
 			expect(data).toHaveProperty('duration');
 			expect(data).toHaveProperty('buffered');

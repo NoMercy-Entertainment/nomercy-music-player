@@ -63,50 +63,50 @@ describe('NMMusicPlayer — plugin registration', () => {
 
 	describe('addPlugin', () => {
 		it('returns the player for chaining', () => {
-			const p = setup();
-			expect(p.addPlugin(HelloPlugin)).toBe(p);
+			const musicPlayer = setup();
+			expect(musicPlayer.addPlugin(HelloPlugin)).toBe(musicPlayer);
 		});
 
 		it('instantiates the plugin and calls use()', async () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			await p.ready();
-			const instance = p.getPlugin(HelloPlugin);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			await musicPlayer.ready();
+			const instance = musicPlayer.getPlugin(HelloPlugin);
 			expect(instance).toBeInstanceOf(HelloPlugin);
 			expect(instance?.used).toBe(true);
 		});
 
 		it('emits "plugin:installed" with id + version', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let payload: { id: string; version: string } | undefined;
-			p.on('plugin:installed' as any, (data: any) => { payload = data; });
-			p.addPlugin(HelloPlugin);
-			await p.ready();
+			musicPlayer.on('plugin:installed' as any, (data: any) => { payload = data; });
+			musicPlayer.addPlugin(HelloPlugin);
+			await musicPlayer.ready();
 			expect(payload).toEqual({ id: 'hello', version: '1.2.3' });
 		});
 
 		it('merges static translations into the player table', async () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			await p.ready();
-			expect(p.t('plugin.hello.greet')).toBe('hi');
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			await musicPlayer.ready();
+			expect(musicPlayer.t('plugin.hello.greet')).toBe('hi');
 		});
 
 		it('throws core:plugin/duplicate-id on second add of same id', () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			expect(() => p.addPlugin(HelloPlugin)).toThrow(/core:plugin\/duplicate-id/);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			expect(() => musicPlayer.addPlugin(HelloPlugin)).toThrow(/core:plugin\/duplicate-id/);
 		});
 
 		it('throws core:plugin/missing-dep when a required plugin is absent', () => {
-			const p = setup();
-			expect(() => p.addPlugin(NeedsHelloPlugin)).toThrow(/core:plugin\/missing-dep/);
+			const musicPlayer = setup();
+			expect(() => musicPlayer.addPlugin(NeedsHelloPlugin)).toThrow(/core:plugin\/missing-dep/);
 		});
 
 		it('succeeds when required plugin is registered first', () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			expect(() => p.addPlugin(NeedsHelloPlugin)).not.toThrow();
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			expect(() => musicPlayer.addPlugin(NeedsHelloPlugin)).not.toThrow();
 		});
 	});
 
@@ -116,62 +116,62 @@ describe('NMMusicPlayer — plugin registration', () => {
 		});
 
 		it('getPluginById finds the same instance', () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			const byClass = p.getPlugin(HelloPlugin);
-			const byId = p.getPluginById('hello');
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			const byClass = musicPlayer.getPlugin(HelloPlugin);
+			const byId = musicPlayer.getPluginById('hello');
 			expect(byClass).toBe(byId);
 		});
 	});
 
 	describe('plugins() / enabledPlugins()', () => {
 		it('lists every registered plugin', async () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			p.addPlugin(WorldPlugin);
-			await p.ready();
-			expect(p.plugins().length).toBe(2);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			musicPlayer.addPlugin(WorldPlugin);
+			await musicPlayer.ready();
+			expect(musicPlayer.plugins().length).toBe(2);
 		});
 
 		it('enabledPlugins() excludes disabled ones', async () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			p.addPlugin(WorldPlugin);
-			await p.ready();
-			const hello = p.getPlugin(HelloPlugin);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			musicPlayer.addPlugin(WorldPlugin);
+			await musicPlayer.ready();
+			const hello = musicPlayer.getPlugin(HelloPlugin);
 			hello?.disable();
-			expect(p.enabledPlugins().length).toBe(1);
-			expect(p.plugins().length).toBe(2);
+			expect(musicPlayer.enabledPlugins().length).toBe(1);
+			expect(musicPlayer.plugins().length).toBe(2);
 		});
 	});
 
 	describe('removePlugin / removePluginById', () => {
 		it('disposes the plugin and emits "plugin:disposed"', async () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			await p.ready();
-			const instance = p.getPlugin(HelloPlugin);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			await musicPlayer.ready();
+			const instance = musicPlayer.getPlugin(HelloPlugin);
 			let disposedId: string | undefined;
-			p.on('plugin:disposed' as any, (data: any) => { disposedId = data.id; });
-			p.removePlugin(HelloPlugin);
+			musicPlayer.on('plugin:disposed' as any, (data: any) => { disposedId = data.id; });
+			musicPlayer.removePlugin(HelloPlugin);
 			expect(instance?.disposed).toBe(true);
 			expect(disposedId).toBe('hello');
-			expect(p.getPlugin(HelloPlugin)).toBeUndefined();
+			expect(musicPlayer.getPlugin(HelloPlugin)).toBeUndefined();
 		});
 
 		it('removePluginById works the same way', async () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			await p.ready();
-			p.removePluginById('hello');
-			expect(p.getPluginById('hello')).toBeUndefined();
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			await musicPlayer.ready();
+			musicPlayer.removePluginById('hello');
+			expect(musicPlayer.getPluginById('hello')).toBeUndefined();
 		});
 
 		it('removes plugin translations on dispose', () => {
-			const p = setup();
-			p.addPlugin(HelloPlugin);
-			p.removePlugin(HelloPlugin);
-			expect(p.t('plugin.hello.greet')).toBe('plugin.hello.greet');
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(HelloPlugin);
+			musicPlayer.removePlugin(HelloPlugin);
+			expect(musicPlayer.t('plugin.hello.greet')).toBe('plugin.hello.greet');
 		});
 	});
 });

@@ -44,86 +44,86 @@ describe('NMMusicPlayer — transport', () => {
 
 	describe('play()', () => {
 		it('returns a Promise', () => {
-			const p = setup();
-			const result = p.play();
+			const musicPlayer = setup();
+			const result = musicPlayer.play();
 			expect(result).toBeInstanceOf(Promise);
 		});
 
 		it('emits beforePlay before play', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			const order: string[] = [];
-			p.on('beforePlay' as any, () => order.push('beforePlay'));
-			p.on('play' as any, () => order.push('play'));
-			await p.play();
+			musicPlayer.on('beforePlay' as any, () => order.push('beforePlay'));
+			musicPlayer.on('play' as any, () => order.push('play'));
+			await musicPlayer.play();
 			expect(order).toEqual(['beforePlay', 'play']);
 		});
 
 		it('passes a mutable ActionOptions in BeforeEvent.data', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let captured: { source?: string } | undefined;
-			p.on('beforePlay' as any, (e: any) => { captured = e.data; });
-			await p.play({ source: 'user' });
+			musicPlayer.on('beforePlay' as any, (e: any) => { captured = e.data; });
+			await musicPlayer.play({ source: 'user' });
 			expect(captured?.source).toBe('user');
 		});
 
 		it('listener can mutate data, post-event sees mutated value', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let received: { source?: string } | undefined;
-			p.on('beforePlay' as any, (e: any) => { e.data.source = 'remote'; });
-			p.on('play' as any, (data: any) => { received = data; });
-			await p.play({ source: 'user' });
+			musicPlayer.on('beforePlay' as any, (e: any) => { e.data.source = 'remote'; });
+			musicPlayer.on('play' as any, (data: any) => { received = data; });
+			await musicPlayer.play({ source: 'user' });
 			expect(received?.source).toBe('remote');
 		});
 
 		it('preventDefault → emits playPrevented, NOT play', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let playFired = false;
 			let preventedReason: string | undefined;
-			p.on('beforePlay' as any, (e: any) => { e.preventDefault(); });
-			p.on('play' as any, () => { playFired = true; });
-			p.on('playPrevented' as any, (data: any) => { preventedReason = data.reason; });
-			await p.play();
+			musicPlayer.on('beforePlay' as any, (e: any) => { e.preventDefault(); });
+			musicPlayer.on('play' as any, () => { playFired = true; });
+			musicPlayer.on('playPrevented' as any, (data: any) => { preventedReason = data.reason; });
+			await musicPlayer.play();
 			expect(playFired).toBe(false);
 			expect(preventedReason).toBe('listener-prevented');
 		});
 
 		it('stopImmediatePropagation skips later listeners on the same event', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			const calls: string[] = [];
-			p.on('beforePlay' as any, (e: any) => { calls.push('first'); e.stopImmediatePropagation(); });
-			p.on('beforePlay' as any, () => calls.push('second'));
-			await p.play();
+			musicPlayer.on('beforePlay' as any, (e: any) => { calls.push('first'); e.stopImmediatePropagation(); });
+			musicPlayer.on('beforePlay' as any, () => calls.push('second'));
+			await musicPlayer.play();
 			expect(calls).toEqual(['first']);
 		});
 
 		it('stamps "beforePlay" onto dispatching() while listeners run', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let observed: ReadonlyArray<string> | undefined;
-			p.on('beforePlay' as any, () => { observed = p.dispatching(); });
-			await p.play();
+			musicPlayer.on('beforePlay' as any, () => { observed = musicPlayer.dispatching(); });
+			await musicPlayer.play();
 			expect(observed).toEqual(['beforePlay']);
-			expect(p.dispatching()).toEqual([]);
+			expect(musicPlayer.dispatching()).toEqual([]);
 		});
 	});
 
 	describe('pause()', () => {
 		it('emits beforePause before pause', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			const order: string[] = [];
-			p.on('beforePause' as any, () => order.push('beforePause'));
-			p.on('pause' as any, () => order.push('pause'));
-			await p.pause();
+			musicPlayer.on('beforePause' as any, () => order.push('beforePause'));
+			musicPlayer.on('pause' as any, () => order.push('pause'));
+			await musicPlayer.pause();
 			expect(order).toEqual(['beforePause', 'pause']);
 		});
 
 		it('preventDefault → emits pausePrevented, NOT pause', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let pauseFired = false;
 			let preventedReason: string | undefined;
-			p.on('beforePause' as any, (e: any) => { e.preventDefault(); });
-			p.on('pause' as any, () => { pauseFired = true; });
-			p.on('pausePrevented' as any, (data: any) => { preventedReason = data.reason; });
-			await p.pause();
+			musicPlayer.on('beforePause' as any, (e: any) => { e.preventDefault(); });
+			musicPlayer.on('pause' as any, () => { pauseFired = true; });
+			musicPlayer.on('pausePrevented' as any, (data: any) => { preventedReason = data.reason; });
+			await musicPlayer.pause();
 			expect(pauseFired).toBe(false);
 			expect(preventedReason).toBe('listener-prevented');
 		});
@@ -131,41 +131,41 @@ describe('NMMusicPlayer — transport', () => {
 
 	describe('stop()', () => {
 		it('emits beforeStop + stop (cancellable transport pre-event)', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			const order: string[] = [];
-			p.on('beforeStop' as any, () => order.push('beforeStop'));
-			p.on('stop' as any, () => order.push('stop'));
-			await p.stop();
+			musicPlayer.on('beforeStop' as any, () => order.push('beforeStop'));
+			musicPlayer.on('stop' as any, () => order.push('stop'));
+			await musicPlayer.stop();
 			expect(order).toEqual(['beforeStop', 'stop']);
 		});
 	});
 
 	describe('togglePlayback()', () => {
 		it('plays when paused', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let played = false;
-			p.on('play' as any, () => { played = true; });
-			await p.togglePlayback();
+			musicPlayer.on('play' as any, () => { played = true; });
+			await musicPlayer.togglePlayback();
 			expect(played).toBe(true);
 		});
 
 		it('pauses after a successful play', async () => {
-			const p = setup();
-			await p.togglePlayback(); // play
+			const musicPlayer = setup();
+			await musicPlayer.togglePlayback(); // play
 			let paused = false;
-			p.on('pause' as any, () => { paused = true; });
-			await p.togglePlayback(); // pause
+			musicPlayer.on('pause' as any, () => { paused = true; });
+			await musicPlayer.togglePlayback(); // pause
 			expect(paused).toBe(true);
 		});
 	});
 
 	describe('restart()', () => {
 		it('emits seek to 0 then play', async () => {
-			const p = setup();
+			const musicPlayer = setup();
 			const order: string[] = [];
-			p.on('seek' as any, (data: any) => order.push(`seek:${data.time}`));
-			p.on('play' as any, () => order.push('play'));
-			await p.restart();
+			musicPlayer.on('seek' as any, (data: any) => order.push(`seek:${data.time}`));
+			musicPlayer.on('play' as any, () => order.push('play'));
+			await musicPlayer.restart();
 			expect(order).toContain('seek:0');
 			expect(order[order.length - 1]).toBe('play');
 		});
@@ -173,28 +173,28 @@ describe('NMMusicPlayer — transport', () => {
 
 	describe('rewind() / forward()', () => {
 		it('rewind emits beforeSeek with negative delta', () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let beforeSeekTime: number | undefined;
-			p.on('beforeSeek' as any, (e: any) => { beforeSeekTime = e.data.time; });
-			p.rewind(5);
+			musicPlayer.on('beforeSeek' as any, (e: any) => { beforeSeekTime = e.data.time; });
+			musicPlayer.rewind(5);
 			expect(beforeSeekTime).toBe(-5);
 		});
 
 		it('forward emits beforeSeek with positive delta', () => {
-			const p = setup();
+			const musicPlayer = setup();
 			let beforeSeekTime: number | undefined;
-			p.on('beforeSeek' as any, (e: any) => { beforeSeekTime = e.data.time; });
-			p.forward(10);
+			musicPlayer.on('beforeSeek' as any, (e: any) => { beforeSeekTime = e.data.time; });
+			musicPlayer.forward(10);
 			expect(beforeSeekTime).toBe(10);
 		});
 	});
 
 	describe('error spec', () => {
 		it('rejects with spec-compliant StateError when called before setup()', async () => {
-			const p = new NMMusicPlayer('test');
+			const musicPlayer = new NMMusicPlayer('test');
 			let err: unknown;
-			try { await p.pause(); }
-			catch (e) { err = e; }
+			try { await musicPlayer.pause(); }
+			catch (error) { err = error; }
 			expect(err).toBeInstanceOf(PlayerError);
 			expect(err).toBeInstanceOf(StateError);
 			expect((err as PlayerError).code).toBe('core:player/not-ready');

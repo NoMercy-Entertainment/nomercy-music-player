@@ -39,10 +39,10 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 
 	describe('keyHandlerPlugin', () => {
 		it('inherits kit defaults AND adds music-specific n/p/r/s bindings', async () => {
-			const p = setup();
-			p.addPlugin(KeyHandlerPlugin);
-			await p.ready();
-			const instance = p.getPlugin(KeyHandlerPlugin);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(KeyHandlerPlugin);
+			await musicPlayer.ready();
+			const instance = musicPlayer.getPlugin(KeyHandlerPlugin);
 			expect(instance).toBeInstanceOf(KeyHandlerPlugin);
 			if (!instance)
 				throw new Error('KeyHandlerPlugin not registered');
@@ -64,10 +64,10 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 
 	describe('mediaSessionPlugin', () => {
 		it('getMetadata returns music-specific text fields from a MusicPlaylistItem', async () => {
-			const p = setup();
-			p.addPlugin(MediaSessionPlugin);
-			await p.ready();
-			const instance = p.getPlugin(MediaSessionPlugin);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(MediaSessionPlugin);
+			await musicPlayer.ready();
+			const instance = musicPlayer.getPlugin(MediaSessionPlugin);
 			const meta = (instance as unknown as { getMetadata: (item: any) => any }).getMetadata({
 				id: 'a',
 				name: 'Track A',
@@ -86,10 +86,10 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 
 	describe('castSenderPlugin', () => {
 		it('isConnected() is false before connect() and connect() throws BrowserPolicyError without Cast SDK', async () => {
-			const p = setup();
-			p.addPlugin(CastSenderPlugin);
-			await p.ready();
-			const instance = p.getPlugin(CastSenderPlugin);
+			const musicPlayer = setup();
+			musicPlayer.addPlugin(CastSenderPlugin);
+			await musicPlayer.ready();
+			const instance = musicPlayer.getPlugin(CastSenderPlugin);
 			expect(instance).toBeInstanceOf(CastSenderPlugin);
 			if (!instance)
 				throw new Error('CastSenderPlugin not registered');
@@ -157,10 +157,10 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 			};
 
 			try {
-				const p = setup();
-				p.addPlugin(CastSenderPlugin);
-				await p.ready();
-				const instance = p.getPlugin(CastSenderPlugin);
+				const musicPlayer = setup();
+				musicPlayer.addPlugin(CastSenderPlugin);
+				await musicPlayer.ready();
+				const instance = musicPlayer.getPlugin(CastSenderPlugin);
 				if (!instance)
 					throw new Error('CastSenderPlugin not registered');
 
@@ -172,12 +172,12 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 					artist: 'Artist X',
 					album: 'Album Y',
 				};
-				(p as unknown as { item(): typeof trackItem }).item = () => trackItem;
+				(musicPlayer as unknown as { item(): typeof trackItem }).item = () => trackItem;
 
 				await instance.connect();
 				expect(instance.isConnected()).toBe(true);
 
-				p.emit('item', { item: trackItem, index: 0 });
+				musicPlayer.emit('item', { item: trackItem, index: 0 });
 				await new Promise(resolve => setTimeout(resolve, 0));
 
 				expect(loadMedia).toHaveBeenCalled();
@@ -244,18 +244,18 @@ describe('NMMusicPlayer — remaining plugin stubs', () => {
 			(globalThis as any).chrome = { cast: { media: { MediaInfo: class { constructor() {} }, LoadRequest: class { constructor() {} }, MusicTrackMediaMetadata: class {}, GenericMediaMetadata: class {}, StreamType: { BUFFERED: 'BUFFERED', LIVE: 'LIVE' } } } };
 
 			try {
-				const p = setup();
-				p.addPlugin(CastSenderPlugin);
-				await p.ready();
-				const instance = p.getPlugin(CastSenderPlugin);
+				const musicPlayer = setup();
+				musicPlayer.addPlugin(CastSenderPlugin);
+				await musicPlayer.ready();
+				const instance = musicPlayer.getPlugin(CastSenderPlugin);
 				if (!instance)
 					throw new Error('CastSenderPlugin not registered');
-				(p as unknown as { item(): undefined }).item = () => undefined;
+				(musicPlayer as unknown as { item(): undefined }).item = () => undefined;
 
 				await instance.connect();
 
 				const seenPause: unknown[] = [];
-				p.on('pause', (data: unknown) => { seenPause.push(data); });
+				musicPlayer.on('pause', (data: unknown) => { seenPause.push(data); });
 
 				if (stubRemoteRef)
 					(stubRemoteRef as StubRemote).isPaused = true;
