@@ -11,9 +11,10 @@ import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-cor
 /**
  * Port for recording that a track was listened to (Last.fm-style scrobbling).
  *
- * The player calls `scrobble()` when a track has been played past the
- * scrobble threshold (typically 50% of duration or 4 minutes, whichever
- * comes first — Last.fm rules).
+ * This port is defined but not yet wired by the player: nothing in the player
+ * calls `scrobble()` or `nowPlaying()`. A consumer that wants scrobbling must
+ * invoke these methods itself (for example from its own `time` / `ended`
+ * handlers).
  *
  * Built-in adapter:
  *   - `NoopScrobbler` — no-op implementation (default, ships so the player

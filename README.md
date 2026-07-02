@@ -38,10 +38,10 @@ Adaptive HLS audio streams play out of the box. The backend detects an `.m3u8` s
 ## Quick start
 
 ```ts
-import { nmMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
+import { nmplayer } from '@nomercy-entertainment/nomercy-music-player';
 import { AutoAdvancePlugin, MediaSessionPlugin } from '@nomercy-entertainment/nomercy-music-player/plugins';
 
-const player = nmMusicPlayer('main')
+const player = nmplayer('main')
   .addPlugin(AutoAdvancePlugin)
   .addPlugin(MediaSessionPlugin)
   .setup({
