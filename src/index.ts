@@ -44,7 +44,7 @@ import type {
 	UrlCategory,
 	VisibilityState,
 } from '@nomercy-entertainment/nomercy-player-core';
-import type { IAudioBackend } from './adapters/audio-backend/IAudioBackend';
+import type { BackendEventPayload, IAudioBackend } from './adapters/audio-backend/IAudioBackend';
 import type {
 	AudioBackendKind,
 	AudioTrackState,
@@ -59,6 +59,7 @@ import type {
 	VolumeState,
 } from './types';
 import {
+	bridgeBackendPlayState,
 	composeMixins,
 	CrossfadeTransitionStrategy,
 	EventEmitter,
@@ -420,30 +421,25 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			this.emit('firstFrame', undefined);
 		});
 
-		instance.on('play', () => {
-			if (internals._playState !== PlayState.PLAYING) {
-				internals._playState = PlayState.PLAYING;
-				this.emit('play', undefined);
-			}
-
-			// Phase: 'starting' → 'playing' when audio actually starts playing.
-			// Needed for the "load → wait → play" pattern where canplay already
-			// fired during load (setting _firstFrameEmitted = true) and won't
-			// re-fire on element.play().
-			if (internals._phase === 'starting') {
-				internals._transitionPhase('playing');
-			}
-		});
-
-		instance.on('playing', () => {
-			this.emit('playing', undefined);
-		});
-
-		instance.on('pause', () => {
-			if (internals._playState === PlayState.PLAYING) {
-				internals._playState = PlayState.PAUSED;
-				this.emit('pause', undefined);
-			}
+		// `onPlayEvent` covers the phase transition 'starting' → 'playing' on
+		// every raw `play` event, even when `_playState` was already `PLAYING`
+		// — needed for the "load → wait → play" pattern where `canplay`
+		// already fired during load (setting `_firstFrameEmitted = true`) and
+		// won't re-fire on `instance.play()`.
+		bridgeBackendPlayState<BackendEventPayload>(instance, {
+			isPlaying: () => internals._playState === PlayState.PLAYING,
+			setPlaying: (playing) => {
+				internals._playState = playing ? PlayState.PLAYING : PlayState.PAUSED;
+			},
+			onPlay: () => { this.emit('play', undefined); },
+			onPlayEvent: () => {
+				if (internals._phase === 'starting') {
+					internals._transitionPhase('playing');
+				}
+			},
+			onPlaying: () => { this.emit('playing', undefined); },
+			onPause: () => { this.emit('pause', undefined); },
+			onReset: () => { this._firstFrameEmitted = false; },
 		});
 
 		instance.on('ended', () => {
@@ -452,15 +448,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			}
 			this.emit('ended', undefined);
 		});
-
-		const onResetToPaused = (): void => {
-			this._firstFrameEmitted = false;
-			if (internals._playState === PlayState.PLAYING) {
-				internals._playState = PlayState.PAUSED;
-				this.emit('pause', undefined);
-			}
-		};
-		instance.on('loadstart', onResetToPaused);
 	}
 
 	private _wireBackend(instance: IAudioBackend): void {

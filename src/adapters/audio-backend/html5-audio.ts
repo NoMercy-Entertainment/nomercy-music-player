@@ -16,7 +16,9 @@ import type {
 import {
 	appendAuthTokenParam,
 	attachHlsOrFallback,
+	createAuthorizationXhrSetup,
 	createSecondaryAudioElement,
+	destroyHlsInstance,
 	isHls,
 	MediaElementBackend,
 	perceptualGain,
@@ -115,12 +117,7 @@ export class AudioElementBackend
 		});
 
 		if (this.hlsInstance) {
-			try {
-				this.hlsInstance.destroy();
-			}
-			catch {
-				/* ignore */
-			}
+			destroyHlsInstance(this.hlsInstance);
 			this.hlsInstance = undefined;
 		}
 
@@ -154,11 +151,7 @@ export class AudioElementBackend
 						enableWorker: true,
 						lowLatencyMode: false,
 						enableCEA708Captions: true,
-						xhrSetup: (xhr: XMLHttpRequest) => {
-							if (headerValue) {
-								xhr.setRequestHeader('Authorization', headerValue);
-							}
-						},
+						xhrSetup: createAuthorizationXhrSetup(headerValue),
 					}) ?? undefined;
 			}
 			else {
@@ -187,12 +180,7 @@ export class AudioElementBackend
 			/* ignore */
 		}
 		if (this.hlsInstance) {
-			try {
-				this.hlsInstance.destroy();
-			}
-			catch {
-				/* ignore */
-			}
+			destroyHlsInstance(this.hlsInstance);
 			this.hlsInstance = undefined;
 		}
 		this.element.removeAttribute('src');

@@ -17,6 +17,8 @@ import {
 	appendAuthTokenParam,
 	attachHlsOrFallback,
 	BrowserPolicyError,
+	createAuthorizationXhrSetup,
+	destroyHlsInstance,
 	isHls,
 	MediaElementBackend,
 	perceptualGain,
@@ -170,12 +172,7 @@ export class WebAudioBackend
 		});
 
 		if (this.hlsInstance) {
-			try {
-				this.hlsInstance.destroy();
-			}
-			catch {
-				/* ignore */
-			}
+			destroyHlsInstance(this.hlsInstance);
 			this.hlsInstance = undefined;
 		}
 
@@ -206,11 +203,7 @@ export class WebAudioBackend
 			if (useHlsJs && hlsMod) {
 				this.hlsInstance
 					= attachHlsOrFallback(hlsMod.default, this.element, url, headerValue, {
-						xhrSetup: (xhr: XMLHttpRequest) => {
-							if (headerValue) {
-								xhr.setRequestHeader('Authorization', headerValue);
-							}
-						},
+						xhrSetup: createAuthorizationXhrSetup(headerValue),
 					}) ?? undefined;
 			}
 			else {
@@ -239,12 +232,7 @@ export class WebAudioBackend
 			/* ignore */
 		}
 		if (this.hlsInstance) {
-			try {
-				this.hlsInstance.destroy();
-			}
-			catch {
-				/* ignore */
-			}
+			destroyHlsInstance(this.hlsInstance);
 			this.hlsInstance = undefined;
 		}
 		this.element.removeAttribute('src');
@@ -501,11 +489,7 @@ export class WebAudioBackend
 
 					if (useHlsJs && hlsMod) {
 						attachHlsOrFallback(hlsMod.default, el, url, headerValue, {
-							xhrSetup: (xhr: XMLHttpRequest) => {
-								if (headerValue) {
-									xhr.setRequestHeader('Authorization', headerValue);
-								}
-							},
+							xhrSetup: createAuthorizationXhrSetup(headerValue),
 						});
 					}
 					else {

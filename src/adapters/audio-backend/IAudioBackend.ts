@@ -6,7 +6,7 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
-import type { BackendLoaderState, BackendState } from '@nomercy-entertainment/nomercy-player-core';
+import type { BackendLoaderState, BackendState, MinimalBackendEventPayload } from '@nomercy-entertainment/nomercy-player-core';
 
 export const AUDIO_BACKEND_KIND = {
 	AUDIO_ELEMENT: 'audio-element',
@@ -16,44 +16,30 @@ export const AUDIO_BACKEND_KIND = {
 /** Backend selection — which audio engine handles playback. */
 export type AudioBackendKind = typeof AUDIO_BACKEND_KIND[keyof typeof AUDIO_BACKEND_KIND];
 
-/** Backend-internal events forwarded to the player's eventTarget. */
-export type BackendEvent
-	= | 'loadstart'
-		| 'loadedmetadata'
-		| 'canplay'
-		| 'play'
-	/**
-	 * Fires when media is actually rendering — after buffering resolves, not
-	 * just on element.play(). Use this to hide buffering spinners.
-	 */
-		| 'playing'
-		| 'pause'
-		| 'ended'
-		| 'timeupdate'
-		| 'waiting'
-		| 'stalled'
-		| 'ratechange'
-		| 'encrypted'
-		| 'error'
-		| 'backend:loading'
-		| 'backend:loaded'
-	/**
-	 * Fired by backends that own a Web Audio graph when the active source node
-	 * changes — e.g. after a crossfade promotes the secondary element to primary.
-	 * Plugins that hold a reference to the source node (e.g. `AudioGraphPlugin`)
-	 * must re-mount after this event.
-	 */
-		| 'backend:sourceswap';
+/**
+ * Backend-internal events forwarded to the player's eventTarget. Derived from
+ * `BackendEventPayload` below — a single source of truth for the event-name
+ * set instead of a hand-maintained union kept in sync by hand.
+ */
+export type BackendEvent = keyof BackendEventPayload;
 
 /**
  * Typed payload map for backend events. All DOM-bridge events carry the
- *  original `Event` object; internal lifecycle events carry metadata.
+ * original `Event` object; internal lifecycle events carry metadata.
+ *
+ * Extends the kit's `MinimalBackendEventPayload` so the shared
+ * `bridgeBackendPlayState` helper (and any other core primitive constrained
+ * to the minimal contract) accepts this map directly.
  */
-export interface BackendEventPayload {
+export interface BackendEventPayload extends MinimalBackendEventPayload {
 	'loadstart': Event;
 	'loadedmetadata': Event;
 	'canplay': Event;
 	'play': Event;
+	/**
+	 * Fires when media is actually rendering — after buffering resolves, not
+	 * just on element.play(). Use this to hide buffering spinners.
+	 */
 	'playing': Event;
 	'pause': Event;
 	'ended': Event;
