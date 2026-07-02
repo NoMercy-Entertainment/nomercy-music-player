@@ -1,6 +1,10 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
-## [Unreleased]
+## [2.0.0-rc.20] — 2026-07-02
+
+### Changed
+
+- Backend routes through the shared core helpers (`createAuthorizationXhrSetup`, `destroyHlsInstance`, `bridgeBackendPlayState`); `BackendEvent` is now derived via `keyof BackendEventPayload`. Internal only; no public surface change.
 
 ### BREAKING
 
