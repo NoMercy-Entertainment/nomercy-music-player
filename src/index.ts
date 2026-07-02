@@ -12,6 +12,7 @@ import type {
 	AudioTrack,
 	AuthConfig,
 	BasePlaylistItem,
+	BeforeDispatchOutcome,
 	BufferState,
 	CanPlayResult,
 	CastState,
@@ -107,12 +108,17 @@ const _instances = new Map<string, NMMusicPlayer<MusicPlaylistItem>>();
  * (they live on the Internals interface in the kit). The cast is isolated
  * inside `_wireBackend`; all mutations go through the declared helpers or
  * direct assignment on the typed surface.
+ *
+ * `_dispatchBefore` is the shared cancellable-`before*`-event primitive
+ * (`core/mixins/player-state.ts`) — used by `crossfadeTo()` to dispatch
+ * `beforeCrossfade` the same way every kit-composed `before*` hook does.
  */
 interface WireInternals {
 	_phase: PlayerPhase;
 	_playState: PlayState;
 	_transitionPhase: (next: PlayerPhase) => void;
 	_checkItemEndingSoon: (currentTime: number, duration: number) => void;
+	_dispatchBefore: <TData>(beforeEvent: string, data: TData) => Promise<BeforeDispatchOutcome<TData>>;
 }
 
 /**
@@ -156,7 +162,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	declare setup: (config: MusicPlayerConfig<T>) => this;
 	declare ready: () => Promise<void>;
-	declare dispose: () => void;
+	declare dispose: () => Promise<void>;
 	declare setupState: () => SetupState;
 	declare phase: () => PlayerPhase;
 	declare dispatching: () => ReadonlyArray<string>;
@@ -217,18 +223,18 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	declare playbackRate: {
 		(): number;
-		(rate: number): void;
+		(rate: number): Promise<void>;
 	};
 
 	declare playbackRates: () => number[];
 
 	declare volume: {
 		(): number;
-		(level: number): void;
+		(level: number): Promise<void>;
 	};
 
-	declare mute: () => void;
-	declare unmute: () => void;
+	declare mute: () => Promise<void>;
+	declare unmute: () => Promise<void>;
 	declare toggleMute: () => void;
 	declare volumeUp: (step?: number) => void;
 	declare volumeDown: (step?: number) => void;
@@ -237,12 +243,12 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare volumeState: () => VolumeState;
 	declare repeatState: {
 		(): RepeatState;
-		(state: RepeatState): void;
+		(state: RepeatState): Promise<void>;
 	};
 
 	declare shuffleState: {
 		(): ShuffleState;
-		(state: ShuffleState | boolean): void;
+		(state: ShuffleState | boolean): Promise<void>;
 	};
 
 	declare queue: {
@@ -481,14 +487,18 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare loadQueue: (url: string, parser?: (raw: string) => T[]) => Promise<void>;
 
 	// ── Crossfade — dual-element implementation ──
-	/** Fade the active element out while a second element fades in, then swap them. Ignored while a crossfade is already in flight. */
+	/**
+	 * Fade the active element out while a second element fades in, then swap
+	 * them. Ignored while a crossfade is already in flight. Dispatches
+	 * `beforeCrossfade` first; a listener may `preventDefault()` to cancel, in
+	 * which case `crossfadePrevented` fires and no buffers are touched.
+	 */
 	async crossfadeTo(item: T, opts?: CrossfadeOptions & ActionOptions): Promise<void> {
 		if (this._isTransitioning)
 			return; // idempotent guard — reject stacked crossfades
 
 		const durationMs = ((opts?.duration ?? this.options?.crossfadeDefaults?.duration ?? 5) * 1000);
-		const url = item.url;
-		if (!url) {
+		if (!item.url) {
 			throw new MediaFormatError({
 				code: 'core:media/missing-url',
 				severity: 'error',
@@ -498,21 +508,50 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			});
 		}
 
-		const backend = this.backend();
 		const fromItem = this.item?.() ?? null;
 
-		this._isTransitioning = true;
-		this.emit('crossfadeStart', {
+		const internals = this as unknown as WireInternals; // accesses the kit-composed _dispatchBefore, not on the public type
+		const result = await internals._dispatchBefore<{ from: T | null; to: T; duration: number }>('beforeCrossfade', {
 			from: fromItem,
 			to: item,
 			duration: durationMs,
+		});
+		if (result.prevented) {
+			this.emit('crossfadePrevented', {
+				reason: result.reason ?? 'listener-prevented',
+				cause: result.cause,
+			});
+			return;
+		}
+
+		// Re-validate — a listener may have swapped `data.to` for a different item.
+		const targetItem = result.data.to;
+		const targetDurationMs = result.data.duration;
+		const url = targetItem.url;
+		if (!url) {
+			throw new MediaFormatError({
+				code: 'core:media/missing-url',
+				severity: 'error',
+				scope: { kind: 'core' },
+				message: 'crossfadeTo(item) requires `item.url` to be present.',
+				context: { id: targetItem.id },
+			});
+		}
+
+		const backend = this.backend();
+
+		this._isTransitioning = true;
+		this.emit('crossfadeStart', {
+			from: result.data.from,
+			to: targetItem,
+			duration: targetDurationMs,
 		});
 
 		try {
 			// Delegate all dual-buffer logic to the backend.
 			await backend.loadSecondary(url);
 			await backend.primeSecondary(opts?.startAt);
-			await backend.crossfade(durationMs);
+			await backend.crossfade(targetDurationMs);
 		}
 		catch (err) {
 			this._isTransitioning = false;
@@ -522,10 +561,10 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		// Advance the cursor so `item()` reflects the new item. The setter
 		// overload emits the `current` event, which downstream plugins
 		// (mediaSession, lyrics, autoAdvance) listen to.
-		this.item?.(item.id ?? item);
+		this.item?.(targetItem.id ?? targetItem);
 
 		this._isTransitioning = false;
-		this.emit('crossfadeComplete', { item });
+		this.emit('crossfadeComplete', { item: targetItem });
 	}
 
 	isTransitioning(): boolean {
@@ -577,7 +616,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare subtitles: () => SubtitleTrack[];
 	declare subtitle: {
 		(): CurrentSubtitleSelection | null;
-		(idx: number | null): void;
+		(idx: number | null): Promise<void>;
 	};
 
 	declare subtitleStyle: {
@@ -588,7 +627,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare audioTracks: () => AudioTrack[];
 	declare audioTrack: {
 		(): CurrentAudioTrackSelection | null;
-		(idx: number): void;
+		(idx: number): Promise<void>;
 	};
 
 	declare qualityLevels: {
@@ -682,14 +721,25 @@ NMMusicPlayer.prototype.subtitleStyle = function (): never {
 };
 
 {
-	const composedDispose: () => void = NMMusicPlayer.prototype.dispose;
-	NMMusicPlayer.prototype.dispose = function (this: NMMusicPlayer<MusicPlaylistItem>): void {
+	const composedDispose: () => Promise<void> = NMMusicPlayer.prototype.dispose;
+	// The composed (kit) `dispose()` now dispatches the cancellable
+	// `beforeDispose` hook before it does anything else — a plugin may
+	// `preventDefault()` and leave the player fully alive. Teardown of the
+	// music-specific backend + registry entry MUST wait until that dispatch
+	// has actually resolved AND the kit confirms it proceeded (phase reached
+	// 'disposed'); tearing the backend down unconditionally first (as before)
+	// would kill playback even when a plugin blocked the disposal.
+	NMMusicPlayer.prototype.dispose = async function (this: NMMusicPlayer<MusicPlaylistItem>): Promise<void> {
+		await composedDispose.call(this);
+
+		if (this.phase() !== 'disposed')
+			return; // beforeDispose was prevented — backend + registry stay intact
+
 		const self = this as unknown as { _backend?: IAudioBackend }; // dispose needs write access to the private _backend field
 		try { self._backend?.dispose?.(); }
 		catch { /* defensive — kit must still finish disposing */ }
 		self._backend = undefined;
 		_instances.delete(this.playerId);
-		composedDispose.call(this);
 	};
 }
 

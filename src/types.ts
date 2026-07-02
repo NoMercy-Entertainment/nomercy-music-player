@@ -11,8 +11,10 @@ import type {
 	BaseEventMap,
 	BasePlayerConfig,
 	BasePlaylistItem,
+	BeforeEvent,
 	CrossfadeCurve,
 	IPlayer,
+	PreventedReason,
 } from '@nomercy-entertainment/nomercy-player-core';
 import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/IAudioBackend';
 
@@ -72,6 +74,17 @@ export type { TimeState } from '@nomercy-entertainment/nomercy-player-core';
  */
 export interface MusicEventMap<T extends MusicPlaylistItem = MusicPlaylistItem> extends BaseEventMap<T> {
 	'backend:changed': { kind: AudioBackendKind };
+
+	/**
+	 * Fires before `crossfadeTo(item, opts)` starts the dual-buffer fade.
+	 * `data` mirrors `crossfadeStart`'s payload (`from` is the outgoing item,
+	 * `duration` is already resolved from `opts.duration` /
+	 * `options.crossfadeDefaults.duration` / the 5s fallback). A listener may
+	 * `preventDefault()` to cancel — no buffers are touched, `from` keeps
+	 * playing, and `crossfadePrevented` fires instead of `crossfadeStart`.
+	 */
+	'beforeCrossfade': BeforeEvent<{ from: T | null; to: T; duration: number }>;
+	'crossfadePrevented': { reason: PreventedReason; cause?: unknown };
 
 	'crossfadeStart': { from: T | null; to: T; duration: number };
 	'crossfadeComplete': { item: T };

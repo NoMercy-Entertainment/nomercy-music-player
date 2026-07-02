@@ -138,6 +138,58 @@ describe('NMMusicPlayer.crossfadeTo()', () => {
 		});
 	});
 
+	// ── M1 Connect-plugin effort: beforeCrossfade cancellation ────────────────
+
+	describe('beforeCrossfade cancellation', () => {
+		it('preventDefault() blocks the crossfade entirely and fires crossfadePrevented', async () => {
+			const { player, mock } = setup();
+
+			let prevented: { reason: string; cause?: unknown } | undefined;
+			player.on('beforeCrossfade' as any, (event: any) => {
+				event.preventDefault();
+			});
+			player.on('crossfadePrevented' as any, (data: any) => { prevented = data; });
+
+			const startedOrCompleted: string[] = [];
+			player.on('crossfadeStart' as any, () => startedOrCompleted.push('crossfadeStart'));
+			player.on('crossfadeComplete' as any, () => startedOrCompleted.push('crossfadeComplete'));
+
+			await player.crossfadeTo(makeTrack());
+
+			expect(prevented).toEqual({ reason: 'listener-prevented' });
+			// No buffers were touched — the cancellable gate ran before anything
+			// backend-facing happened.
+			expect(mock.loadSecondary).not.toHaveBeenCalled();
+			expect(mock.primeSecondary).not.toHaveBeenCalled();
+			expect(mock.crossfade).not.toHaveBeenCalled();
+			expect(startedOrCompleted).toEqual([]);
+			expect(player.isTransitioning()).toBe(false);
+		});
+
+		it('beforeCrossfade payload carries from, to, duration — mirrors crossfadeStart', async () => {
+			const { player } = setup();
+
+			let captured: { from: unknown; to: unknown; duration: number } | undefined;
+			player.on('beforeCrossfade' as any, (event: any) => {
+				captured = { ...event.data };
+			});
+
+			const track = makeTrack();
+			await player.crossfadeTo(track, { duration: 4 });
+
+			expect(captured).toMatchObject({ from: null, to: track, duration: 4000 });
+		});
+
+		it('with no listener, crossfadeTo() still proceeds normally (baseline)', async () => {
+			const { player, mock } = setup();
+
+			await player.crossfadeTo(makeTrack());
+
+			expect(mock.loadSecondary).toHaveBeenCalledTimes(1);
+			expect(mock.crossfade).toHaveBeenCalledTimes(1);
+		});
+	});
+
 	describe('isTransitioning()', () => {
 		it('is false before a crossfade', () => {
 			const { player } = setup();
@@ -170,13 +222,24 @@ describe('NMMusicPlayer.crossfadeTo()', () => {
 				() => new Promise<void>((res) => { crossfadeCallCount++; resolveFirst = res; }),
 			);
 
+			// Wait for `crossfadeStart` instead of counting microtask ticks —
+			// crossfadeTo() now dispatches the cancellable `beforeCrossfade` hook
+			// before anything else, which adds its own tick count that would
+			// make a fixed-tick drain fragile. `crossfadeStart` fires right after
+			// `_isTransitioning` flips true, which is the guard the second call
+			// below needs to observe.
+			const crossfadeStarted = new Promise<void>((resolve) => {
+				player.on('crossfadeStart', () => resolve());
+			});
+
 			// Start first — don't await yet.
 			const first = player.crossfadeTo(makeTrack('http://test/a.mp3'));
 
-			// Drain microtasks so loadSecondary + primeSecondary resolve and the
-			// first crossfade() call is in flight before we run the second call.
-			await Promise.resolve();
-			await Promise.resolve();
+			await crossfadeStarted;
+			// loadSecondary + primeSecondary run synchronously-ish inside the
+			// try block right after crossfadeStart fires — one more microtask
+			// tick lets primeSecondary's resolved promise settle before the
+			// crossfade() mock call is made.
 			await Promise.resolve();
 
 			// Attempt a second while the first is mid-crossfade — should be a no-op.

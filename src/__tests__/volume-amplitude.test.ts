@@ -223,7 +223,7 @@ describe('NMMusicPlayer + AudioGraphPlugin — volume() stays audible through pl
 		await player.ready();
 
 		// Set volume to 50 (0..100 position scale).
-		player.volume(50);
+		await player.volume(50);
 
 		// player.volume() must return the POSITION (50), never the curved gain.
 		// The mixin stores _internalVolume = 50 and returns it directly.
@@ -238,7 +238,7 @@ describe('NMMusicPlayer + AudioGraphPlugin — volume() stays audible through pl
 		player.addPlugin(AudioGraphPlugin);
 		await player.ready();
 
-		player.volume(0);
+		await player.volume(0);
 
 		expect(player.volume()).toBe(0);
 	});
@@ -251,7 +251,7 @@ describe('NMMusicPlayer + AudioGraphPlugin — volume() stays audible through pl
 		player.addPlugin(AudioGraphPlugin);
 		await player.ready();
 
-		player.volume(100);
+		await player.volume(100);
 
 		expect(player.volume()).toBeCloseTo(100, 1);
 	});
@@ -265,7 +265,7 @@ describe('NMMusicPlayer + AudioGraphPlugin — volume() stays audible through pl
 		await player.ready();
 
 		// player.volume(50) writes perceptualGain(0.5) to the backend GainNode.
-		player.volume(50);
+		await player.volume(50);
 
 		// backend.volume() reads back gainNode.gain.value, which is now the curved
 		// gain for position 0.5. If the GainNode were orphaned this would still
@@ -302,7 +302,7 @@ describe('NMMusicPlayer + AudioGraphPlugin — volume() stays audible through pl
 		const player = new NMMusicPlayer('vol-step-proof');
 		player.setup({ backend: 'webaudio' });
 		await player.ready();
-		player.volume(50);
+		await player.volume(50);
 		expect(player.volume()).toBe(50);
 
 		// step is intentionally referenced so the variable isn't flagged unused —

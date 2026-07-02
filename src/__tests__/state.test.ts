@@ -18,6 +18,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { NMMusicPlayer } from '../index';
 import { PlayState, RepeatState, ShuffleState, VolumeState } from '../types';
 
+/**
+ * Flush pending microtasks. `toggleMute()` is a fire-and-forget wrapper
+ * around the cancellable `mute()` / `unmute()` setters — it doesn't return
+ * the underlying promise, so tests exercising it wait a macrotask tick
+ * instead of awaiting a return value.
+ */
+async function flush(): Promise<void> {
+	await new Promise(resolve => setTimeout(resolve, 0));
+}
+
 describe('NMMusicPlayer — state enums', () => {
 	beforeEach(() => {
 		(NMMusicPlayer as unknown as { _resetRegistry: () => void })._resetRegistry();
@@ -64,24 +74,26 @@ describe('NMMusicPlayer — state enums', () => {
 			expect(setup().volumeState()).toBe(VolumeState.UNMUTED);
 		});
 
-		it('transitions to MUTED after mute()', () => {
+		it('transitions to MUTED after mute()', async () => {
 			const musicPlayer = setup();
-			musicPlayer.mute();
+			await musicPlayer.mute();
 			expect(musicPlayer.volumeState()).toBe(VolumeState.MUTED);
 		});
 
-		it('transitions back to UNMUTED after unmute()', () => {
+		it('transitions back to UNMUTED after unmute()', async () => {
 			const musicPlayer = setup();
-			musicPlayer.mute();
-			musicPlayer.unmute();
+			await musicPlayer.mute();
+			await musicPlayer.unmute();
 			expect(musicPlayer.volumeState()).toBe(VolumeState.UNMUTED);
 		});
 
-		it('toggleMute flips state', () => {
+		it('toggleMute flips state', async () => {
 			const musicPlayer = setup();
 			musicPlayer.toggleMute();
+			await flush();
 			expect(musicPlayer.volumeState()).toBe(VolumeState.MUTED);
 			musicPlayer.toggleMute();
+			await flush();
 			expect(musicPlayer.volumeState()).toBe(VolumeState.UNMUTED);
 		});
 	});
@@ -91,11 +103,11 @@ describe('NMMusicPlayer — state enums', () => {
 			expect(setup().repeatState()).toBe(RepeatState.OFF);
 		});
 
-		it('round-trips through the writer', () => {
+		it('round-trips through the writer', async () => {
 			const musicPlayer = setup();
-			musicPlayer.repeatState(RepeatState.ALL);
+			await musicPlayer.repeatState(RepeatState.ALL);
 			expect(musicPlayer.repeatState()).toBe(RepeatState.ALL);
-			musicPlayer.repeatState(RepeatState.ONE);
+			await musicPlayer.repeatState(RepeatState.ONE);
 			expect(musicPlayer.repeatState()).toBe(RepeatState.ONE);
 		});
 	});
@@ -105,17 +117,17 @@ describe('NMMusicPlayer — state enums', () => {
 			expect(setup().shuffleState()).toBe(ShuffleState.OFF);
 		});
 
-		it('round-trips through the writer (enum value)', () => {
+		it('round-trips through the writer (enum value)', async () => {
 			const musicPlayer = setup();
-			musicPlayer.shuffleState(ShuffleState.ON);
+			await musicPlayer.shuffleState(ShuffleState.ON);
 			expect(musicPlayer.shuffleState()).toBe(ShuffleState.ON);
 		});
 
-		it('accepts a boolean shorthand', () => {
+		it('accepts a boolean shorthand', async () => {
 			const musicPlayer = setup();
-			musicPlayer.shuffleState(true);
+			await musicPlayer.shuffleState(true);
 			expect(musicPlayer.shuffleState()).toBe(ShuffleState.ON);
-			musicPlayer.shuffleState(false);
+			await musicPlayer.shuffleState(false);
 			expect(musicPlayer.shuffleState()).toBe(ShuffleState.OFF);
 		});
 	});

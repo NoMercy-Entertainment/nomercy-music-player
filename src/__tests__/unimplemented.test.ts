@@ -266,7 +266,7 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await musicPlayer.ready();
 			let emittedId: unknown;
 			musicPlayer.on('audioTrack' as any, (data: any) => { emittedId = data?.id; });
-			expect(() => musicPlayer.audioTrack(0)).not.toThrow();
+			await expect(musicPlayer.audioTrack(0)).resolves.not.toThrow();
 			expect(emittedId).toBe(0);
 		});
 		it('qualityLevels returns [] — no HLS variants on audio backend', async () => {

@@ -83,17 +83,17 @@ describe('NMMusicPlayer — time', () => {
 			expect(setup().playbackRate()).toBe(1);
 		});
 
-		it('round-trips through the writer', () => {
+		it('round-trips through the writer', async () => {
 			const musicPlayer = setup();
-			musicPlayer.playbackRate(1.5);
+			await musicPlayer.playbackRate(1.5);
 			expect(musicPlayer.playbackRate()).toBe(1.5);
 		});
 
-		it('emits "backend:ratechange" with the new rate', () => {
+		it('emits "backend:ratechange" with the new rate', async () => {
 			const musicPlayer = setup();
 			let rate: number | undefined;
 			musicPlayer.on('backend:ratechange' as any, (data: any) => { rate = data.rate; });
-			musicPlayer.playbackRate(2);
+			await musicPlayer.playbackRate(2);
 			expect(rate).toBe(2);
 		});
 	});
