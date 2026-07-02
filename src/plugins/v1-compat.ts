@@ -6,14 +6,15 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
-import type { MusicPlaylistItem, NMMusicPlayer } from '@nomercy-entertainment/nomercy-music-player';
+import type { NMMusicPlayer } from '../index';
+import type { MusicPlaylistItem } from '../types';
 import type {
 	ActionOptions,
 	LoadOptions,
 	PluginCtorWithId,
 	Translations,
 } from '@nomercy-entertainment/nomercy-player-core';
-import { VolumeState } from '@nomercy-entertainment/nomercy-music-player';
+import { VolumeState } from '../types';
 import { Plugin } from '@nomercy-entertainment/nomercy-player-core';
 
 interface V1TranslationEntry {
