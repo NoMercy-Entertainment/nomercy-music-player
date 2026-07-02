@@ -58,10 +58,10 @@ changed shape:
 
 ```ts
 // Before
-player.on('crossfadeComplete', ({ track }) => { ... });
+player.on('crossfadeComplete', ({ track }) => { /* ... */ });
 
 // After
-player.on('crossfadeComplete', ({ item }) => { ... });
+player.on('crossfadeComplete', ({ item }) => { /* ... */ });
 ```
 
 Five `adapters/` ports were audited for real consumers. Two were dead —
