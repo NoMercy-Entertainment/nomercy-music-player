@@ -9,10 +9,12 @@
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 
 /**
- * Port for "find similar tracks given a seed track."
+ * Port for "find similar items given a seed item."
  *
- * Powers radio mode, "more like this" playlist generation, and the
- * `SmartShuffleGenerator` when tag-based similarity is insufficient.
+ * Reserved for a future radio-mode / "more like this" feature and the
+ * `SmartShuffleGenerator` when tag-based similarity is insufficient — not
+ * yet wired to any plugin. No scoped consumer exists today; keep the
+ * contract defined so a future feature doesn't have to redesign it.
  *
  * No default adapter is shipped — consumers wire their own implementation:
  *   - Server-driven (NoMercy media server recommendation endpoint)
@@ -29,7 +31,7 @@ export interface ISimilarityEngine<T extends BasePlaylistItem = BasePlaylistItem
 	 * Resolve a list of items similar to `seed`, ordered by descending
 	 * similarity score (most similar first).
 	 *
-	 * @param seed - The reference item to find similar tracks for.
+	 * @param seed - The reference item to find similar items for.
 	 * @param opts - Optional tuning knobs for the query.
 	 * @returns Array of similar items. Empty array when no results are available.
 	 */

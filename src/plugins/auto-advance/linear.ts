@@ -16,8 +16,8 @@ import type { IPlaylistGenerator } from './IPlaylistGenerator';
  * `next()` returns `currentIndex + 1`, or `undefined` at the end.
  * `previous()` returns `currentIndex - 1`, or `undefined` at the start.
  *
- * This is the default generator — consumers receive linear ordering
- * unless they explicitly wire a different implementation.
+ * This is the implicit default — `AutoAdvancePlugin` without `opts.generator`
+ * behaves identically to this generator via the player's own `next()`.
  */
 export class LinearPlaylistGenerator<T extends BasePlaylistItem = BasePlaylistItem>
 implements IPlaylistGenerator<T> {

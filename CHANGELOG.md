@@ -1,5 +1,25 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [Unreleased]
+
+### BREAKING
+
+- `crossfadeTo(track, opts)` renamed to `crossfadeTo(item, opts)`. Positional callers are unaffected; the `crossfadeComplete` event payload changed from `{ track }` to `{ item }` — update any listener that destructures `track` off that payload.
+- `./adapters/now-playing-art` and `./adapters/lyric-source` subpaths removed. Both ports were dead weight — `MediaSessionPlugin` already publishes now-playing metadata/artwork and `LyricsPlugin` already resolves lyrics via `item.lyricsUrl` / `opts.getLyricsUrl`. Delete any import of `INowPlayingArt`, `MediaSessionArtProvider`, `ILyricSource`, or `LrcFileSource` — there is no replacement because nothing in the shipped player called them.
+- `./adapters/scrobbler` subpath removed. `IScrobbler` and `NoopScrobbler` moved to `./plugins/scrobble`, alongside the new `ScrobblePlugin` that actually drives them — see Added below.
+- `./adapters/playlist-generator` subpath removed. `IPlaylistGenerator`, `LinearPlaylistGenerator`, and `SmartShuffleGenerator` moved to `./plugins/auto-advance`, now wired as `AutoAdvancePlugin`'s `opts.generator`.
+- `./adapters/similarity-engine` subpath removed. `ISimilarityEngine` stays defined (reserved for a future radio-mode / "more like this" feature) but is no longer part of the public API surface — it had no consumer.
+
+### Added
+
+- `ScrobblePlugin` (`./plugins/scrobble`) — tracks listened time against the player's `time` / `item` / `ended` events and reports to a configured `IScrobbler`. Calls `nowPlaying(item)` on every item change and `scrobble(item, context)` once listened time crosses `min(duration * thresholdRatio, thresholdSeconds)` — mirrors Last.fm's 50%-or-4-minute rule, both configurable via `opts.thresholdRatio` / `opts.thresholdSeconds`. Items shorter than `opts.minDurationSeconds` (default 30s) are never scrobbled. Defaults to `NoopScrobbler` so registering the plugin without a backend is a safe no-op.
+- `AutoAdvancePlugin` gains `opts.generator: IPlaylistGenerator` — plug in `LinearPlaylistGenerator` (default-equivalent), `SmartShuffleGenerator`, or a custom server-driven / radio-mode generator to control "what's next" on `ended` / `itemEndingSoon`. Omitting `opts.generator` keeps the previous observable behavior exactly (delegates to the player's own `next()` / `peekNext()`).
+
+### Removed
+
+- `INowPlayingArt`, `MediaSessionArtProvider` — deleted, no replacement (superseded by `MediaSessionPlugin`).
+- `ILyricSource`, `LrcFileSource` — deleted, no replacement (superseded by `LyricsPlugin`).
+
 ## [2.0.0-rc.15] — 2026-06-29
 
 ### Changed

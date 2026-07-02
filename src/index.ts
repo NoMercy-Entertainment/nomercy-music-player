@@ -481,29 +481,29 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	// ── Crossfade — dual-element implementation ──
 	/** Fade the active element out while a second element fades in, then swap them. Ignored while a crossfade is already in flight. */
-	async crossfadeTo(track: T, opts?: CrossfadeOptions & ActionOptions): Promise<void> {
+	async crossfadeTo(item: T, opts?: CrossfadeOptions & ActionOptions): Promise<void> {
 		if (this._isTransitioning)
 			return; // idempotent guard — reject stacked crossfades
 
 		const durationMs = ((opts?.duration ?? this.options?.crossfadeDefaults?.duration ?? 5) * 1000);
-		const url = track.url;
+		const url = item.url;
 		if (!url) {
 			throw new MediaFormatError({
 				code: 'core:media/missing-url',
 				severity: 'error',
 				scope: { kind: 'core' },
-				message: 'crossfadeTo(track) requires `track.url` to be present.',
-				context: { id: track.id },
+				message: 'crossfadeTo(item) requires `item.url` to be present.',
+				context: { id: item.id },
 			});
 		}
 
 		const backend = this.backend();
-		const fromTrack = this.item?.() ?? null;
+		const fromItem = this.item?.() ?? null;
 
 		this._isTransitioning = true;
 		this.emit('crossfadeStart', {
-			from: fromTrack,
-			to: track,
+			from: fromItem,
+			to: item,
 			duration: durationMs,
 		});
 
@@ -518,13 +518,13 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			throw err;
 		}
 
-		// Advance the cursor so `item()` reflects the new track. The setter
+		// Advance the cursor so `item()` reflects the new item. The setter
 		// overload emits the `current` event, which downstream plugins
 		// (mediaSession, lyrics, autoAdvance) listen to.
-		this.item?.(track.id ?? track);
+		this.item?.(item.id ?? item);
 
 		this._isTransitioning = false;
-		this.emit('crossfadeComplete', { track });
+		this.emit('crossfadeComplete', { item });
 	}
 
 	isTransitioning(): boolean {

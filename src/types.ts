@@ -61,7 +61,7 @@ export type { TimeState } from '@nomercy-entertainment/nomercy-player-core';
  * Music-specific events on top of `BaseEventMap`.
  *
  * Cursor change is signalled by `BaseEventMap.item` — listen to that for
- * "current track changed". Music adds events for repeat / shuffle / crossfade /
+ * "current item changed". Music adds events for repeat / shuffle / crossfade /
  * backend / EQ that don't apply to other player libraries.
  *
  * `'mute'` and `'volume'` are inherited from `BaseEventMap` — not re-declared here.
@@ -74,7 +74,7 @@ export interface MusicEventMap<T extends MusicPlaylistItem = MusicPlaylistItem> 
 	'backend:changed': { kind: AudioBackendKind };
 
 	'crossfadeStart': { from: T | null; to: T; duration: number };
-	'crossfadeComplete': { track: T };
+	'crossfadeComplete': { item: T };
 	/**
 	 * Time event payload. Extends the kit `BaseEventMap['time']` with extra
 	 * convenience fields:
@@ -99,7 +99,7 @@ export type { CrossfadeCurve };
 export interface CrossfadeOptions {
 	duration: number;
 	curve?: CrossfadeCurve;
-	/** Start position of the incoming track in milliseconds (default 0). */
+	/** Start position of the incoming item in milliseconds (default 0). */
 	startAt?: number;
 }
 
@@ -123,7 +123,7 @@ export interface IMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	extends IPlayer<MusicEventMap<T>> {
 	backend(): IAudioBackend;
 	backend(kind: AudioBackendKind): Promise<void>;
-	crossfadeTo(track: T, opts?: CrossfadeOptions & ActionOptions): Promise<void>;
+	crossfadeTo(item: T, opts?: CrossfadeOptions & ActionOptions): Promise<void>;
 	isTransitioning(): boolean;
 }
 

@@ -48,6 +48,45 @@ once at startup.
 | `getAudioElement()` | Returns `undefined`. v2 does not expose the element. | Use the plugin surfaces above. |
 | `siteTitle` / `setSiteTitle()` | Stored but does not touch `document.title`. | Set `document.title` yourself, or use `MediaSessionPlugin`. |
 
+## v2 API-consistency pass (post-rc.19)
+
+`crossfadeTo(track, opts)` is now `crossfadeTo(item, opts)` — the queue/playlist
+unit is always called `item` across the v2 trio, never `track` (media-stream
+`Track` types like `AudioTrack` are unaffected, those are correct as-is).
+Positional call sites don't need changes; the `crossfadeComplete` event payload
+changed shape:
+
+```ts
+// Before
+player.on('crossfadeComplete', ({ track }) => { ... });
+
+// After
+player.on('crossfadeComplete', ({ item }) => { ... });
+```
+
+Five `adapters/` ports were audited for real consumers. Two were dead —
+deleted outright, no replacement:
+
+| Removed | Why | Replacement |
+| --- | --- | --- |
+| `INowPlayingArt`, `MediaSessionArtProvider` (`./adapters/now-playing-art`) | Redundant — nothing in the player called it. `MediaSessionPlugin` already publishes now-playing metadata + artwork. | `getPlugin(MediaSessionPlugin)` |
+| `ILyricSource`, `LrcFileSource` (`./adapters/lyric-source`) | Redundant — nothing in the player called it. `LyricsPlugin` already resolves lyrics via `item.lyricsUrl` / `opts.getLyricsUrl`. | `getPlugin(LyricsPlugin)`, or pass `opts.getLyricsUrl` |
+
+Two were real but living in the wrong place — folded into the plugin that
+actually drives them:
+
+| Moved | From | To |
+| --- | --- | --- |
+| `IScrobbler`, `NoopScrobbler` | `./adapters/scrobbler` | `./plugins/scrobble` — now driven by a real `ScrobblePlugin`. Pass `addPlugin(ScrobblePlugin, { scrobbler: myScrobbler })`; the plugin calls `nowPlaying()` / `scrobble()` for you against real listened-time tracking. |
+| `IPlaylistGenerator`, `LinearPlaylistGenerator`, `SmartShuffleGenerator` | `./adapters/playlist-generator` | `./plugins/auto-advance` — now `AutoAdvancePlugin`'s `opts.generator`. `addPlugin(AutoAdvancePlugin, { generator: new SmartShuffleGenerator() })`. Omitting `generator` keeps the old linear-queue behavior. |
+
+One is reserved, not yet wired to anything, and no longer advertised as a
+public API:
+
+| Kept, unexported | Status |
+| --- | --- |
+| `ISimilarityEngine` (`./adapters/similarity-engine`) | The interface stays defined in `src/adapters/similarity-engine/` for a future radio-mode / "more like this" feature, but the `./adapters/similarity-engine` subpath export is gone — it had no scoped consumer and was masquerading as a wired API. |
+
 ## beta.0 → beta.1 breaking change
 
 `currentSubtitle()`, `currentAudioTrack()`, and `currentQuality()` now return

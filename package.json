@@ -43,26 +43,6 @@
 			"types": "./dist/adapters/audio-backend/index.d.ts",
 			"import": "./dist/adapters/audio-backend/index.js"
 		},
-		"./adapters/playlist-generator": {
-			"types": "./dist/adapters/playlist-generator/index.d.ts",
-			"import": "./dist/adapters/playlist-generator/index.js"
-		},
-		"./adapters/similarity-engine": {
-			"types": "./dist/adapters/similarity-engine/index.d.ts",
-			"import": "./dist/adapters/similarity-engine/index.js"
-		},
-		"./adapters/scrobbler": {
-			"types": "./dist/adapters/scrobbler/index.d.ts",
-			"import": "./dist/adapters/scrobbler/index.js"
-		},
-		"./adapters/lyric-source": {
-			"types": "./dist/adapters/lyric-source/index.d.ts",
-			"import": "./dist/adapters/lyric-source/index.js"
-		},
-		"./adapters/now-playing-art": {
-			"types": "./dist/adapters/now-playing-art/index.d.ts",
-			"import": "./dist/adapters/now-playing-art/index.js"
-		},
 		"./plugins": {
 			"types": "./dist/plugins/index.d.ts",
 			"import": "./dist/plugins/index.js"
@@ -86,6 +66,10 @@
 		"./plugins/media-session": {
 			"types": "./dist/plugins/media-session/index.d.ts",
 			"import": "./dist/plugins/media-session/index.js"
+		},
+		"./plugins/scrobble": {
+			"types": "./dist/plugins/scrobble/index.d.ts",
+			"import": "./dist/plugins/scrobble/index.js"
 		},
 		"./streams/native": {
 			"types": "./dist/streams/native.d.ts",

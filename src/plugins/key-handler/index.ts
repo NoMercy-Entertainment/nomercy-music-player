@@ -15,8 +15,8 @@ import { RepeatState, ShuffleState } from '../../types';
  * Music-specific key handler. Inherits all kit defaults (space=play/pause,
  * arrows=seek, m=mute) and adds music-specific bindings:
  *
- *  - `n` → next track
- *  - `p` → previous track
+ *  - `n` → next item
+ *  - `p` → previous item
  *  - `r` → cycle repeat state (off → all → one → off)
  *  - `s` → toggle shuffle
  */

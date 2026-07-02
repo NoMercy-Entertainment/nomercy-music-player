@@ -11,21 +11,22 @@
  *
  * Covers:
  *   - Crossfade depth: curve routing (MEDIUM finding) + negative startAt pass-through
- *   - LrcFileSource.resolve() — returns lyricsUrl or undefined
- *   - LinearPlaylistGenerator.next() — sequential + end-of-queue
- *   - SmartShuffleGenerator.next() — does not return current on non-singleton queue
- *   - NoopScrobbler.scrobble() — resolves, no side effects
- *   - MediaSessionArtProvider.publish() — writes navigator.mediaSession.metadata (or no-ops when absent)
+ *
+ * The port-adapter groups formerly here moved with their v2 API-consistency
+ * pass:
+ *   - LrcFileSource / MediaSessionArtProvider — deleted (redundant with
+ *     `LyricsPlugin` / `MediaSessionPlugin`, which already own this work).
+ *   - LinearPlaylistGenerator / SmartShuffleGenerator — moved to
+ *     `__tests__/plugins/auto-advance-generator.test.ts` alongside their new
+ *     home under `plugins/auto-advance/`.
+ *   - NoopScrobbler / ScrobblePlugin — moved to
+ *     `__tests__/plugins/scrobble.test.ts` alongside their new home under
+ *     `plugins/scrobble/`.
  */
 
 import type { IAudioBackend } from '../adapters/audio-backend/IAudioBackend';
 import type { MusicPlaylistItem } from '../types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { LrcFileSource } from '../adapters/lyric-source/lrc-file';
-import { MediaSessionArtProvider } from '../adapters/now-playing-art/media-session';
-import { LinearPlaylistGenerator } from '../adapters/playlist-generator/linear';
-import { SmartShuffleGenerator } from '../adapters/playlist-generator/smart-shuffle';
-import { NoopScrobbler } from '../adapters/scrobbler/noop';
 import { NMMusicPlayer } from '../index';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -139,191 +140,5 @@ describe('NMMusicPlayer.crossfadeTo() — curve routing', () => {
 		).resolves.toBeUndefined();
 
 		expect(mock.primeSecondary).toHaveBeenCalledWith(-1);
-	});
-});
-
-// ── Group 2: LrcFileSource ────────────────────────────────────────────────────
-
-describe('LrcFileSource.resolve()', () => {
-	/**
-	 * LrcFileSource is a URL-resolver only — it exposes resolve(item) returning
-	 * the item's lyricsUrl. The actual HTTP fetch + LRC parse is done by the
-	 * LyricsPlugin via this.fetch(). There is no load() method.
-	 */
-	it('test 3 — returns undefined when track has no lyricsUrl', () => {
-		const src = new LrcFileSource();
-		const track = makeTrack({ lyricsUrl: undefined });
-
-		const result = src.resolve(track);
-
-		expect(result).toBeUndefined();
-	});
-
-	it('test 4 — returns the lyricsUrl string when the track has one', () => {
-		const src = new LrcFileSource();
-		const track = makeTrack({ lyricsUrl: 'http://test/lyrics.lrc' });
-
-		const result = src.resolve(track);
-
-		expect(result).toBe('http://test/lyrics.lrc');
-	});
-});
-
-// ── Group 3: IPlaylistGenerator implementations ───────────────────────────────
-
-describe('LinearPlaylistGenerator', () => {
-	it('test 5 — next(items, 0) returns index 1 (the item after current)', () => {
-		const gen = new LinearPlaylistGenerator();
-		const items: MusicPlaylistItem[] = [
-			makeTrack({ id: 'a', name: 'A' }),
-			makeTrack({ id: 'b', name: 'B' }),
-			makeTrack({ id: 'c', name: 'C' }),
-		];
-
-		const next = gen.next(items, 0);
-
-		expect(next).toBe(1);
-	});
-
-	/**
-	 * FINDING: LinearPlaylistGenerator returns undefined at end of queue (no ring).
-	 * The implementation is: nextIndex < items.length ? nextIndex : undefined.
-	 * AutoAdvancePlugin must handle undefined gracefully — null propagation risk
-	 * if it calls player.next() without checking the generator result.
-	 */
-	it('test 6 — next() at end of queue returns undefined (no ring behavior)', () => {
-		const gen = new LinearPlaylistGenerator();
-		const items: MusicPlaylistItem[] = [
-			makeTrack({ id: 'a', name: 'A' }),
-			makeTrack({ id: 'b', name: 'B' }),
-			makeTrack({ id: 'c', name: 'C' }),
-		];
-
-		const next = gen.next(items, 2);
-
-		// Linear generator does NOT wrap — returns undefined at the end.
-		expect(next).toBeUndefined();
-	});
-});
-
-describe('SmartShuffleGenerator', () => {
-	it('test 7 — next() does not return currentIndex on a non-singleton queue', () => {
-		const gen = new SmartShuffleGenerator();
-		const items: MusicPlaylistItem[] = [
-			makeTrack({ id: 'a', name: 'A' }),
-			makeTrack({ id: 'b', name: 'B' }),
-			makeTrack({ id: 'c', name: 'C' }),
-		];
-
-		// Run multiple times — shuffle must never repeat the current index.
-		for (let i = 0; i < 20; i++) {
-			const next = gen.next(items, 0);
-			expect(next).not.toBe(0);
-		}
-	});
-});
-
-// ── Group 4: NoopScrobbler ────────────────────────────────────────────────────
-
-describe('NoopScrobbler', () => {
-	it('test 8 — scrobble() resolves without throwing or producing side effects', async () => {
-		const scrobbler = new NoopScrobbler();
-		const track = makeTrack();
-		const context = {
-			startedAt: Date.now() / 1000,
-			listenedSeconds: 120,
-			durationSeconds: 240,
-			source: 'user' as const,
-		};
-
-		const result = await scrobbler.scrobble(track, context);
-
-		expect(result).toBeUndefined();
-	});
-
-	it('nowPlaying() also resolves without throwing', async () => {
-		const scrobbler = new NoopScrobbler();
-		const track = makeTrack();
-
-		const result = await scrobbler.nowPlaying!(track);
-
-		expect(result).toBeUndefined();
-	});
-});
-
-// ── Group 5: MediaSessionArtProvider ─────────────────────────────────────────
-
-describe('MediaSessionArtProvider.publish()', () => {
-	/**
-	 * jsdom does not implement navigator.mediaSession. The implementation
-	 * guards this: `if (typeof navigator === 'undefined' || !navigator.mediaSession) return`.
-	 *
-	 * Test 9a: mock navigator.mediaSession so we can assert the write.
-	 * Test 9b: confirm the no-op guard fires when mediaSession is absent.
-	 */
-
-	it('test 9a — writes navigator.mediaSession.metadata when the API is available', async () => {
-		const provider = new MediaSessionArtProvider();
-		const track = makeTrack({ name: 'Hello World', artist: 'Artist', album: 'Album' });
-		const artwork = 'http://test/art.jpg';
-
-		const setMetadata = vi.fn();
-
-		// MediaMetadata is not available in happy-dom — stub it with a
-		// real class so `new MediaMetadata(...)` works as a constructor.
-		interface MediaMetadataInit { title?: string; artist?: string; album?: string; artwork?: object[] }
-		const OriginalMediaMetadata = (globalThis as any).MediaMetadata as unknown;
-		class MediaMetadataStub {
-			title: string;
-			artist: string;
-			album: string;
-			artwork: object[];
-			constructor(init: MediaMetadataInit) {
-				this.title = init.title ?? '';
-				this.artist = init.artist ?? '';
-				this.album = init.album ?? '';
-				this.artwork = init.artwork ?? [];
-			}
-		}
-		(globalThis as any).MediaMetadata = MediaMetadataStub;
-
-		Object.defineProperty(globalThis, 'navigator', {
-			value: {
-				...globalThis.navigator,
-				mediaSession: {
-					get metadata() { return null; },
-					set metadata(value: object | null) { setMetadata(value); },
-				},
-			},
-			writable: true,
-			configurable: true,
-		});
-
-		try {
-			await provider.publish(track, artwork);
-
-			expect(setMetadata).toHaveBeenCalledTimes(1);
-
-			const meta = setMetadata.mock.calls[0]![0] as { title: string; artist: string; album: string };
-			expect(meta.title).toBe('Hello World');
-			expect(meta.artist).toBe('Artist');
-			expect(meta.album).toBe('Album');
-		}
-		finally {
-			(globalThis as any).MediaMetadata = OriginalMediaMetadata;
-			Object.defineProperty(globalThis, 'navigator', {
-				value: { ...globalThis.navigator, mediaSession: undefined },
-				writable: true,
-				configurable: true,
-			});
-		}
-	});
-
-	it('test 9b — is a no-op when navigator.mediaSession is absent (jsdom environment)', async () => {
-		const provider = new MediaSessionArtProvider();
-		const track = makeTrack({ name: 'Absent' });
-
-		// In jsdom navigator.mediaSession is absent — publish must resolve silently.
-		await expect(provider.publish(track, undefined)).resolves.toBeUndefined();
 	});
 });

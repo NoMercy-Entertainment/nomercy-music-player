@@ -11,8 +11,8 @@ import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-cor
 import type { IScrobbler, ScrobbleContext } from './IScrobbler';
 
 /**
- * No-op scrobbler. Ships as the default so the player works out of the box
- * without any listening-history service configured. All calls resolve
+ * No-op scrobbler. Ships as the default so `ScrobblePlugin` works out of the
+ * box without any listening-history service configured. All calls resolve
  * immediately without side effects.
  *
  * Replace with a real implementation to track plays on Last.fm, ListenBrainz,

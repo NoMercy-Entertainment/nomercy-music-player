@@ -9,12 +9,11 @@
 import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-core';
 
 /**
- * Port for recording that a track was listened to (Last.fm-style scrobbling).
+ * Port for recording that an item was listened to (Last.fm-style scrobbling).
  *
- * This port is defined but not yet wired by the player: nothing in the player
- * calls `scrobble()` or `nowPlaying()`. A consumer that wants scrobbling must
- * invoke these methods itself (for example from its own `time` / `ended`
- * handlers).
+ * Driven by `ScrobblePlugin`: `nowPlaying()` fires on every item change,
+ * `scrobble()` fires once accumulated listened time crosses the configured
+ * threshold (defaults mirror Last.fm's 50%-or-4-minute rule).
  *
  * Built-in adapter:
  *   - `NoopScrobbler` — no-op implementation (default, ships so the player
@@ -30,17 +29,17 @@ export interface IScrobbler<T extends BasePlaylistItem = BasePlaylistItem> {
 	/**
 	 * Record that `item` was listened to.
 	 *
-	 * @param item - The track that was scrobbled.
+	 * @param item - The item that was scrobbled.
 	 * @param context - Contextual metadata for the scrobble event.
 	 */
 	scrobble(item: T, context: ScrobbleContext): Promise<void>;
 
 	/**
-	 * Signal that a track has started playing. Used by services that want to
+	 * Signal that an item has started playing. Used by services that want to
 	 * display "now playing" information (distinct from the completed scrobble).
 	 * Optional — implementations that don't support now-playing can no-op.
 	 *
-	 * @param item - The track that started playing.
+	 * @param item - The item that started playing.
 	 */
 	nowPlaying?(item: T): Promise<void>;
 }
@@ -51,8 +50,8 @@ export interface ScrobbleContext {
 	startedAt: number;
 	/** Total seconds the user actually listened (after subtracting seeks / gaps). */
 	listenedSeconds: number;
-	/** Total track duration in seconds. */
+	/** Total item duration in seconds. */
 	durationSeconds: number;
-	/** Whether the track was chosen by the user or auto-advanced. */
+	/** Whether the item was chosen by the user or auto-advanced. */
 	source: 'user' | 'auto' | 'radio';
 }

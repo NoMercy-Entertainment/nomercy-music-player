@@ -28,8 +28,8 @@ export interface LyricsEvents {
 
 /** Options for {@link LyricsPlugin}. */
 export interface LyricsOptions {
-	/** Resolve a track to a lyrics URL. Defaults to `track.lyricsUrl`. */
-	getLyricsUrl?: (track: MusicPlaylistItem) => string | undefined;
+	/** Resolve an item to a lyrics URL. Defaults to `item.lyricsUrl`. */
+	getLyricsUrl?: (item: MusicPlaylistItem) => string | undefined;
 	/** Auto-fetch on `current` event. Default `true`. */
 	autoFetch?: boolean;
 }

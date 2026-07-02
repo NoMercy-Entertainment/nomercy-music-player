@@ -185,7 +185,7 @@ export interface IAudioBackend {
 	 * without affecting primary playback. Safe to call multiple times with the
 	 * same URL — subsequent calls with an already-loaded URL are no-ops.
 	 *
-	 * @param url - Fully-resolved media URL for the incoming track.
+	 * @param url - Fully-resolved media URL for the incoming item.
 	 */
 	loadSecondary(url: string): Promise<void>;
 
@@ -211,7 +211,7 @@ export interface IAudioBackend {
 	 *
 	 * NOTE (`AudioElementBackend`): fade is driven by a requestAnimationFrame
 	 * loop at ~50 fps and is NOT sample-accurate. Expect sub-frame-length seams
-	 * at track boundaries. Use `WebAudioBackend` for sample-accurate transitions.
+	 * at item boundaries. Use `WebAudioBackend` for sample-accurate transitions.
 	 *
 	 * @param durationMs - Total crossfade duration in milliseconds. 0 = instant swap.
 	 */

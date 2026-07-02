@@ -13,7 +13,11 @@ import type { BasePlaylistItem } from '@nomercy-entertainment/nomercy-player-cor
  *
  * Implementations receive the current queue snapshot and the index of the
  * currently-playing item, then return the index of the next item to play.
- * Returning `undefined` signals end-of-queue (no next track).
+ * Returning `undefined` signals end-of-queue (no next item).
+ *
+ * Driven by `AutoAdvancePlugin` via `opts.generator` — when absent,
+ * `AutoAdvancePlugin` falls back to the player's own linear `next()` /
+ * `peekNext()`.
  *
  * Built-in adapters:
  *   - `LinearPlaylistGenerator` — play items in order (default)

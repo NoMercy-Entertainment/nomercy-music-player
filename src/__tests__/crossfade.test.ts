@@ -126,7 +126,7 @@ describe('NMMusicPlayer.crossfadeTo()', () => {
 			});
 		});
 
-		it('crossfadeComplete payload carries the incoming track', async () => {
+		it('crossfadeComplete payload carries the incoming item', async () => {
 			const { player } = setup();
 			let payload: any;
 			player.on('crossfadeComplete' as any, (data: any) => { payload = data; });
@@ -134,7 +134,7 @@ describe('NMMusicPlayer.crossfadeTo()', () => {
 			const track = makeTrack();
 			await player.crossfadeTo(track);
 
-			expect(payload).toMatchObject({ track });
+			expect(payload).toMatchObject({ item: track });
 		});
 	});
 
