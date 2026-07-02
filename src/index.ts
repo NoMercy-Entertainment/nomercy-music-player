@@ -607,6 +607,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		(): QualityLevel[];
 		(opts: { includeUnsupported: true }): QualityLevel[];
 	};
+
 	declare quality: {
 		(): CurrentQualitySelection | 'auto';
 		(idx: number | 'auto'): void;
