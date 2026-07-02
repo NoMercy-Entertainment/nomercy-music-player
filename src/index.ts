@@ -77,6 +77,7 @@ import { PlayState } from './types';
 
 export { MusicPreloadStrategy } from './player/preload';
 
+export { V1MusicCompatPlugin } from './plugins/v1-compat';
 export type {
 	AudioBackendKind,
 	CrossfadeCurve,
