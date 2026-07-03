@@ -116,7 +116,7 @@
 		"prepublishOnly": "npm run build"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.23"
+		"@nomercy-entertainment/nomercy-player-core": "^2.0.0-rc.24"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.0.0",

@@ -10,6 +10,10 @@
 
 - `@nomercy-entertainment/nomercy-player-core` dependency range bumped to `^2.0.0-rc.23` (from `^2.0.0-rc.22`) — this release is tested against rc.23, which ships the new declarative `setup({ plugins })` config and the renamed-event dev warning (see core's rc.23 changelog). Both are additive and don't require any code change in this package.
 
+### Fixed
+
+- Inherits `nomercy-player-core` 2.0.0-rc.24's consumer volume taper (`position²`) — the −60 dB fader law made everything below ~70% slider barely audible.
+
 ## [2.0.0-rc.23] — 2026-07-03
 
 ### Added
