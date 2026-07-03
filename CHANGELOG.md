@@ -1,5 +1,15 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.24] — 2026-07-03
+
+### Added
+
+- `AudioBackendFactory` now re-exported from the root barrel (`import { AudioBackendFactory } from '@nomercy-entertainment/nomercy-music-player'`). It was declared in `src/types.ts` and used to type `setup()`'s `backendFactory` option, but never exported anywhere public — a consumer following the documented `backendFactory` extension pattern couldn't import the type to annotate their own factory against it. Matches `nomercy-video-player`'s existing `VideoBackendFactory` root export.
+
+### Changed
+
+- `@nomercy-entertainment/nomercy-player-core` dependency range bumped to `^2.0.0-rc.23` (from `^2.0.0-rc.22`) — this release is tested against rc.23, which ships the new declarative `setup({ plugins })` config and the renamed-event dev warning (see core's rc.23 changelog). Both are additive and don't require any code change in this package.
+
 ## [2.0.0-rc.23] — 2026-07-03
 
 ### Added
