@@ -32,9 +32,10 @@ export class MusicPreloadStrategy extends DefaultPreloadStrategy {
 			});
 		}
 
-		if (musicItem.cover) {
+		const cover = musicItem.image ?? musicItem.cover;
+		if (cover) {
 			assets.push({
-				url: musicItem.cover,
+				url: cover,
 				category: 'poster',
 				mode: 'auto',
 			});

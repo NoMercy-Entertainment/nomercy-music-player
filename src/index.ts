@@ -477,6 +477,12 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			setPlayerAudioContext(this, instance.audioContext());
 		}
 
+		// Native <audio controls> — useful when no UI plugin is loaded. Re-applied
+		// on every backend (re)creation, including runtime `backend(kind)` swaps.
+		if (this.options?.controls) {
+			instance.mediaElement().controls = true;
+		}
+
 		this._makePlayStateHandlers(instance);
 		instance.on('timeupdate', this._makeTimeupdateHandler(instance));
 		instance.on('loadedmetadata', this._makeLoadedMetadataHandler(instance));

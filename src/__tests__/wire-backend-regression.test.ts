@@ -74,12 +74,12 @@ function removeAudioContext(): void {
  * Build a player, trigger the backend's lazy init, and wait for 'ready' phase.
  * Returns the player + the audio element the backend created.
  */
-async function makeReadyPlayer(id: string, opts?: { backend?: 'webaudio' | 'audio-element' }): Promise<{
+async function makeReadyPlayer(id: string, opts?: { backend?: 'webaudio' | 'audio-element'; controls?: boolean }): Promise<{
 	player: NMMusicPlayer;
 	audioEl: HTMLAudioElement;
 }> {
 	const player = new NMMusicPlayer(id);
-	player.setup({ backend: opts?.backend });
+	player.setup({ backend: opts?.backend, controls: opts?.controls });
 
 	// Trigger lazy backend init before ready() so the <audio> element exists.
 	const backend = player.backend();
@@ -224,6 +224,33 @@ describe('_wireBackend regression', () => {
 			const first = player.backend();
 			const second = player.backend();
 			expect(first).toBe(second);
+		});
+	});
+
+	// ── Native <audio controls> ──────────────────────────────────────────────
+
+	describe('controls config sets the native controls attribute', () => {
+		it('sets audioEl.controls = true when controls: true', async () => {
+			const { audioEl } = await makeReadyPlayer('wire-backend-test', { controls: true });
+			expect(audioEl.controls).toBe(true);
+		});
+
+		it('leaves audioEl.controls = false by default', async () => {
+			const { audioEl } = await makeReadyPlayer('wire-backend-test');
+			expect(audioEl.controls).toBe(false);
+		});
+
+		it('re-applies controls: true after a runtime backend(kind) swap', async () => {
+			installAudioContext();
+			const { player, audioEl: initialAudioEl } = await makeReadyPlayer('wire-backend-test', { controls: true });
+			expect(initialAudioEl.controls).toBe(true);
+
+			await player.backend('webaudio');
+
+			const swappedAudioEl = player.container.querySelector('audio');
+			if (!swappedAudioEl)
+				throw new Error('WebAudioBackend did not append <audio> to container');
+			expect(swappedAudioEl.controls).toBe(true);
 		});
 	});
 });

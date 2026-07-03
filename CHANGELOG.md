@@ -1,5 +1,19 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.23] — 2026-07-03
+
+### Added
+
+- Native `<audio controls>` support: setting `controls: true` on `MusicPlayerConfig` (inherited from `BasePlayerConfig` in `@nomercy-entertainment/nomercy-player-core`) now applies the browser's built-in audio controls when no UI plugin is loaded — matching the video player's existing `controls` behavior. Re-applied on every backend (re)creation, including a runtime `backend(kind)` swap, so it survives a crossfade backend switch.
+
+### Fixed
+
+- Cover-art resolution now reads the cross-library canonical `image` field (inherited from `BasePlaylistItem`) first, falling back to this package's own `cover` field for back-compat — matching how the video player already resolves poster art. Affects `MusicPreloadStrategy.assetsToPreload()` (poster preloading) and `CastSenderPlugin.buildMetadata()` (Cast `MusicTrackMediaMetadata.images[0].url`). Items that only set `image` now get their art preloaded and cast correctly; items that only set `cover` are unaffected. `MusicPlaylistItem.cover` remains a valid field — no removal, additive back-compat only.
+
+### Changed
+
+- `@nomercy-entertainment/nomercy-player-core` dependency range bumped to `^2.0.0-rc.22` (from `^2.0.0-rc.21`) for clarity — this release is tested against rc.22, which is already the published `rc` dist-tag.
+
 ## [2.0.0-rc.22] — 2026-07-02
 
 ### Breaking

@@ -25,9 +25,13 @@ import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/I
 export interface MusicPlaylistItem extends BasePlaylistItem {
 	name: string;
 	/**
-	 * Cover art URL. `null` is accepted as a sentinel for "no art available"
-	 * so that consumers that store `cover: string | null` (common with database
-	 * nullable columns) compile without changes.
+	 * Legacy cover-art field, superseded by the inherited `image` field — the
+	 * cross-library canonical cover art / poster URL declared on
+	 * `BasePlaylistItem`. Music reads `image` first and falls back to `cover`
+	 * when `image` is absent, so existing consumers keep working; new code
+	 * should populate `image`. `null` is accepted as a sentinel for "no art
+	 * available" so that consumers that store `cover: string | null` (common
+	 * with database nullable columns) compile without changes.
 	 */
 	cover?: string | null;
 	/** Plain artist name string. Consumers with linked-entity data join or pick the primary. */

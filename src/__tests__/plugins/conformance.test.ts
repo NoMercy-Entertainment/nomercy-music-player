@@ -19,6 +19,7 @@
  */
 
 import type { CueList, ICueParser } from '@nomercy-entertainment/nomercy-player-core';
+import type { MusicPlaylistItem } from '../../types';
 import { createCueList } from '@nomercy-entertainment/nomercy-player-core';
 import {
 	describePlugin,
@@ -246,5 +247,30 @@ describePlugin(CastSenderPlugin, (ctx) => {
 	it('defaultContentType() is audio/mpeg for the music subclass', () => {
 		const contentType = (ctx.plugin as unknown as { defaultContentType: () => string }).defaultContentType();
 		expect(contentType).toBe('audio/mpeg');
+	});
+
+	it('buildMetadata() resolves artwork from `image`, falling back to the deprecated `cover`', async () => {
+		class GenericMediaMetadataCtor { title?: string; };
+		const ctors = {
+			MediaInfo: class { constructor(public contentId: string, public contentType: string) {} },
+			LoadRequest: class { constructor(public media: unknown) {} },
+			GenericMediaMetadata: GenericMediaMetadataCtor,
+			StreamType: { BUFFERED: 'BUFFERED', LIVE: 'LIVE' },
+		};
+		const plugin = ctx.plugin as unknown as {
+			buildMetadata: (item: MusicPlaylistItem, ctors: unknown) => Promise<Record<string, unknown>>;
+		};
+
+		const withImage = await plugin.buildMetadata({ id: 'i1', name: 'Song', image: 'https://cdn/image.jpg' }, ctors);
+		expect((withImage['images'] as Array<{ url: string }>)[0]?.url).toBe('https://cdn/image.jpg');
+
+		const withCoverOnly = await plugin.buildMetadata({ id: 'i2', name: 'Song', cover: 'https://cdn/cover.jpg' }, ctors);
+		expect((withCoverOnly['images'] as Array<{ url: string }>)[0]?.url).toBe('https://cdn/cover.jpg');
+
+		const withBoth = await plugin.buildMetadata(
+			{ id: 'i3', name: 'Song', image: 'https://cdn/image.jpg', cover: 'https://cdn/cover.jpg' },
+			ctors,
+		);
+		expect((withBoth['images'] as Array<{ url: string }>)[0]?.url).toBe('https://cdn/image.jpg');
 	});
 });

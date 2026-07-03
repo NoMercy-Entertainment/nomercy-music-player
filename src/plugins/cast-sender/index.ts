@@ -18,7 +18,8 @@ export type { CastSenderEvents, CastSenderOptions } from '@nomercy-entertainment
  * Specializes only the bits that differ between music and video:
  *   - `'audio/mpeg'` default content type
  *   - `MusicTrackMediaMetadata` builder reading `name` / `artist` /
- *     `album` / `cover` from the music item shape.
+ *     `album` / `image` (falls back to the deprecated `cover`) from the
+ *     music item shape.
  *
  * Translations are auto-discovered from the `./i18n/*.ts` folder. Each file
  * default-exports its language bundle. Each plugin in the chain (kit base,
@@ -50,9 +51,10 @@ export class CastSenderPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> e
 			meta['artist'] = item.artist;
 		if (item.album)
 			meta['albumName'] = item.album;
-		if (item.cover) {
-			const cover = (await this.resolveUrl(item.cover, 'poster')).href;
-			meta['images'] = [{ url: cover }];
+		const cover = item.image ?? item.cover;
+		if (cover) {
+			const coverUrl = (await this.resolveUrl(cover, 'poster')).href;
+			meta['images'] = [{ url: coverUrl }];
 		}
 		return meta;
 	}
