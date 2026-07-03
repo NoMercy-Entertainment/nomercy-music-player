@@ -1,5 +1,21 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.22] — 2026-07-02
+
+### Breaking
+
+- Realigned with `nomercy-player-core` rc.21's M1 Connect-plugin slice: `volume()`, `mute()`, `unmute()`, `subtitle()`, `audioTrack()`, `playbackRate()`, `repeatState()`, `shuffleState()`, and `dispose()` now return `Promise<void>` on `NMMusicPlayer` and `IMusicPlayer`, matching `IPlayer`. Code that read state synchronously right after calling one of these must now `await` the call first; fire-and-forget callers are unaffected. Requires `@nomercy-entertainment/nomercy-player-core@^2.0.0-rc.21` or newer. (Version jumps rc.20 → rc.22, skipping rc.21, to stay clear of the sibling `nomercy-video-player@2.0.0-rc.21` release that shipped without this alignment.)
+
+### Added
+
+- `crossfadeTo(item, opts)` now dispatches a cancellable `beforeCrossfade` hook before touching any backend buffer — mirrors `crossfadeStart`'s `{ from, to, duration }` payload. A listener may `preventDefault()` to block the handoff (`crossfadePrevented` fires instead, `from` keeps playing) or reshape the target item/duration.
+- `V1MusicCompatPlugin` (`import { V1MusicCompatPlugin } from '@nomercy-entertainment/nomercy-music-player'`) — opt-in shim attaching the v1 method surface onto `NMMusicPlayer` via declaration merging. Every shim delegates to the real v2 API and logs one `@deprecated` warning per call. Add via `player.addPlugin(V1MusicCompatPlugin)` before `setup()`; delete the plugin once migrated.
+
+### Fixed
+
+- The wrapped `dispose()` override now awaits the composed cancellable dispose and only tears down the audio backend + registry entry once `phase()` actually reaches `'disposed'`, instead of killing the backend before `beforeDispose` had a chance to run. A plugin calling `preventDefault()` on `beforeDispose` no longer loses its backend.
+- Standalone CI (outside the monorepo checkout) now lints cleanly — the ESLint config imports the player rule pack from `@nomercy-entertainment/nomercy-player-core/eslint-plugin` instead of a monorepo-relative path that doesn't exist in a standalone clone.
+
 ## [2.0.0-rc.20] — 2026-07-02
 
 ### Changed
