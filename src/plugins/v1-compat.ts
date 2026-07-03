@@ -155,7 +155,7 @@ export class V1MusicCompatPlugin extends Plugin<NMMusicPlayer> {
 			warn('speed');
 			if (rate === undefined)
 				return player.playbackRate();
-			player.playbackRate(rate);
+			void player.playbackRate(rate);
 		}
 		player.speed = speed;
 
@@ -176,8 +176,8 @@ export class V1MusicCompatPlugin extends Plugin<NMMusicPlayer> {
 			if (state === undefined)
 				return player.volumeState() === VolumeState.MUTED;
 			if (state)
-				player.mute();
-			else player.unmute();
+				void player.mute();
+			else void player.unmute();
 		}
 		player.muted = muted;
 
