@@ -80,6 +80,7 @@ export { MusicPreloadStrategy } from './player/preload';
 
 export { V1MusicCompatPlugin } from './plugins/v1-compat';
 export type {
+	AudioBackendFactory,
 	AudioBackendKind,
 	CrossfadeCurve,
 	CrossfadeOptions,
