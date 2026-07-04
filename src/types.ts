@@ -161,6 +161,12 @@ export interface IMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	 */
 	queue(): ReadonlyArray<T>;
 	queue(items: T[], opts?: ActionOptions): void;
+
+	/** What `next()` would load, without moving the cursor. */
+	peekNext(): T | undefined;
+
+	/** What `previous()` would load, without moving the cursor. */
+	peekPrevious(): T | undefined;
 }
 
 /** Music player configuration. */
