@@ -14,6 +14,8 @@ import type {
 	BeforeEvent,
 	CrossfadeCurve,
 	IPlayer,
+	ITransitionStrategy,
+	LoadOptions,
 	PreventedReason,
 } from '@nomercy-entertainment/nomercy-player-core';
 import type { AudioBackendKind, IAudioBackend } from './adapters/audio-backend/IAudioBackend';
@@ -142,6 +144,23 @@ export interface IMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	backend(kind: AudioBackendKind): Promise<void>;
 	crossfadeTo(item: T, opts?: CrossfadeOptions & ActionOptions): Promise<void>;
 	isTransitioning(): boolean;
+
+	/** Swap the transition strategy (crossfade / gapless / cut) at runtime. */
+	setTransitionStrategy(strategy: ITransitionStrategy): void;
+
+	// ── Item cursor & queue (T-typed; `IPlayer` is item-type-agnostic, so the
+	// concrete item shape is declared here, mirroring `IVideoPlayer`) ──
+
+	item(): T | undefined;
+	item(target: T | string | number, opts?: LoadOptions): void;
+
+	/**
+	 * Read or replace the queue.
+	 * `queue()` — current items as a readonly array.
+	 * `queue(items)` — replace queue contents.
+	 */
+	queue(): ReadonlyArray<T>;
+	queue(items: T[], opts?: ActionOptions): void;
 }
 
 /** Music player configuration. */
