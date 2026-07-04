@@ -17,23 +17,15 @@ You get plain events and methods, and you wire your own interface.
 - Queue and backlog control, repeat and shuffle, a typed event bus
 - Lock-screen and notification controls, plus auto-advance
 
-**You stay in charge.**
-
-No UI is bundled. Nothing is forced on you.
-
-Crossfade and gapless playback are built in, called when you want them. Everything else (lyrics, the equalizer, media controls, auto-advance, key handling) is a plugin you opt into with `addPlugin`.
-
-You can also swap any built-in behavior. Pass your own storage, URL resolver, shuffle strategy, or logger to `setup()`. No subclassing.
-
 Built on [`nomercy-player-core`](https://www.npmjs.com/package/@nomercy-entertainment/nomercy-player-core), the shared engine for the queue, auth, plugins, i18n, and storage.
+
+## Install
 
 ```
 npm install @nomercy-entertainment/nomercy-music-player
 ```
 
 Adaptive HLS audio streams play out of the box. The backend detects an `.m3u8` source and streams it, falling back to native HLS where the platform supports it, and `hls.js` ships with the player core so there is nothing extra to install.
-
-> **Upgrading from v1?** See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list, including renamed methods, changed event payloads, and the `item.path` to `item.url` rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
 
 ## Quick start
 
@@ -63,14 +55,27 @@ player.on('ready', () => {
 
 `AutoAdvancePlugin` advances the queue when a track ends, and `MediaSessionPlugin` wires the lock-screen and notification controls.
 
+## Bring your own UI
+
+No UI is bundled. Nothing is forced on you.
+
+Crossfade and gapless playback are built in, called when you want them. Everything else, lyrics, the equalizer, media controls, auto-advance, key handling, is a plugin you opt into with `addPlugin`. Build your own interface from the player's events, the path the [Build a Player tutorial](https://docs.nomercy.tv/nomercy-music-player/build/shell) walks one piece at a time.
+
+You can also swap any built-in behavior. Pass your own storage, URL resolver, shuffle strategy, or logger to `setup()`. No subclassing.
+
+## Upgrading from v1
+
+See [MIGRATION.md](./MIGRATION.md) for the full breaking-change list, including renamed methods, changed event payloads, and the `item.path` to `item.url` rename that breaks silently if missed. Group listening queue serialization is particularly sensitive to this change.
+
 ## Documentation
 
-The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference:
+The [docs site](https://docs.nomercy.tv/nomercy-music-player/) is the full reference, ordered from first track to plugin author:
 
-- [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install, and first track
-- [Configuration](https://docs.nomercy.tv/nomercy-music-player/configuration), every option and default
-- [API Methods](https://docs.nomercy.tv/nomercy-music-player/api-methods) and [Events](https://docs.nomercy.tv/nomercy-music-player/events)
-- [Crossfade](https://docs.nomercy.tv/nomercy-music-player/crossfade), framework guides for Vue and React, lyric sync, the equalizer, and writing your own plugins
+- [Introduction](https://docs.nomercy.tv/nomercy-music-player/introduction) and [Quick Start](https://docs.nomercy.tv/nomercy-music-player/quickstart), install and first track
+- The [Guided Tour](https://docs.nomercy.tv/nomercy-music-player/tour/transport) over transport, queue, [crossfade](https://docs.nomercy.tv/nomercy-music-player/tour/crossfade), the equalizer, and lyric sync, method by method
+- [Build a Player](https://docs.nomercy.tv/nomercy-music-player/build/shell), a tutorial that builds your own UI plugin from scratch
+- Framework recipes for [Vue](https://docs.nomercy.tv/nomercy-music-player/recipes/vue-integration), [React](https://docs.nomercy.tv/nomercy-music-player/recipes/react-integration), [Svelte](https://docs.nomercy.tv/nomercy-music-player/recipes/svelte-integration), and [vanilla JS](https://docs.nomercy.tv/nomercy-music-player/recipes/vanilla-integration)
+- [Configuration](https://docs.nomercy.tv/nomercy-music-player/reference/config), [API Methods](https://docs.nomercy.tv/nomercy-music-player/reference/player-methods), and [Events](https://docs.nomercy.tv/nomercy-music-player/reference/events)
 
 ## License
 
