@@ -20,7 +20,6 @@ import type {
 	Chapter,
 	CurrentAudioTrackSelection,
 	CurrentQualitySelection,
-	CurrentSubtitleSelection,
 	DeviceCapabilities,
 	ICueParser,
 	IPlatform,
@@ -40,7 +39,6 @@ import type {
 	QualityLevel,
 	ResolvedUrl,
 	SetupState,
-	SubtitleTrack,
 	Translations,
 	UrlCategory,
 	VisibilityState,
@@ -66,7 +64,6 @@ import {
 	EventEmitter,
 	initPlayerCoreState,
 	MediaFormatError,
-	NotImplementedError,
 	playerCoreMethods,
 	resolvePlayerConstructor,
 	setPlayerAudioContext,
@@ -617,20 +614,8 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	};
 
 	// ── Tracks / chapters / quality ── composed in via `mediaTracksMethods` mixin.
-	// `subtitles`, `subtitle`, and `subtitleStyle` are overridden below the class
-	// to throw `NotImplementedError` — these are screen-domain concerns with no
-	// meaning on an audio backend.
-	declare subtitles: () => SubtitleTrack[];
-	declare subtitle: {
-		(): CurrentSubtitleSelection | null;
-		(idx: number | null): Promise<void>;
-	};
-
-	declare subtitleStyle: {
-		(): import('@nomercy-entertainment/nomercy-player-core').SubtitleStyle;
-		(patch: Partial<import('@nomercy-entertainment/nomercy-player-core').SubtitleStyle>): void;
-	};
-
+	// `subtitles` / `subtitle` / `subtitleStyle` are screen-domain concerns with
+	// no meaning on an audio backend — not part of the music player's contract.
 	declare audioTracks: () => AudioTrack[];
 	declare audioTrack: {
 		(): CurrentAudioTrackSelection | null;
@@ -699,33 +684,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 // Compose every shared player method onto the prototype. The kit's logic
 // gets wired into the class here — no inheritance, no per-library duplication.
 composeMixins(NMMusicPlayer.prototype, ...playerCoreMethods);
-
-// Override mixin-installed `subtitles()` — audio backends don't expose subtitle
-// tracks. Throw so consumers know this is structural, not just an empty list.
-NMMusicPlayer.prototype.subtitles = function (): never {
-	throw new NotImplementedError(
-		'Music backends don\'t expose subtitle tracks. Use a video player for subtitle support.',
-		'subtitles',
-	);
-};
-
-// Override mixin-installed `subtitle()` — reading or selecting a subtitle track
-// is a screen-domain concern that has no meaning on an audio backend.
-NMMusicPlayer.prototype.subtitle = function (): never {
-	throw new NotImplementedError(
-		'Subtitle track selection is not supported on the music player. Use a video player for subtitle support.',
-		'subtitle',
-	);
-};
-
-// Override mixin-installed `subtitleStyle()` — subtitle rendering style is a
-// screen-domain concern that has no meaning on an audio backend.
-NMMusicPlayer.prototype.subtitleStyle = function (): never {
-	throw new NotImplementedError(
-		'Subtitle style is not supported on the music player. Use a video player for subtitle support.',
-		'subtitleStyle',
-	);
-};
 
 {
 	const composedDispose: () => Promise<void> = NMMusicPlayer.prototype.dispose;

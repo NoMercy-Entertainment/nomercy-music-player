@@ -215,47 +215,6 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 	});
 
 	describe('tracks / chapters / quality (delegated to backend; empty when audio backend has no tracks)', () => {
-		it('subtitles throws NotImplementedError — audio backends do not expose subtitle tracks', async () => {
-			const musicPlayer = player();
-			await musicPlayer.ready();
-			expect(() => musicPlayer.subtitles()).toThrow('Music backends don\'t expose subtitle tracks');
-		});
-		it('subtitles throws with code core:not-implemented/subtitles', async () => {
-			const musicPlayer = player();
-			await musicPlayer.ready();
-			let err: unknown;
-			try { musicPlayer.subtitles(); }
-			catch (error) { err = error; }
-			expect((err as { code?: string })?.code).toBe('core:not-implemented/subtitles');
-		});
-		it('subtitle throws NotImplementedError — subtitle track selection is a screen-domain concern', async () => {
-			const musicPlayer = player();
-			await musicPlayer.ready();
-			let err: unknown;
-			try { musicPlayer.subtitle(null); }
-			catch (error) { err = error; }
-			expect((err as { name?: string })?.name).toBe('NotImplementedError');
-			expect((err as { code?: string })?.code).toBe('core:not-implemented/subtitle');
-		});
-		it('subtitle() read overload also throws NotImplementedError', async () => {
-			const musicPlayer = player();
-			await musicPlayer.ready();
-			expect(() => musicPlayer.subtitle()).toThrow();
-		});
-		it('subtitleStyle throws NotImplementedError — subtitle style is a screen-domain concern', async () => {
-			const musicPlayer = player();
-			await musicPlayer.ready();
-			let err: unknown;
-			try { musicPlayer.subtitleStyle(); }
-			catch (error) { err = error; }
-			expect((err as { name?: string })?.name).toBe('NotImplementedError');
-			expect((err as { code?: string })?.code).toBe('core:not-implemented/subtitleStyle');
-		});
-		it('subtitleStyle(patch) setter overload also throws NotImplementedError', async () => {
-			const musicPlayer = player();
-			await musicPlayer.ready();
-			expect(() => musicPlayer.subtitleStyle({ fontSize: 120 } as any)).toThrow();
-		});
 		it('audioTracks returns [] — single-stream audio has no track variants', async () => {
 			const musicPlayer = player();
 			await musicPlayer.ready();
