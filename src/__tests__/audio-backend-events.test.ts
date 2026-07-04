@@ -65,3 +65,18 @@ describe('IAudioBackend typed events (A1 + A10)', () => {
 		expect(payload?.kind).toBe('audio-element');
 	});
 });
+
+describe('AudioElementBackend duration()', () => {
+	it('returns 0 when element.duration is NaN', () => {
+		const div = document.createElement('div');
+		const backend = new AudioElementBackend(div);
+
+		// A media element reports NaN duration until metadata loads.
+		Object.defineProperty(backend.mediaElement(), 'duration', {
+			value: Number.NaN,
+			configurable: true,
+		});
+
+		expect(backend.duration()).toBe(0);
+	});
+});

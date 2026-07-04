@@ -151,6 +151,24 @@ describe('WebAudioBackend', () => {
 		});
 	});
 
+	// ── duration() NaN guard (inherited from core MediaElementBackend) ───────
+
+	describe('duration()', () => {
+		it('returns 0 when element.duration is NaN', () => {
+			installAudioContext();
+			const container = makeContainer();
+			const backend = new WebAudioBackend(container);
+
+			// A media element reports NaN duration until metadata loads.
+			Object.defineProperty(backend.mediaElement(), 'duration', {
+				value: Number.NaN,
+				configurable: true,
+			});
+
+			expect(backend.duration()).toBe(0);
+		});
+	});
+
 	// ── 3. outputNode() returns the volume GainNode ──────────────────────────
 
 	describe('outputNode()', () => {
