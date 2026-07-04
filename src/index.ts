@@ -237,6 +237,12 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare volumeUp: (step?: number) => void;
 	declare volumeDown: (step?: number) => void;
 
+	declare bumpActivity: () => void;
+	declare activityTracking: {
+		(): boolean;
+		(enabled: boolean): void;
+	};
+
 	declare playState: () => PlayState;
 	declare volumeState: () => VolumeState;
 	declare repeatState: {

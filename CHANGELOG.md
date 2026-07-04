@@ -1,6 +1,11 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
-## [Unreleased]
+## [2.0.0-rc.25] — 2026-07-04
+
+### Added
+
+- `IMusicPlayer` now declares the full contract the class always implemented: `item()` overloads, T-typed `queue()`, `peekNext()`/`peekPrevious()`, and `setTransitionStrategy()`. Consumers typing against the interface (instead of `NMMusicPlayer`) previously lost the item-typed surface — `crossfadeTo(peekNext())` and `queue().map(track => track.name)` failed to compile. Mirrors `IVideoPlayer`'s shape; additive, no runtime change.
+- Inherits player-core rc.26's player-owned activity tracking: the container carries `.active`/`.inactive` automatically for any UI to hook CSS onto, and `NMMusicPlayer` declares the new `bumpActivity()` / `activityTracking()` surface. Requires `@nomercy-entertainment/nomercy-player-core@^2.0.0-rc.26`.
 
 ### Removed
 
