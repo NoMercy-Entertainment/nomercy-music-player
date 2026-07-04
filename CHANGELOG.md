@@ -1,5 +1,11 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.0.0-rc.26] — 2026-07-05
+
+### Changed
+
+- The `time` event payload is now core rc.28's `TimeState` — the same five fields this player always emitted (`time`, `position`, `duration`, `remaining`, `percentage`) plus `buffered`, built through core's `_timeStateAt` instead of hand math in the timeupdate bridge. The music-only `MusicEventMap['time']` override is gone; the shape now comes from `BaseEventMap`, identical across music and video. One behavior refinement: `duration` in the payload now honors the item-duration fallback the `duration` event already used, instead of reading a possibly-unresolved backend value. Requires `@nomercy-entertainment/nomercy-player-core@^2.0.0-rc.28`.
+
 ## [2.0.0-rc.25] — 2026-07-04
 
 ### Added

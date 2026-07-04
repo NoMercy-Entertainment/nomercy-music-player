@@ -116,6 +116,7 @@ interface WireInternals {
 	_playState: PlayState;
 	_transitionPhase: (next: PlayerPhase) => void;
 	_checkItemEndingSoon: (currentTime: number, duration: number) => void;
+	_timeStateAt: (position: number) => KitTimeState;
 	_dispatchBefore: <TData>(beforeEvent: string, data: TData) => Promise<BeforeDispatchOutcome<TData>>;
 }
 
@@ -383,16 +384,10 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			const currentTime = instance.currentTime();
 			const totalDuration = instance.duration();
 			const safeD = Number.isFinite(totalDuration) && totalDuration > 0 ? totalDuration : 0;
-			const percentage = safeD > 0 ? (currentTime / safeD) * 100 : 0;
-			const remaining = safeD > 0 ? safeD - currentTime : 0;
 
-			this.emit('time', {
-				time: currentTime,
-				percentage,
-				position: currentTime,
-				duration: safeD,
-				remaining,
-			});
+			// The payload is core's full TimeState snapshot, built from the
+			// backend's fresh position — the internal slot syncs FROM this event.
+			this.emit('time', (this as unknown as WireInternals)._timeStateAt(currentTime));
 
 			// Core fires `itemEndingSoon` when the threshold is crossed.
 			// `_checkItemEndingSoon` is idempotent — it latches internally.

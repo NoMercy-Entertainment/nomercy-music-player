@@ -94,23 +94,6 @@ export interface MusicEventMap<T extends MusicPlaylistItem = MusicPlaylistItem> 
 
 	'crossfadeStart': { from: T | null; to: T; duration: number };
 	'crossfadeComplete': { item: T };
-	/**
-	 * Time event payload. Extends the kit `BaseEventMap['time']` with extra
-	 * convenience fields:
-	 *
-	 * - `time` — elapsed seconds (always present)
-	 * - `percentage` — elapsed time as 0–100 percent of total duration
-	 * - `position` — alias for `time` in seconds
-	 * - `duration` — total duration in seconds
-	 * - `remaining` — remaining seconds
-	 */
-	'time': {
-		time: number;
-		percentage: number;
-		position: number;
-		duration: number;
-		remaining: number;
-	};
 }
 
 export type { CrossfadeCurve };
