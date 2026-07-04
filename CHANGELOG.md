@@ -1,5 +1,16 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [Unreleased]
+
+### Removed
+
+- **Breaking vs rc.24 (types only):** the never-functional subtitle members (`subtitle()`, `subtitles()`, `subtitleStyle()`) no longer appear on the music player's type surface. They always threw `NotImplementedError` at runtime — subtitles are a screen concern with no music analogue — so no working consumer code existed against them. Requires the core release that removes them from the shared `IPlayer`.
+
+### Fixed
+
+- Published tarballs now actually contain `nomercy-music-player.iife.js`: `prepublishOnly` runs `build:all`. Previously the ESM-only rebuild inside `npm publish` wiped `dist/` after CI had built the bundle, so every rc shipped without its CDN artifact.
+- The IIFE CDN bundle build aliases core imports through core's exports map (same fix as the video player), keeping monorepo source builds identical to published-package resolution.
+
 ## [2.0.0-rc.24] — 2026-07-03
 
 ### Added

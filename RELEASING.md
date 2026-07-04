@@ -2,30 +2,45 @@
 
 ## RC publish (current)
 
-Published under the `rc` dist-tag via `publishConfig.tag: "rc"`. Install the latest RC:
+Published under the `rc` dist-tag via `publishConfig.tag: "rc"`. Install the rc:
 
 ```
 npm install @nomercy-entertainment/nomercy-music-player@rc
 ```
 
-A plain `npm install @nomercy-entertainment/nomercy-music-player` resolves nothing until a
-stable version is published under `latest`.
+Watch out: a plain `npm install` without the tag does not fail. It resolves the old
+v1 line, which is what `latest` points at until `2.0.0` is published to it. Always
+install with an explicit tag or version during the rc phase.
 
-## Stable 2.0.0 flip checklist
+## Build
 
-See `packages/nomercy-player-core/RELEASING.md` for the full trio checklist. Steps specific
-to this package:
+The package ships two artifacts from one `dist/`: the ESM build from `tsc` and the
+IIFE CDN bundle from Vite (`vite.iife.config.ts`). `npm run build` wipes `dist/` before
+it compiles, so the bundle must always be produced after it, never before.
 
-1. Bump version to `2.0.0` in `package.json`.
-2. Remove `"tag": "rc"` from `publishConfig`, or publish with `npm publish --tag latest`.
-3. The `@nomercy-entertainment/nomercy-player-core` range `^2.0.0-rc.15` already matches
-   `2.0.0` stable — no range change is required. Updating it to `^2.0.0` is conventional
-   but not mechanical.
-4. Add a `[2.0.0]` entry to `CHANGELOG.md` summarizing changes since the last RC.
+```
+npm run build       # tsc ESM dist + translation and asset passes
+npm run build:iife  # Vite IIFE bundle into the same dist/
+npm run build:all   # both, in the right order
+```
 
-## IMPORTANT: release.yml fires on any branch push
+The `prepublishOnly` hook runs `build:all`, so a publish from any environment packs
+the complete artifact set. `dist/` is gitignored.
 
-The `release.yml` workflow in this repo has no branch filter — pushing any commit that
-touches `src/` or `package.json` will trigger Create Release → npm publish. When pushing
-packaging-only changes on a non-master branch, use `[skip ci]` in the commit message to
-prevent an accidental publish.
+## Stable 2.0.0 flip
+
+The full trio choreography (publish order, lockfile refresh, docs flip, outside-in
+verification) lives in the core repo's RELEASING.md. Steps specific to this package:
+
+1. Bump the version to `2.0.0` in `package.json`.
+2. Remove `"tag": "rc"` from `publishConfig`.
+3. Update the `@nomercy-entertainment/nomercy-player-core` range (currently
+   `^2.0.0-rc.24`) to `^2.0.0`. The rc range already matches stable, so this is
+   convention, not mechanics.
+4. Add a `[2.0.0]` entry to `CHANGELOG.md` summarizing changes since the last rc.
+5. After core `2.0.0` is on the registry, run
+   `npm update @nomercy-entertainment/nomercy-player-core` before publishing so the
+   build scripts and lockfile come from the stable core.
+
+Publishing fires only from the npm-publish workflow, on a GitHub release or a manual
+dispatch. Ordinary pushes to master never publish.
