@@ -42,6 +42,7 @@ src/
 - Plugin teardown is enforced by core's leak harness — runs in CI on every plugin.
 - Artwork reads `item.image` first (cross-library canonical field on `BasePlaylistItem`), `item.cover` as a back-compat fallback. `cover` stays on `MusicPlaylistItem` for existing consumers but is legacy — new code populates `image`.
 - A config field identical to video's (no domain twist) belongs on core's `BasePlayerConfig`, not `MusicPlayerConfig` — see `controls`, inherited from core and applied in `_wireBackend()`.
+- Auto-advance is opt-in here, default-ON in video. A bare `setup({ playlist })` plays one track and stops; advancing requires the consumer to mount `AutoAdvancePlugin`. Video's `NMVideoPlayer` wires `ended → next()` itself (`autoAdvance` config, default `true`). Deliberate asymmetry (owner ruling 2026-07-01): never converge one side silently, and consumer docs must state the difference before any queue/playlist example.
 - Run `npm run typecheck` and `npm test` before committing changes.
 
 ## Conventions locked in this branch
