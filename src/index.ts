@@ -67,6 +67,7 @@ import {
 	playerCoreMethods,
 	resolvePlayerConstructor,
 	setPlayerAudioContext,
+	StateError,
 } from '@nomercy-entertainment/nomercy-player-core';
 import { AudioElementBackend } from './adapters/audio-backend/html5-audio';
 import { WebAudioBackend } from './adapters/audio-backend/web-audio';
@@ -502,12 +503,18 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	 * them. Ignored while a crossfade is already in flight. Dispatches
 	 * `beforeCrossfade` first; a listener may `preventDefault()` to cancel, in
 	 * which case `crossfadePrevented` fires and no buffers are touched.
+	 *
+	 * The gain trajectory resolves per-call `opts.curve` first, then
+	 * `crossfadeDefaults.curve` from the config, then linear. Throws
+	 * `StateError('core:player/crossfade-unsupported')` when the active
+	 * backend reports `supportsCrossfade() === false`.
 	 */
 	async crossfadeTo(item: T, opts?: CrossfadeOptions & ActionOptions): Promise<void> {
 		if (this._isTransitioning)
 			return; // idempotent guard — reject stacked crossfades
 
 		const durationMs = ((opts?.duration ?? this.options?.crossfadeDefaults?.duration ?? 5) * 1000);
+		const curve = opts?.curve ?? this.options?.crossfadeDefaults?.curve;
 		if (!item.url) {
 			throw new MediaFormatError({
 				code: 'core:media/missing-url',
@@ -515,6 +522,17 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 				scope: { kind: 'core' },
 				message: 'crossfadeTo(item) requires `item.url` to be present.',
 				context: { id: item.id },
+			});
+		}
+
+		const backend = this.backend();
+		if (!backend.supportsCrossfade()) {
+			throw new StateError({
+				code: 'core:player/crossfade-unsupported',
+				severity: 'error',
+				scope: { kind: 'core' },
+				message: 'crossfadeTo() requires a backend with dual-playback support — the active backend returned supportsCrossfade() === false.',
+				context: { backend: backend.kind },
 			});
 		}
 
@@ -548,8 +566,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			});
 		}
 
-		const backend = this.backend();
-
 		this._isTransitioning = true;
 		this.emit('crossfadeStart', {
 			from: result.data.from,
@@ -558,10 +574,14 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		});
 
 		try {
-			// Delegate all dual-buffer logic to the backend.
+			// Delegate all dual-buffer logic to the backend. The curve argument is
+			// omitted (not passed as undefined) when unresolved so the backend call
+			// stays identical to the pre-curve contract.
 			await backend.loadSecondary(url);
 			await backend.primeSecondary(opts?.startAt);
-			await backend.crossfade(targetDurationMs);
+			await (curve === undefined
+				? backend.crossfade(targetDurationMs)
+				: backend.crossfade(targetDurationMs, curve));
 		}
 		catch (err) {
 			this._isTransitioning = false;

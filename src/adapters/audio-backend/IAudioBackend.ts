@@ -6,7 +6,12 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
-import type { BackendLoaderState, BackendState, MinimalBackendEventPayload } from '@nomercy-entertainment/nomercy-player-core';
+import type {
+	BackendLoaderState,
+	BackendState,
+	CrossfadeCurve,
+	MinimalBackendEventPayload,
+} from '@nomercy-entertainment/nomercy-player-core';
 
 export const AUDIO_BACKEND_KIND = {
 	AUDIO_ELEMENT: 'audio-element',
@@ -61,7 +66,7 @@ export interface BackendEventPayload extends MinimalBackendEventPayload {
 }
 
 export { BACKEND_LOADER_STATE, BACKEND_STATE } from '@nomercy-entertainment/nomercy-player-core';
-export type { BackendLoaderState, BackendState };
+export type { BackendLoaderState, BackendState, CrossfadeCurve };
 
 /**
  * Concrete contract every audio backend implements. The Player calls these; plugins
@@ -175,7 +180,7 @@ export interface IAudioBackend {
 	 * Returns `true` when this backend supports parallel playback required for
 	 * crossfade. Both built-in backends return `true`. Custom backends that
 	 * cannot allocate a second playback handle should return `false`; the player
-	 * will throw `PlayerError('core:crossfade/unsupported')` rather than
+	 * will throw `StateError('core:player/crossfade-unsupported')` rather than
 	 * attempting the transition.
 	 */
 	supportsCrossfade(): boolean;
@@ -214,8 +219,11 @@ export interface IAudioBackend {
 	 * at item boundaries. Use `WebAudioBackend` for sample-accurate transitions.
 	 *
 	 * @param durationMs - Total crossfade duration in milliseconds. 0 = instant swap.
+	 * @param curve - Gain trajectory. `'equal-power'` applies the constant-power
+	 * cosine fade (both gains pass ≈ 0.707 at the midpoint — no perceived volume
+	 * dip); omitted or `'linear'` keeps the plain linear ramp.
 	 */
-	crossfade(durationMs: number): Promise<void>;
+	crossfade(durationMs: number, curve?: CrossfadeCurve): Promise<void>;
 
 	/**
 	 * Read the secondary's current gain (0..1). Returns `0` when no secondary

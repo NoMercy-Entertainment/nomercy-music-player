@@ -10,6 +10,7 @@ import type {
 	BackendEventPayload,
 	BackendLoaderState,
 	BackendState,
+	CrossfadeCurve,
 	IAudioBackend,
 } from './IAudioBackend';
 
@@ -431,13 +432,18 @@ export class AudioElementBackend
 	 * volume over `durationMs`. Starts secondary playback at t = 0.
 	 * On completion the secondary element becomes the new primary; the old
 	 * primary element is disposed.
+	 *
+	 * `curve: 'equal-power'` shapes both trajectories with the constant-power
+	 * cosine (same math as the kit's `CrossfadeTransitionStrategy`); omitted or
+	 * `'linear'` keeps the plain linear ramp.
 	 */
-	async crossfade(durationMs: number): Promise<void> {
+	async crossfade(durationMs: number, curve?: CrossfadeCurve): Promise<void> {
 		const secondary = this._secondary;
 		if (!secondary)
 			throw new Error('crossfade() called without a loaded secondary');
 
 		const startVolume = this.element.volume;
+		const equalPower = curve === 'equal-power';
 
 		secondary.volume = 0;
 		this._secondaryVol = 0;
@@ -456,9 +462,11 @@ export class AudioElementBackend
 			const tick = (): void => {
 				const elapsed = performance.now() - startTime;
 				const progress = Math.min(1, elapsed / durationMs);
+				const outGain = equalPower ? Math.cos(progress * 0.5 * Math.PI) : 1 - progress;
+				const inGain = equalPower ? Math.cos((1 - progress) * 0.5 * Math.PI) : progress;
 
-				this.element.volume = startVolume * (1 - progress);
-				secondary.volume = startVolume * progress;
+				this.element.volume = startVolume * outGain;
+				secondary.volume = startVolume * inGain;
 				this._secondaryVol = secondary.volume;
 
 				if (progress < 1) {

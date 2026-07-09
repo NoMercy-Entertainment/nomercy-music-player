@@ -10,7 +10,7 @@
  * Slice 08 — Music domain-port unit tests.
  *
  * Covers:
- *   - Crossfade depth: curve routing (MEDIUM finding) + negative startAt pass-through
+ *   - Crossfade depth: curve routing + negative startAt pass-through
  *
  * The port-adapter groups formerly here moved with their v2 API-consistency
  * pass:
@@ -105,26 +105,18 @@ describe('NMMusicPlayer.crossfadeTo() — curve routing', () => {
 	});
 
 	/**
-	 * FINDING: crossfadeTo() drops opts.curve — IAudioBackend.crossfade() is
-	 * declared as crossfade(durationMs: number) with no curve parameter.
-	 * CrossfadeOptions.curve is accepted at the call site but never forwarded.
-	 * Severity: MEDIUM — the curve option silently has no effect.
-	 *
-	 * This test pins the CURRENT behavior: backend.crossfade is called with
-	 * durationMs only, regardless of opts.curve.
+	 * Formerly pinned the MEDIUM finding that opts.curve was silently dropped.
+	 * The finding is fixed: IAudioBackend.crossfade takes an optional `curve`
+	 * parameter and crossfadeTo() forwards the resolved curve
+	 * (per-call opts > crossfadeDefaults.curve > linear).
 	 */
-	it('test 1 — backend.crossfade receives durationMs only; opts.curve is silently dropped (MEDIUM finding: IAudioBackend.crossfade has no curve param)', async () => {
+	it('test 1 — backend.crossfade receives durationMs and the per-call curve', async () => {
 		const { player, mock } = setupPlayer();
 
 		await player.crossfadeTo(makeTrack(), { curve: 'linear', duration: 3 });
 
-		// crossfade is called with exactly one argument — the duration in ms.
-		// curve is NOT forwarded because the interface has no curve parameter.
-		expect(mock.crossfade).toHaveBeenCalledWith(3000);
+		expect(mock.crossfade).toHaveBeenCalledWith(3000, 'linear');
 		expect(mock.crossfade).toHaveBeenCalledTimes(1);
-
-		const callArgs = (mock.crossfade as ReturnType<typeof vi.fn>).mock.calls[0] as unknown[];
-		expect(callArgs).toHaveLength(1);
 	});
 
 	/**

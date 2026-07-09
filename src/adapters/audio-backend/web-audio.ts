@@ -10,6 +10,7 @@ import type {
 	BackendEventPayload,
 	BackendLoaderState,
 	BackendState,
+	CrossfadeCurve,
 	IAudioBackend,
 } from './IAudioBackend';
 
@@ -30,6 +31,23 @@ import {
 interface WebkitAudioContextGlobal {
 	AudioContext?: typeof AudioContext;
 	webkitAudioContext?: typeof AudioContext;
+}
+
+const EQUAL_POWER_CURVE_SAMPLES = 129;
+
+/**
+ * Sample the constant-power cosine trajectory from `from` to `to` — the same
+ * math as the kit's `CrossfadeTransitionStrategy` gain curve. One endpoint is
+ * always 0 in a crossfade, so both gains pass ≈ 0.707 × peak at the midpoint
+ * and the summed power stays constant (no perceived volume dip).
+ */
+function equalPowerCurve(from: number, to: number): Float32Array {
+	const curve = new Float32Array(EQUAL_POWER_CURVE_SAMPLES);
+	for (let i = 0; i < EQUAL_POWER_CURVE_SAMPLES; i++) {
+		const fraction = i / (EQUAL_POWER_CURVE_SAMPLES - 1);
+		curve[i] = from * Math.cos(fraction * 0.5 * Math.PI) + to * Math.cos((1 - fraction) * 0.5 * Math.PI);
+	}
+	return curve;
 }
 
 function resolveAudioContext(existing?: AudioContext): AudioContext {
@@ -569,9 +587,11 @@ export class WebAudioBackend
 	 * ramps to 0 and secondary gain ramps to the current primary volume over
 	 * `durationMs`. Starts secondary playback immediately.
 	 *
-	 * Uses `linearRampToValueAtTime` — sample-accurate per the Web Audio spec.
+	 * `curve: 'linear'` (or omitted) uses `linearRampToValueAtTime`;
+	 * `'equal-power'` schedules the constant-power cosine trajectory via
+	 * `setValueCurveAtTime`. Both are sample-accurate per the Web Audio spec.
 	 */
-	async crossfade(durationMs: number): Promise<void> {
+	async crossfade(durationMs: number, curve?: CrossfadeCurve): Promise<void> {
 		const secondaryEl = this._secondaryEl;
 		const secondaryGain = this._secondaryGain;
 		if (!secondaryEl || !secondaryGain) {
@@ -597,6 +617,15 @@ export class WebAudioBackend
 			if (primaryGain)
 				primaryGain.gain.value = 0;
 			secondaryGain.gain.value = targetVolume;
+		}
+		else if (curve === 'equal-power') {
+			const durationSeconds = durationMs / 1000;
+			if (primaryGain) {
+				primaryGain.gain.cancelScheduledValues(now);
+				primaryGain.gain.setValueCurveAtTime(equalPowerCurve(primaryGain.gain.value, 0), now, durationSeconds);
+			}
+			secondaryGain.gain.cancelScheduledValues(now);
+			secondaryGain.gain.setValueCurveAtTime(equalPowerCurve(0, targetVolume), now, durationSeconds);
 		}
 		else {
 			if (primaryGain) {
