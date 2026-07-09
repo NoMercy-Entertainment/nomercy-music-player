@@ -85,7 +85,18 @@ export default defineConfig({
 						replacement: `${coreRoot}/plugins/visualization/index.ts`,
 					},
 					{
-						// Remaining subpath imports that resolve to bare .ts files (streams/*, cues/*).
+						// The kit's ./streams/* export keys resolve INTO dist/adapters/stream/*;
+						// their source counterparts live under src/adapters/stream/, not
+						// src/streams/, so the bare-file regex below cannot reach them.
+						find: '@nomercy-entertainment/nomercy-player-core/streams/native',
+						replacement: `${coreRoot}/adapters/stream/native.ts`,
+					},
+					{
+						find: '@nomercy-entertainment/nomercy-player-core/streams/hls',
+						replacement: `${coreRoot}/adapters/stream/hls.ts`,
+					},
+					{
+						// Remaining subpath imports that resolve to bare .ts files (cues/*).
 						find: /^@nomercy-entertainment\/nomercy-player-core\/(.*)$/,
 						replacement: `${coreRoot}/$1.ts`,
 					},
