@@ -155,6 +155,11 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	declare options: MusicPlayerConfig<T>;
 
+	// Kit-managed state field — set by initPlayerCoreState, declared here so
+	// the setup wrapper can read it without a cast.
+	/** Bumped only by `item(target)` navigations — distinguishes a real consumer preselection from the queue's default cursor. */
+	declare _currentEpoch: number | undefined;
+
 	// ── Type-only declarations for the methods composed in from the kit's
 	// `playerCoreMethods`. The bodies live in the kit; these declarations let
 	// consumers see the music-typed contract without runtime cost.
@@ -710,8 +715,9 @@ composeMixins(NMMusicPlayer.prototype, ...playerCoreMethods);
 }
 
 // Wrap the kit-composed `setup` with the music-domain defaults every entry
-// point must get. This lives on the class, not in a factory, so `nmplayer()`
-// and `new NMMusicPlayer()` both behave identically.
+// point must get — crossfade defaults + first-track priming. This lives on
+// the class, not in a factory, so `nmplayer()` and `new NMMusicPlayer()`
+// both behave identically.
 {
 	type _KitSetupFn = (config: MusicPlayerConfig<MusicPlaylistItem>) => NMMusicPlayer<MusicPlaylistItem>;
 	const kitSetup: _KitSetupFn = NMMusicPlayer.prototype.setup as _KitSetupFn;
@@ -738,6 +744,30 @@ composeMixins(NMMusicPlayer.prototype, ...playerCoreMethods);
 			}),
 		};
 		const instance = kitSetup.call(this, enrichedConfig);
+
+		// Every setup with a non-empty playlist primes the first track —
+		// loads it so the player never mounts blank. Music has no autoPlay
+		// config knob (unlike video), so the prime never plays; setup() only
+		// arms the queue and play() does not lazy-load, so waiting for
+		// mediaReady here would deadlock.
+		void this.ready()
+			.then(() => {
+				const items = this.queue();
+				if (items.length === 0)
+					return;
+
+				// A consumer that pre-picked a track between setup() and
+				// ready() keeps its choice — the queue cursor DEFAULTS to
+				// item 0 the moment items exist, so only an explicit
+				// `item(target)` navigation (which bumps `_currentEpoch`)
+				// counts as a real preselection.
+				const preselected = this._currentEpoch ? this.item() : undefined;
+				this.item(preselected ?? 0, {
+					autoplay: false,
+					source: 'auto-play',
+				});
+			})
+			.catch(() => { /* setup failed — error surfaced via the 'error' event */ });
 
 		return instance;
 	};
