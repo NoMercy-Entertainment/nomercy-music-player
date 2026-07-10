@@ -109,7 +109,7 @@ Setter forms are unchanged. Full details in the kit migration guide.
 
 Full v1 → v2 migration guide lives in the docs site:
 
-**[docs.nomercy.tv/player/music/migration-v1-v2](https://docs.nomercy.tv/player/music/migration-v1-v2)**
+**[docs.nomercy.tv/nomercy-music-player/recipes/migrate-from-v1](https://docs.nomercy.tv/nomercy-music-player/recipes/migrate-from-v1)**
 
 Quick orientation:
 
