@@ -62,20 +62,19 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 	/** Attaches the `item` listener to auto-fetch lyrics when a new track loads. */
 	override use(): void {
 		this.on('item', (payload) => {
+			this.clear();
+
 			if (this.opts?.autoFetch === false)
 				return;
 
 			const item = payload?.item;
-			if (!item || !this.isMusicItem(item)) {
-				this.clear();
+			if (!item || !this.isMusicItem(item))
 				return;
-			}
 
 			const url = this.resolveLyricsUrl(item);
-			if (!url) {
-				this.clear();
+			if (!url)
 				return;
-			}
+
 			void this.fetchAndAttach(url);
 		});
 	}

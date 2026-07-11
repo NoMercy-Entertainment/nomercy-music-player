@@ -128,6 +128,25 @@ describe('LyricsPlugin residue', () => {
 			expect(plugin.all()).toHaveLength(0);
 		});
 
+		it('autoFetch: false still clears a manually-fetched track\'s lyrics on the next item change', async () => {
+			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(lrcResponse(TWO_CUE_LRC));
+			const { player, plugin } = await makePlayerWithLyrics({ autoFetch: false });
+
+			player.queue([track('a'), track('b')]);
+			player.item('a');
+			await tick();
+
+			await plugin.fetchLyrics('https://example.com/manual-a.lrc');
+			expect(fetchSpy).toHaveBeenCalledTimes(1);
+			expect(plugin.all()).toHaveLength(2);
+
+			player.item('b');
+			await tick();
+
+			expect(plugin.all()).toHaveLength(0);
+			expect(plugin.current()).toBeUndefined();
+		});
+
 		it('clears loaded lyrics when the next item has no lyricsUrl', async () => {
 			vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(lrcResponse(TWO_CUE_LRC));
 			const { player, plugin } = await makePlayerWithLyrics();
