@@ -481,6 +481,8 @@ export class AudioElementBackend
 
 		// Swap: old primary is silenced; secondary takes the primary slot.
 		const old = this.element;
+		// A fresh secondary element defaults muted=false — carry the flag across.
+		secondary.muted = old.muted;
 		this.detachDomBridges(old);
 		try {
 			old.pause();

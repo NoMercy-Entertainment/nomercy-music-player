@@ -670,6 +670,8 @@ export class WebAudioBackend
 
 		// 2. Detach DOM event bridges from the old primary.
 		const oldEl = this.element;
+		// A fresh secondary element defaults muted=false — carry the flag across.
+		secondaryEl.muted = oldEl.muted;
 		this.detachDomBridges(oldEl);
 
 		// 3. Pause and release the old primary element.
