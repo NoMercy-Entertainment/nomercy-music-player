@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Graph-tap-mid-HLS regression suite (Bug 3).
+ * Graph-tap-mid-HLS regression suite.
  *
  * `AudioElementBackend.applyGraphCrossOrigin()` sets `crossOrigin='anonymous'`
  * and called a bare `this.element.load()` to restore playback position when a
@@ -22,6 +22,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 
 // Stub hls.js so the dynamic import in html5-audio.ts resolves under Vitest.
 // attachMedia mirrors real hls.js by assigning a MediaSource blob URL to the
@@ -48,8 +49,6 @@ vi.mock('hls.js', () => {
 	}
 	return { default: FakeHls };
 });
-
-import { AudioElementBackend } from '../adapters/audio-backend/html5-audio';
 
 interface FakeHlsInstance {
 	attachMedia: ReturnType<typeof vi.fn>;

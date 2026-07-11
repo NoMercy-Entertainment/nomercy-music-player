@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 
 /**
- * WebAudioBackend crossfade AnalyserNode remount regression suite (Bug 2).
+ * WebAudioBackend crossfade AnalyserNode remount regression suite.
  *
  * Baseline graph topology is `source → gain → analyser → destination`
  * (`ensureGraph()`). `loadSecondary()` built the secondary chain as

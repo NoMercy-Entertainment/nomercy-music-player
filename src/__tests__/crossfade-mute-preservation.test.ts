@@ -7,7 +7,7 @@
 // -----------------------------------------------------------------------------
 
 /**
- * Crossfade mute-preservation regression suite (Bug 1).
+ * Crossfade mute-preservation regression suite.
  *
  * A fresh secondary `<audio>` element always defaults `muted=false`. Neither
  * `crossfade()` nor the primary/secondary swap copied the outgoing primary's
