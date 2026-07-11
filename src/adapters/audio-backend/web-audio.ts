@@ -105,6 +105,7 @@ export class WebAudioBackend
 	private _secondaryEl?: HTMLAudioElement;
 	private _secondarySource?: MediaElementAudioSourceNode;
 	private _secondaryGain?: GainNode;
+	private _secondaryAnalyser?: AnalyserNode;
 
 	constructor(container?: HTMLElement, opts?: { audioContext?: AudioContext }) {
 		const resolved = WebAudioBackend.resolveElement(container);
@@ -468,12 +469,19 @@ export class WebAudioBackend
 		const gainNode = this.ctx.createGain();
 		gainNode.gain.value = 0;
 		const sourceNode = this.ctx.createMediaElementSource(el);
+		const analyserNode = this.ctx.createAnalyser();
+		analyserNode.fftSize = 2048;
+
+		// Mirror the baseline topology (source → gain → analyser → destination)
+		// so a spectrum tap survives promotion, not just the volume chain.
 		sourceNode.connect(gainNode);
-		gainNode.connect(this.ctx.destination);
+		gainNode.connect(analyserNode);
+		analyserNode.connect(this.ctx.destination);
 
 		this._secondaryEl = el;
 		this._secondarySource = sourceNode;
 		this._secondaryGain = gainNode;
+		this._secondaryAnalyser = analyserNode;
 
 		await new Promise<void>((resolve, reject) => {
 			const onMeta = (): void => {
@@ -530,6 +538,7 @@ export class WebAudioBackend
 	disposeSecondary(): void {
 		const gain = this._secondaryGain;
 		const source = this._secondarySource;
+		const analyser = this._secondaryAnalyser;
 		const el = this._secondaryEl;
 		if (!el)
 			return;
@@ -557,6 +566,14 @@ export class WebAudioBackend
 				/* ignore */
 			}
 		}
+		if (analyser) {
+			try {
+				analyser.disconnect();
+			}
+			catch {
+				/* ignore */
+			}
+		}
 
 		try {
 			el.pause();
@@ -572,6 +589,7 @@ export class WebAudioBackend
 		this._secondaryEl = undefined;
 		this._secondarySource = undefined;
 		this._secondaryGain = undefined;
+		this._secondaryAnalyser = undefined;
 	}
 
 	/** Wait for the secondary element to reach `readyState >= 3`, then optionally seek to `seekMs`. */
@@ -651,6 +669,7 @@ export class WebAudioBackend
 		// 1. Disconnect and clear the old primary's Web Audio graph.
 		const oldSource = this.sourceNode;
 		const oldGain = this.gainNode;
+		const oldAnalyser = this.analyserNode;
 		if (oldSource) {
 			try {
 				oldSource.disconnect();
@@ -662,6 +681,14 @@ export class WebAudioBackend
 		if (oldGain) {
 			try {
 				oldGain.disconnect();
+			}
+			catch {
+				/* ignore */
+			}
+		}
+		if (oldAnalyser) {
+			try {
+				oldAnalyser.disconnect();
 			}
 			catch {
 				/* ignore */
@@ -690,12 +717,14 @@ export class WebAudioBackend
 		this.element = secondaryEl;
 		this.sourceNode = this._secondarySource;
 		this.gainNode = this._secondaryGain;
+		this.analyserNode = this._secondaryAnalyser;
 		this.ownsElement = true;
 
 		// 5. Clear secondary slots.
 		this._secondaryEl = undefined;
 		this._secondarySource = undefined;
 		this._secondaryGain = undefined;
+		this._secondaryAnalyser = undefined;
 
 		// 6. Re-attach DOM bridges to the new primary element.
 		this.attachDomBridges(
