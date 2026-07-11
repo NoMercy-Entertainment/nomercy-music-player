@@ -6,6 +6,7 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
+import type { HlsHandle } from '@nomercy-entertainment/nomercy-player-core';
 import type {
 	BackendEventPayload,
 	BackendLoaderState,
@@ -303,6 +304,11 @@ export class AudioElementBackend
 	 * applies to the NEXT resource load, so when a source is already attached we
 	 * re-load it and restore the playback position. Same-origin and already-set
 	 * elements are left untouched, and a missing src needs no reload.
+	 *
+	 * When hls.js owns the element, a bare `element.load()` aborts its
+	 * MediaSource attachment behind hls.js's back and nothing re-attaches —
+	 * the stream dies. Re-attach through hls.js instead so its pipeline
+	 * survives the tap.
 	 */
 	private applyGraphCrossOrigin(): void {
 		if (this.element.crossOrigin === 'anonymous')
@@ -316,6 +322,11 @@ export class AudioElementBackend
 
 		if (!hadSource)
 			return;
+
+		if (this.hlsInstance && this.isAttachableHls(this.hlsInstance)) {
+			this.hlsInstance.attachMedia(this.element);
+			return;
+		}
 
 		const restore = (): void => {
 			try {
@@ -332,6 +343,13 @@ export class AudioElementBackend
 		};
 		this.element.addEventListener('loadedmetadata', restore, { once: true });
 		this.element.load();
+	}
+
+	/** Narrows the base `HlsHandle` to the concrete hls.js instance shape that also exposes `attachMedia`. */
+	private isAttachableHls(
+		handle: HlsHandle,
+	): handle is HlsHandle & { attachMedia: (el: HTMLMediaElement) => void } {
+		return typeof (handle as { attachMedia?: unknown }).attachMedia === 'function';
 	}
 
 	// ── IAudioBackend-required methods not on base ────────────────────────────
