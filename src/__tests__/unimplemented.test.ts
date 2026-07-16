@@ -186,7 +186,7 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			await musicPlayer.ready();
 			expect(musicPlayer.bandwidth()).toBe(0);
 		});
-		it('bandwidthEstimator replaces the estimator (kit-level overload)', async () => {
+		it('bandwidthEstimator replaces the estimator (kit-level overload) and bandwidth() reflects it', async () => {
 			const musicPlayer = player();
 			await musicPlayer.ready();
 			// `setBandwidthEstimator` was renamed to `bandwidthEstimator(fn?)` —
@@ -194,6 +194,9 @@ describe('NMMusicPlayer — still-unimplemented method inventory', () => {
 			const anyP = musicPlayer as unknown as { bandwidthEstimator: (fn?: () => number) => (() => number) | void };
 			expect(() => anyP.bandwidthEstimator(() => 12345)).not.toThrow();
 			expect(typeof anyP.bandwidthEstimator()).toBe('function');
+			// Same wiring as the video player — the override must actually
+			// feed bandwidth(), not sit in an unread slot.
+			expect(musicPlayer.bandwidth()).toBe(12345);
 		});
 	});
 
