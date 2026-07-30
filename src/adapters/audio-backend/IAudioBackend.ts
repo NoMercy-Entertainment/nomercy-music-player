@@ -106,6 +106,14 @@ export interface IAudioBackend {
 	currentTime(): number;
 	currentTime(seconds: number): void;
 	duration(): number;
+	/**
+	 * The absolute timeline position, in seconds, that buffered data reaches.
+	 * Not a duration ahead of the playhead, and not a fraction: a scrubber
+	 * draws its buffered bar as `buffered() / duration()`, the same frame of
+	 * reference `currentTime()` and `duration()` use.
+	 *
+	 * `0` when no data is buffered at all.
+	 */
 	buffered(): number;
 	bufferedRanges(): TimeRanges;
 	seekable(): TimeRanges;
