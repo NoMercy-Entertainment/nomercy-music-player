@@ -384,6 +384,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	}
 
 	private _firstFrameEmitted = false;
+	private _announcedDuration = 0;
 
 	private _makeTimeupdateHandler(instance: IAudioBackend): () => void {
 		return () => {
@@ -394,6 +395,17 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			// The payload is core's full TimeState snapshot, built from the
 			// backend's fresh position — the internal slot syncs FROM this event.
 			this.emit('time', (this as unknown as WireInternals)._timeStateAt(currentTime));
+
+			// A streamed track has no length at `loadedmetadata` — the element
+			// reports Infinity/NaN until enough of the container has arrived.
+			// Nothing re-reads it afterwards, so without this the player is
+			// stuck on a zero duration for the whole track: no seekbar, and
+			// every duration-gated policy (ending-soon, preload, crossfade)
+			// stays switched off.
+			if (safeD > 0 && safeD !== this._announcedDuration) {
+				this._announcedDuration = safeD;
+				this.emit('duration', { duration: safeD });
+			}
 
 			// Core fires `itemEndingSoon` when the threshold is crossed.
 			// `_checkItemEndingSoon` is idempotent — it latches internally.
@@ -407,7 +419,10 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		// `duration` field so seekbars have a length before metadata arrives.
 		return () => {
 			const backendDuration = instance.duration();
-			if (backendDuration > 0) {
+			// A stream reports Infinity until its length is known. Publishing
+			// that poisons every consumer of the value — remaining time,
+			// percentage, drift comparisons — so it counts as no duration.
+			if (Number.isFinite(backendDuration) && backendDuration > 0) {
 				this.emit('duration', { duration: backendDuration });
 				return;
 			}
@@ -451,7 +466,10 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			},
 			onPlaying: () => { this.emit('playing', undefined); },
 			onPause: () => { this.emit('pause', undefined); },
-			onReset: () => { this._firstFrameEmitted = false; },
+			onReset: () => {
+				this._firstFrameEmitted = false;
+				this._announcedDuration = 0;
+			},
 		});
 
 		instance.on('ended', () => {
