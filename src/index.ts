@@ -118,6 +118,7 @@ interface WireInternals {
 	_transitionPhase: (next: PlayerPhase) => void;
 	_checkItemEndingSoon: (currentTime: number, duration: number) => void;
 	_timeStateAt: (position: number) => KitTimeState;
+	_mediaIsStale: (() => boolean) | undefined;
 	_dispatchBefore: <TData>(beforeEvent: string, data: TData) => Promise<BeforeDispatchOutcome<TData>>;
 }
 
@@ -388,6 +389,16 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 
 	private _makeTimeupdateHandler(instance: IAudioBackend): () => void {
 		return () => {
+			// Between a `next()` and the incoming track's mount, this element is
+			// still the OUTGOING track's — the cursor already moved. Publishing
+			// its position here hands every listener the previous track's
+			// position stamped with the new track's identity. Optional call:
+			// the dependency range admits a core that predates the reader, and
+			// an older core must degrade to the old behaviour, not throw on
+			// every tick.
+			if ((this as unknown as WireInternals)._mediaIsStale?.())
+				return;
+
 			const currentTime = instance.currentTime();
 			const totalDuration = instance.duration();
 			const safeD = Number.isFinite(totalDuration) && totalDuration > 0 ? totalDuration : 0;
