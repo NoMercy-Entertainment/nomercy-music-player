@@ -750,10 +750,22 @@ composeMixins(NMMusicPlayer.prototype, ...playerCoreMethods);
 	// 'disposed'); tearing the backend down unconditionally first (as before)
 	// would kill playback even when a plugin blocked the disposal.
 	NMMusicPlayer.prototype.dispose = async function (this: NMMusicPlayer<MusicPlaylistItem>): Promise<void> {
+		// The container id is released before the first await, not after the
+		// teardown resolves. A consumer re-creating on the same container in the
+		// same tick was handed back the very player it had just asked to
+		// dispose, and `setup()` then threw `already-setup` — leaving that
+		// player attached and playing with nobody holding a reference.
+		const claimedId: string = this.playerId;
+		_instances.delete(claimedId);
+
 		await composedDispose.call(this);
 
-		if (this.phase() !== 'disposed')
-			return; // beforeDispose was prevented — backend + registry stay intact
+		if (this.phase() !== 'disposed') {
+			// beforeDispose was prevented — the player is still alive, so it
+			// takes its id back and the backend stays intact.
+			_instances.set(claimedId, this);
+			return;
+		}
 
 		const self = this as unknown as { _backend?: IAudioBackend }; // dispose needs write access to the private _backend field
 		try { self._backend?.dispose?.(); }
