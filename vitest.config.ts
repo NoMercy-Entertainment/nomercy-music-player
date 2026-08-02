@@ -7,6 +7,7 @@
 // -----------------------------------------------------------------------------
 
 import { existsSync } from 'node:fs';
+import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { nomercyTranslationsPlugin } from '@nomercy-entertainment/nomercy-player-core/vite-plugin';
 import { defineConfig } from 'vitest/config';
@@ -20,7 +21,12 @@ const hlsMock = fileURLToPath(new URL('./src/__tests__/__mocks__/hls.js.ts', imp
 // Monorepo: alias the core to its live TypeScript source so tests pick up unbuilt
 // changes. Standalone / CI: no sibling core checkout, so resolve the core from the
 // installed @nomercy-entertainment/nomercy-player-core package via node_modules.
-const useCoreSource = existsSync(coreRoot);
+//
+// NOMERCY_INSTALLED_DEPS=1 forces the standalone path inside the monorepo,
+// which is the only way to run what CI runs. Without it a test that asserts
+// behaviour from an UNRELEASED core passes here and fails there, and the diff
+// that caused it is invisible — the sibling checkout answers every import.
+const useCoreSource = process.env.NOMERCY_INSTALLED_DEPS !== '1' && existsSync(coreRoot);
 
 export default defineConfig({
 	plugins: [nomercyTranslationsPlugin()],
