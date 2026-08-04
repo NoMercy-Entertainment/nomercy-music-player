@@ -401,7 +401,7 @@ describe('NMMusicPlayer facade residue', () => {
 	// ── auth header provider ──────────────────────────────────────────────────
 
 	describe('auth header provider wiring', () => {
-		it('resolves a Bearer header from a function-valued bearerToken', async () => {
+		it('hands the consumer hook through, url and all', async () => {
 			idCounter += 1;
 			const id = `facade-${idCounter}`;
 			const div = document.createElement('div');
@@ -409,24 +409,30 @@ describe('NMMusicPlayer facade residue', () => {
 			document.body.appendChild(div);
 
 			const harness = makeBackendHarness();
-			let capturedProvider: (() => Promise<string | undefined>) | undefined;
-			harness.backend['setAuthHeaderProvider'] = vi.fn((provider: () => Promise<string | undefined>) => {
+			let capturedProvider: ((url: string) => string | undefined) | undefined;
+			harness.backend['setAuthHeaderProvider'] = vi.fn((provider: (url: string) => string | undefined) => {
 				capturedProvider = provider;
 			});
 
 			const player = new NMMusicPlayer(id);
 			player.setup({
 				backendFactory: () => harness.backend,
-				auth: { bearerToken: () => Promise.resolve('token-123') },
+				// The consumer decides, per url. The facade hands its answer straight
+				// through rather than minting a credential out of `bearerToken`.
+				auth: {
+					mediaAuthorization: (url: string) =>
+						url.startsWith('https://mine.test/') ? 'Bearer token-123' : undefined,
+				},
 			} as any);
 			await player.ready();
 			player.backend();
 
 			expect(capturedProvider).toBeTypeOf('function');
-			await expect(capturedProvider!()).resolves.toBe('Bearer token-123');
+			expect(capturedProvider!('https://mine.test/a.m3u8')).toBe('Bearer token-123');
+			expect(capturedProvider!('https://ice1.somafm.com/groovesalad')).toBeUndefined();
 		});
 
-		it('resolves undefined when no bearer token is configured', async () => {
+		it('answers nothing when the consumer wired no media hook', async () => {
 			idCounter += 1;
 			const id = `facade-${idCounter}`;
 			const div = document.createElement('div');
@@ -434,8 +440,8 @@ describe('NMMusicPlayer facade residue', () => {
 			document.body.appendChild(div);
 
 			const harness = makeBackendHarness();
-			let capturedProvider: (() => Promise<string | undefined>) | undefined;
-			harness.backend['setAuthHeaderProvider'] = vi.fn((provider: () => Promise<string | undefined>) => {
+			let capturedProvider: ((url: string) => string | undefined) | undefined;
+			harness.backend['setAuthHeaderProvider'] = vi.fn((provider: (url: string) => string | undefined) => {
 				capturedProvider = provider;
 			});
 
@@ -444,7 +450,7 @@ describe('NMMusicPlayer facade residue', () => {
 			await player.ready();
 			player.backend();
 
-			await expect(capturedProvider!()).resolves.toBeUndefined();
+			expect(capturedProvider!('https://mine.test/a.m3u8')).toBeUndefined();
 		});
 	});
 });
