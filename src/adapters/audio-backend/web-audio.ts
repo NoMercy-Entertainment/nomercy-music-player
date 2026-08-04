@@ -200,7 +200,7 @@ export class WebAudioBackend
 
 		const useHlsJs = isHls(url) && !supportsNativeHls(this.element);
 
-		const headerValue = this._authHeaderProvider?.(url);
+		const headerValue = await this._authHeaderProvider?.();
 		const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 		await new Promise<void>((resolve, reject) => {
@@ -222,7 +222,7 @@ export class WebAudioBackend
 			if (useHlsJs && hlsMod) {
 				this.hlsInstance
 					= attachHlsOrFallback(hlsMod.default, this.element, url, headerValue, {
-						xhrSetup: createAuthorizationXhrSetup(this._authHeaderProvider),
+						xhrSetup: createAuthorizationXhrSetup(headerValue),
 					}) ?? undefined;
 			}
 			else {
@@ -509,13 +509,13 @@ export class WebAudioBackend
 			// runs without losing the resolve/reject handles.
 			void (async (): Promise<void> => {
 				try {
-					const headerValue = this._authHeaderProvider?.(url);
+					const headerValue = await this._authHeaderProvider?.();
 					const useHlsJs = isHls(url) && !supportsNativeHls(el);
 					const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 					if (useHlsJs && hlsMod) {
 						attachHlsOrFallback(hlsMod.default, el, url, headerValue, {
-							xhrSetup: createAuthorizationXhrSetup(this._authHeaderProvider),
+							xhrSetup: createAuthorizationXhrSetup(headerValue),
 						});
 					}
 					else {

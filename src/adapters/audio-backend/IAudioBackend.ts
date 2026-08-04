@@ -7,7 +7,6 @@
 // -----------------------------------------------------------------------------
 
 import type {
-	AuthHeaderProvider,
 	BackendLoaderState,
 	BackendState,
 	CrossfadeCurve,
@@ -96,7 +95,7 @@ export interface IAudioBackend {
 	 * manifests/segments). Optional — backends without their own network
 	 * stack omit it.
 	 */
-	setAuthHeaderProvider?(provider: AuthHeaderProvider): void;
+	setAuthHeaderProvider?(provider: () => string | undefined | Promise<string | undefined>): void;
 
 	// Transport
 	play(): Promise<void>;

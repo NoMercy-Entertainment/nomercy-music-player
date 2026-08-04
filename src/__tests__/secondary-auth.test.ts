@@ -92,7 +92,7 @@ describe('WebAudioBackend — loadSecondary auth (Bug 2 regression)', () => {
 		const container = makeContainer();
 		const backend = new WebAudioBackend(container);
 
-		backend.setAuthHeaderProvider((): string => 'Bearer test-token-123');
+		backend.setAuthHeaderProvider(async (): Promise<string> => 'Bearer test-token-123');
 
 		const loadPromise = backend.loadSecondary('http://media.example.test/track.mp3');
 		fireMetadata(container);
@@ -126,7 +126,7 @@ describe('WebAudioBackend — loadSecondary auth (Bug 2 regression)', () => {
 		const container = makeContainer();
 		const backend = new WebAudioBackend(container);
 
-		const tokenProvider = vi.fn((): string => 'Bearer fresh-token');
+		const tokenProvider = vi.fn(async (): Promise<string> => 'Bearer fresh-token');
 		backend.setAuthHeaderProvider(tokenProvider);
 
 		const p1 = backend.loadSecondary('http://media.example.test/a.mp3');
