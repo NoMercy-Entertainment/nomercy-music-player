@@ -126,7 +126,7 @@ export class AudioElementBackend
 		const useHlsJs = isHls(url) && !supportsNativeHls(this.element);
 
 		// Resolve auth header before entering the Promise so the executor stays synchronous.
-		const headerValue = await this._authHeaderProvider?.();
+		const headerValue = this._authHeaderProvider?.(url);
 		const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 		await new Promise<void>((resolve, reject) => {
@@ -153,7 +153,7 @@ export class AudioElementBackend
 						enableWorker: true,
 						lowLatencyMode: false,
 						enableCEA708Captions: true,
-						xhrSetup: createAuthorizationXhrSetup(headerValue),
+						xhrSetup: createAuthorizationXhrSetup(this._authHeaderProvider),
 					}) ?? undefined;
 			}
 			else {
