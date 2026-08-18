@@ -43,6 +43,10 @@
 			"types": "./dist/adapters/audio-backend/index.d.ts",
 			"import": "./dist/adapters/audio-backend/index.js"
 		},
+		"./adapters/similarity-engine": {
+			"types": "./dist/adapters/similarity-engine/index.d.ts",
+			"import": "./dist/adapters/similarity-engine/index.js"
+		},
 		"./plugins": {
 			"types": "./dist/plugins/index.d.ts",
 			"import": "./dist/plugins/index.js"

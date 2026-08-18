@@ -7,3 +7,4 @@
 // -----------------------------------------------------------------------------
 
 export * from './audio-backend/index';
+export * from './similarity-engine/index';

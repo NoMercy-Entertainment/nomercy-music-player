@@ -47,6 +47,8 @@ export {
 	spectrumPlugin,
 	SpectrumPlugin,
 	VisualizationPlugin,
+	volumeMemoryPlugin,
+	VolumeMemoryPlugin,
 } from '@nomercy-entertainment/nomercy-player-core';
 export type {
 	AudioGraphEvents,
@@ -63,6 +65,7 @@ export type {
 	SpectrumOptions,
 	VisualizationFrame,
 	VisualizationOptions,
+	VolumeMemoryOptions,
 } from '@nomercy-entertainment/nomercy-player-core';
 
 export { embedPlugin, EmbedPlugin } from '@nomercy-entertainment/nomercy-player-core/plugins/embed';

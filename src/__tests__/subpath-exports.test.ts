@@ -90,6 +90,7 @@ const EXPECTED_EXPORT_KEYS = [
 	'.',
 	'./adapters',
 	'./adapters/audio-backend',
+	'./adapters/similarity-engine',
 	'./plugins',
 	'./plugins/auto-advance',
 	'./plugins/cast-sender',

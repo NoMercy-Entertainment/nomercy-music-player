@@ -141,7 +141,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	extends EventEmitter<MusicEventMap<T>>
 	implements IPlayer<MusicEventMap<T>>, IMusicPlayer<T> {
 	readonly playerId: string = '';
-	container: HTMLElement = <HTMLElement>{};
+	container!: HTMLElement;
 
 	get id(): string {
 		return this.playerId;
