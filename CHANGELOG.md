@@ -1,5 +1,16 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.1.0] — 2026-08-20
+
+### Added
+
+- Re-exports `volumeMemoryPlugin` / `VolumeMemoryPlugin` from `@nomercy-entertainment/nomercy-player-core@2.1.0`.
+- `stripInternal` added to the build.
+
+### Changed
+
+- Built against `@nomercy-entertainment/nomercy-player-core@^2.1.0`.
+
 ## [2.0.1] — 2026-07-18
 
 First published stable of the v2 line (2.0.0 was withdrawn before release), published under the `latest` dist-tag — a plain `npm install @nomercy-entertainment/nomercy-music-player` now resolves `2.0.1` instead of the v1 `1.0.1`. Built against the stable `@nomercy-entertainment/nomercy-player-core@^2.0.1`. This promotes the `2.0.0-rc` line to stable.
