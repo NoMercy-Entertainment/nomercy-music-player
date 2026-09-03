@@ -724,13 +724,6 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	declare setTransitionStrategy: (strategy: ITransitionStrategy) => void;
 	declare preloadStrategy: () => IPreloadStrategy;
 	declare transitionStrategy: () => ITransitionStrategy;
-
-	// ── DOM construction helpers ── composed via `domMethods` mixin.
-	declare createElement: IPlayer<MusicEventMap>['createElement'];
-	declare createButton: IPlayer<MusicEventMap>['createButton'];
-	declare createSVG: IPlayer<MusicEventMap>['createSVG'];
-	declare addClasses: IPlayer<MusicEventMap>['addClasses'];
-	declare removeClasses: IPlayer<MusicEventMap>['removeClasses'];
 }
 
 // Compose every shared player method onto the prototype. The kit's logic
