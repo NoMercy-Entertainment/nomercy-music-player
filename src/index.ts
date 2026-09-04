@@ -603,7 +603,13 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			// Delegate all dual-buffer logic to the backend. The curve argument is
 			// omitted (not passed as undefined) when unresolved so the backend call
 			// stays identical to the pre-curve contract.
-			await backend.loadSecondary(url);
+			// Through the same seam the primary load() uses (loading.ts:
+			// `resolveUrl(rawUrl, 'media')`). Handed the raw item URL, the
+			// secondary element resolves a relative path against the page origin
+			// instead of `baseUrl` and 404s — and every consumer keeps item URLs
+			// relative, because that is how the media server sends them.
+			const resolvedUrl = (await this.resolveUrl(url, 'media')).href;
+			await backend.loadSecondary(resolvedUrl);
 			await backend.primeSecondary(opts?.startAt);
 			await (curve === undefined
 				? backend.crossfade(targetDurationMs)

@@ -236,11 +236,12 @@ describe('NMMusicPlayer.crossfadeTo()', () => {
 			const first = player.crossfadeTo(makeTrack('http://test/a.mp3'));
 
 			await crossfadeStarted;
-			// loadSecondary + primeSecondary run synchronously-ish inside the
-			// try block right after crossfadeStart fires — one more microtask
-			// tick lets primeSecondary's resolved promise settle before the
-			// crossfade() mock call is made.
-			await Promise.resolve();
+			// Wait for the crossfade() call itself rather than draining a fixed
+			// number of microtask ticks. The steps between crossfadeStart and
+			// crossfade() (URL resolution, loadSecondary, primeSecondary) each
+			// own their awaits, so a tick count is a hidden coupling to how many
+			// there happen to be today.
+			await vi.waitFor(() => expect(crossfadeCallCount).toBe(1));
 
 			// Attempt a second while the first is mid-crossfade — should be a no-op.
 			await player.crossfadeTo(makeTrack('http://test/b.mp3'));

@@ -384,6 +384,23 @@ describe('NMMusicPlayer facade residue', () => {
 			expect(player.isTransitioning()).toBe(false);
 		});
 
+		// The primary load() resolves an item URL through `resolveUrl(url,
+		// 'media')`, which is what prepends baseUrl. Handed the raw relative
+		// path instead, the secondary element resolves it against the page
+		// origin and 404s — and every consumer keeps item URLs relative,
+		// because that is the shape the media server sends.
+		it('resolves the target URL against baseUrl before handing it to the backend', async () => {
+			const { player, harness } = await makePlayer({
+				baseUrl: 'https://cdn.example/music',
+			});
+
+			await player.crossfadeTo(track('a', { url: '/K/Ketsa/02.Saviour.Above.mp3' }));
+
+			expect(harness.backend['loadSecondary']).toHaveBeenCalledWith(
+				'https://cdn.example/music/K/Ketsa/02.Saviour.Above.mp3',
+			);
+		});
+
 		it('resets isTransitioning() and rethrows when the backend crossfade fails', async () => {
 			const { player, harness } = await makePlayer();
 
