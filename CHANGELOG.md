@@ -1,5 +1,15 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.2.1] — 2026-09-04
+
+### Fixed
+
+- `crossfadeTo()` handed the raw item URL to the backend's `loadSecondary()`, skipping the `resolveUrl(url, 'media')` seam every item goes through on the primary `load()` — the seam that prepends `baseUrl`. Consumers keep item URLs relative, because that is the shape the media server sends them in, so the secondary element resolved against the page origin and 404'd. Crossfade was broken for anyone setting `baseUrl`.
+
+### Changed
+
+- Built against `@nomercy-entertainment/nomercy-player-core@2.2.1`, which carries the refused-playback fixes: a declined autoplay no longer escapes as an uncaught `NotAllowedError`, and the player no longer reports `PLAYING` over a silent element afterwards.
+
 ## [2.1.0] — 2026-08-20
 
 ### Added
