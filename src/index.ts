@@ -499,8 +499,10 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		// lazily so getter-style tokens (Vue refs, stores) stay live.
 		// Read per request rather than captured, so a consumer whose token or
 		// rule changes mid-session is not answered from a stale closure.
+		// Live config, not `options.auth`: setup seeds it and `player.auth()`
+		// updates it, so a rule set after setup reaches media requests too.
 		instance.setAuthHeaderProvider?.((url: string) =>
-			this.options?.auth?.mediaAuthorization?.(url));
+			this.auth()?.mediaAuthorization?.(url));
 
 		// AudioElementBackend has no audioContext(); only WebAudioBackend does.
 		// Registering it here keeps AudioGraphPlugin on the one shared context.
