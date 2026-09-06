@@ -331,6 +331,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		(this as { playerId: string }).playerId = resolved.id;
 		this.container = resolved.div;
 		_instances.set(resolved.id, this as unknown as NMMusicPlayer<MusicPlaylistItem>); // registry stores the base item type; subclass is assignment-compatible
+		this._wireAutomaticCrossfade();
 	}
 
 	/** Test-only: clear the registry. Not part of the public API. */
@@ -350,6 +351,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 	// lives inside each backend implementation (loadSecondary / crossfade / etc.).
 	private _backend?: IAudioBackend;
 	private _isTransitioning = false;
+	private _automaticCrossfadeWired = false;
 
 	private _createBackend(kind: AudioBackendKind, opts: MusicPlayerConfig<T> | undefined): IAudioBackend {
 		const factory = opts?.backendFactory;
@@ -519,6 +521,37 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		this._makePlayStateHandlers(instance);
 		instance.on('timeupdate', this._makeTimeupdateHandler(instance));
 		instance.on('loadedmetadata', this._makeLoadedMetadataHandler(instance));
+		this._wireAutomaticCrossfade();
+	}
+
+	/**
+	 * The kit's transition runner reports the overlap window and ramps the
+	 * secondary gain, but it never loads a secondary, so on its own the gain
+	 * writes to an empty slot and one track cuts to the next.
+	 *
+	 * `crossfadeTo` is the path that loads, primes and ramps, so the automatic
+	 * window hands off to it. Its own in-flight guard makes a second caller a
+	 * no-op, which is what keeps this from stacking with an auto-advance plugin
+	 * that crossfades on its own.
+	 */
+	private _wireAutomaticCrossfade(): void {
+		if (this._automaticCrossfadeWired)
+			return;
+
+		this._automaticCrossfadeWired = true;
+
+		this.on('transitionStart', ({ incoming }) => {
+			if (this.options?.crossfadeEnabled === false)
+				return;
+			if (!incoming?.url)
+				return;
+			if (!this.backend().supportsCrossfade())
+				return;
+
+			void this.crossfadeTo(incoming as T).catch(() => {
+				// crossfadeTo reports its own failures through the error channel.
+			});
+		});
 	}
 
 	// ── Loading ── composed in via `loadingMethods` mixin.
