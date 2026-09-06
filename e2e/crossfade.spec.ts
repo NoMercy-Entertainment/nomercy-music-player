@@ -213,4 +213,145 @@ test.describe('crossfade (NMMusicPlayer.crossfadeTo)', () => {
 		// This proves we're measuring mid-fade, not after it completed.
 		expect(energyDuring440).toBeGreaterThan(0);
 	});
+
+	// The two tests above drive `crossfadeTo` directly. The queue's own window is
+	// a separate path: the kit reports it as `transitionStart` and the music
+	// player hands that to `crossfadeTo`. Before that handoff existed the window
+	// ramped a gain on an empty slot, so every track cut straight to the next
+	// while three transition events said otherwise.
+	//
+	// Nothing is emitted by hand here. The e2e tones are short enough that the
+	// lead window opens on its own shortly after playback starts, and a synthetic
+	// `transitionStart` fired on top of the real one is rejected by
+	// `crossfadeTo`'s stacked-crossfade guard, which looks identical to the
+	// handoff never running.
+	test('the automatic window mixes the incoming track, not just its events', async ({ page }) => {
+		const result = await page.evaluate(async () => {
+			const player = (window as any).playerWA;
+			const AudioGraphPlugin = (window as any).AudioGraphPlugin;
+			const graph = player.getPlugin(AudioGraphPlugin);
+
+			const trackA = {
+				id: 'auto-a',
+				url: '/e2e/media/trackA.mp3',
+				title: 'Track A',
+			};
+			const trackB = {
+				id: 'auto-b',
+				url: '/e2e/media/trackB.mp3',
+				title: 'Track B',
+			};
+
+			let sawTransition = false;
+			let sawCrossfadeStart = false;
+			let crossfadeError = '';
+			player.on('transitionStart', () => {
+				sawTransition = true;
+			});
+			player.on('crossfadeStart', () => {
+				sawCrossfadeStart = true;
+			});
+			player.on('error', (e: any) => {
+				crossfadeError = String(e?.error?.code ?? e?.error?.message ?? '');
+			});
+
+			player.queue([trackA, trackB]);
+			player.item(trackA.id, { autoplay: true });
+
+			await new Promise<void>(r => setTimeout(r, 700));
+			const ctx = player.audioContext();
+			if (!ctx || ctx.state !== 'running') {
+				return {
+					skipped: true,
+					reason: `AudioContext state: ${ctx?.state ?? 'null'}`,
+				};
+			}
+
+			function readBandEnergy(loHz: number, hiHz: number): number {
+				const analyser = graph.analyserSource();
+				const buf = new Uint8Array(analyser.frequencyBinCount);
+				analyser.getByteFrequencyData(buf);
+				const sr = analyser.context.sampleRate;
+				const binHz = sr / analyser.fftSize;
+				const lo = Math.max(0, Math.floor(loHz / binHz));
+				const hi = Math.min(buf.length - 1, Math.ceil(hiHz / binHz));
+				let sum = 0;
+				for (let i = lo; i <= hi; i++) sum += buf[i] ?? 0;
+				return sum / Math.max(1, hi - lo + 1);
+			}
+
+			// An overlap is the one thing a cut cannot produce: both tones loud at
+			// the same instant. Comparing the incoming band against a baseline
+			// depends on sampling before the window opens, which is a race; this
+			// does not.
+			let bestOverlap = 0;
+			let peak440 = 0;
+			let peak880 = 0;
+			for (let i = 0; i < 60; i++) {
+				await new Promise<void>(r => setTimeout(r, 80));
+				const e440 = readBandEnergy(400, 480);
+				const e880 = readBandEnergy(840, 920);
+				peak440 = Math.max(peak440, e440);
+				peak880 = Math.max(peak880, e880);
+				bestOverlap = Math.max(bestOverlap, Math.min(e440, e880));
+			}
+
+			return {
+				skipped: false,
+				sawTransition,
+				sawCrossfadeStart,
+				crossfadeError,
+				bestOverlap,
+				peak440,
+				peak880,
+			};
+		});
+
+		if ((result as { skipped: true; reason: string }).skipped) {
+			test.skip(true, `Skipped: ${(result as { skipped: true; reason: string }).reason}`);
+			return;
+		}
+
+		const {
+			sawTransition,
+			sawCrossfadeStart,
+			crossfadeError,
+			bestOverlap,
+			peak440,
+			peak880,
+		} = result as {
+			skipped: false;
+			sawTransition: boolean;
+			sawCrossfadeStart: boolean;
+			crossfadeError: string;
+			bestOverlap: number;
+			peak440: number;
+			peak880: number;
+		};
+
+		// The kit still reports the window. That much was true while nothing played.
+		expect(sawTransition).toBe(true);
+
+		// The handoff has to reach crossfadeTo, without an error and without being
+		// rejected as a stacked call.
+		expect(crossfadeError, 'the handoff raised an error').toBe('');
+		expect(sawCrossfadeStart, 'transitionStart did not reach crossfadeTo').toBe(true);
+
+		// Both tones have to be present at all, or there is nothing to overlap.
+		expect(peak440, 'the outgoing tone never played').toBeGreaterThan(0);
+		expect(peak880, 'the incoming tone never played').toBeGreaterThan(0);
+
+		// And they have to be loud at the same instant. A cut moves one to the
+		// other with no moment where both carry energy, which is what the old
+		// behavior did while emitting all three transition events.
+		// Measured both ways on this fixture: a real fade reaches an overlap of
+		// ~109 against a peak of ~217, and a zero-length cut reaches ~40 against
+		// ~201. Forty percent of the louder peak sits between them with room on
+		// each side. A bare `> 0` does not discriminate, because the analyser's
+		// smoothing leaves both bands briefly non-zero through any transition.
+		expect(
+			bestOverlap,
+			`the two tones never sounded together: overlap=${bestOverlap}, peaks=${peak440}/${peak880}`,
+		).toBeGreaterThan(Math.max(peak440, peak880) * 0.4);
+	});
 });
