@@ -656,8 +656,9 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		}
 
 		// Advance the cursor so `item()` reflects the new item. The setter
-		// overload emits the `current` event, which downstream plugins
-		// (mediaSession, lyrics, autoAdvance) listen to.
+		// overload emits the `item` event, which downstream plugins
+		// (mediaSession, lyrics, autoAdvance) listen to. `current` is the old
+		// name and is warned about rather than emitted.
 		this.item?.(targetItem.id ?? targetItem);
 
 		this._isTransitioning = false;
