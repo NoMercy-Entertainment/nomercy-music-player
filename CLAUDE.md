@@ -6,7 +6,7 @@ Headless, plugin-driven, event-driven music player engine. Built on `@nomercy-en
 
 - TypeScript (ES2022), outputs ESM via `tsc` + IIFE CDN bundle via Vite (`build:iife`)
 - Testing: Vitest (unit) + Playwright (e2e)
-- Linting: `@antfu/eslint-config` (ESLint 9 flat config) + `@nomercy-entertainment/eslint-plugin-player` (planned)
+- Linting: `@antfu/eslint-config` (ESLint 9 flat config) + `@nomercy-entertainment/eslint-plugin-player`
 - Formatting: Prettier — tabs, width 4, single quotes, semis, printWidth 150
 
 ## Structure
@@ -33,6 +33,11 @@ src/
 
 ## Rules
 
+Shared player-trio architecture — `BasePlayerConfig` field-sharing, the plugin
+event bus, the auto-advance asymmetry, and the lint tooling — is documented
+once in `../PLAYER-TRIO.md`. Read it; it is not repeated here. What follows is
+what's specific to music.
+
 - Headless. No UI in core. UI is a plugin concern.
 - Every feature beyond raw transport is a plugin.
 - Every plugin uses core's `Plugin` base — `static readonly id`, `use()`, `dispose()`.
@@ -41,8 +46,6 @@ src/
 - Plugins surface errors only via `this.throw({ ... })` — never `this.player.emit('error', ...)` directly.
 - Plugin teardown is enforced by core's leak harness — runs in CI on every plugin.
 - Artwork reads `item.image` first (cross-library canonical field on `BasePlaylistItem`), `item.cover` as a back-compat fallback. `cover` stays on `MusicPlaylistItem` for existing consumers but is legacy — new code populates `image`.
-- A config field identical to video's (no domain twist) belongs on core's `BasePlayerConfig`, not `MusicPlayerConfig` — see `controls`, inherited from core and applied in `_wireBackend()`.
-- Auto-advance is opt-in here, default-ON in video. A bare `setup({ playlist })` plays one track and stops; advancing requires the consumer to mount `AutoAdvancePlugin`. Video's `NMVideoPlayer` wires `ended → next()` itself (`autoAdvance` config, default `true`). Deliberate asymmetry (owner ruling 2026-07-01): never converge one side silently, and consumer docs must state the difference before any queue/playlist example.
 - Run `npm run typecheck` and `npm test` before committing changes.
 
 ## Conventions locked in this branch
