@@ -102,7 +102,7 @@ export default antfu({
 		'style/object-curly-newline': 'off',
 	},
 }, {
-	// NoMercy player code standard (packages/eslint-plugin-player).
+	// NoMercy player code standard (packages/player-web/eslint-plugin-player).
 	files: ['src/**/*.ts'],
 	plugins: { player },
 	rules: {
