@@ -1,5 +1,12 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [2.2.3] — 2026-09-25
+
+### Fixed
+
+- The automatic crossfade now fades.
+- Changing auth at runtime now applies to media requests.
+
 ## [2.2.1] — 2026-09-04
 
 ### Fixed
