@@ -137,7 +137,7 @@
 		"typescript": "^6.0.3",
 		"vite": "^8.0.13",
 		"vite-plugin-dts": "^5.0.0",
-		"vitest": "^4.1.6"
+		"vitest": "^5.0.2"
 	},
 	"publishConfig": {
 		"access": "public"
