@@ -127,8 +127,8 @@
 		"@nomercy-entertainment/eslint-plugin-player": "^0.3.0",
 		"@playwright/test": "^1.60.0",
 		"@types/node": "^25.9.0",
-		"@vitest/coverage-v8": "^4.1.9",
-		"@vitest/ui": "^4.1.6",
+		"@vitest/coverage-v8": "^4.1.11",
+		"@vitest/ui": "^4.1.11",
 		"eslint": "^10.4.0",
 		"happy-dom": "^20.9.0",
 		"hls.js": "^1.6.16",
@@ -137,7 +137,7 @@
 		"typescript": "^6.0.3",
 		"vite": "^8.0.13",
 		"vite-plugin-dts": "^5.0.0",
-		"vitest": "^4.1.6"
+		"vitest": "^4.1.11"
 	},
 	"publishConfig": {
 		"access": "public"
