@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   test:
-    runs-on: [self-hosted, Linux, X64, beast-unit]
+    # GitHub-hosted for now: the self-hosted runners failed in the sibling KMP
+    # repos (#48). Back to self-hosted once those are fixed.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
