@@ -203,6 +203,57 @@ describe('WebAudioBackend', () => {
 		});
 	});
 
+	// ── 3b. volume() before and after the graph exists ───────────────────────
+
+	describe('volume()', () => {
+		it('hands the element volume to the gain node once the graph exists', () => {
+			installAudioContext();
+			const container = makeContainer();
+			const backend = new WebAudioBackend(container);
+			const ctx = lastCtx();
+
+			// volume-memory restores a stored level before the graph is built.
+			backend.volume(0);
+			expect(backend.mediaElement().volume).toBe(0);
+
+			backend.outputNode(ctx as unknown as AudioContext);
+			backend.volume(0.8);
+
+			// The gain node owns the level now; a stuck element volume is silence.
+			expect(backend.mediaElement().volume).toBe(1);
+			expect(ctx.gainNode.gain.setTargetAtTime).toHaveBeenLastCalledWith(
+				expect.closeTo(0.64, 5),
+				0,
+				0.01,
+			);
+		});
+
+		it('carries a pending element volume into the gain node when the graph is built', () => {
+			installAudioContext();
+			const container = makeContainer();
+			const backend = new WebAudioBackend(container);
+			const ctx = lastCtx();
+
+			backend.volume(0.5);
+			const pending = backend.mediaElement().volume;
+			backend.outputNode(ctx as unknown as AudioContext);
+
+			expect(ctx.gainNode.gain.value).toBe(pending);
+			expect(backend.mediaElement().volume).toBe(1);
+		});
+
+		it('keeps the element volume as the level while no graph exists', () => {
+			installAudioContext();
+			const container = makeContainer();
+			const backend = new WebAudioBackend(container);
+
+			backend.volume(0.5);
+
+			expect(backend.mediaElement().volume).toBeCloseTo(0.25, 5);
+			expect(backend.volume()).toBeCloseTo(0.25, 5);
+		});
+	});
+
 	// ── 4. analyserSource() returns an AnalyserNode ──────────────────────────
 
 	describe('analyserSource()', () => {

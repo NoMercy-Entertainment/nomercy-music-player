@@ -1,5 +1,11 @@
 # Changelog — @nomercy-entertainment/nomercy-music-player
 
+## [Unreleased]
+
+### Fixed
+
+- The Web Audio backend no longer stays silent after a restored volume of 0. A level set before the audio graph existed stayed on the element, where later volume changes never reached it. The gain node now takes that level when the graph is built, and the element stays at full volume.
+
 ## [2.2.4] — 2026-10-08
 
 ### Fixed
