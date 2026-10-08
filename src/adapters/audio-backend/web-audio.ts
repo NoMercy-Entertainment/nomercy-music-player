@@ -167,6 +167,10 @@ export class WebAudioBackend
 
 		this.sourceNode = this.ctx.createMediaElementSource(this.element);
 		this.gainNode = this.ctx.createGain();
+		// A level set before the graph existed lives on the element. Move it to
+		// the gain node, which owns the level from here on, or it scales silence.
+		this.gainNode.gain.value = this.element.volume;
+		this.element.volume = 1;
 		this.analyserNode = this.ctx.createAnalyser();
 		this.analyserNode.fftSize = 2048;
 
@@ -333,6 +337,7 @@ export class WebAudioBackend
 			// Ramp over 10 ms to avoid clicks — smooth per spec rules.
 			const now = this.ctx.currentTime;
 			this.gainNode.gain.setTargetAtTime(gain, now, 0.01);
+			this.element.volume = 1;
 		}
 		else {
 			this.element.volume = gain;
