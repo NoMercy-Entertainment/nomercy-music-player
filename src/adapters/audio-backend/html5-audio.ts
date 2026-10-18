@@ -548,6 +548,21 @@ export class AudioElementBackend
 			},
 			() => this.currentState,
 		);
+
+		if (this.sourceCtx) {
+			const ctx = this.sourceCtx;
+			this.sourceNode?.disconnect();
+			this.analyserNode?.disconnect();
+			this.outputGain?.disconnect();
+			this.sourceNode = undefined;
+			this.analyserNode = undefined;
+			this.outputGain = undefined;
+			this.ensureSourceGraph(ctx);
+			this.emit('backend:sourceswap', {
+				sourceNode: this.outputGain!,
+				analysisNode: this.analyserNode,
+			});
+		}
 	}
 
 	secondaryGain(): number;
