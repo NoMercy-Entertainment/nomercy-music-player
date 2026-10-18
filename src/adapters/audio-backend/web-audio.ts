@@ -106,6 +106,7 @@ export class WebAudioBackend
 	private _secondarySource?: MediaElementAudioSourceNode;
 	private _secondaryGain?: GainNode;
 	private _secondaryAnalyser?: AnalyserNode;
+	private activeEqualPowerFade?: { startTime: number; endTime: number };
 
 	constructor(container?: HTMLElement, opts?: { audioContext?: AudioContext }) {
 		const resolved = WebAudioBackend.resolveElement(container);
@@ -336,7 +337,17 @@ export class WebAudioBackend
 		if (this.gainNode) {
 			// Ramp over 10 ms to avoid clicks — smooth per spec rules.
 			const now = this.ctx.currentTime;
-			this.gainNode.gain.setTargetAtTime(gain, now, 0.01);
+			const fade = this.activeEqualPowerFade;
+			if (fade && now < fade.endTime) {
+				// setTargetAtTime inside a value curve throws NotSupportedError.
+				this.gainNode.gain.cancelScheduledValues(fade.startTime);
+				this.gainNode.gain.setValueAtTime(gain, now);
+				this.gainNode.gain.linearRampToValueAtTime(0, fade.endTime);
+				this.secondaryGain(level);
+			}
+			else {
+				this.gainNode.gain.setTargetAtTime(gain, now, 0.01);
+			}
 			this.element.volume = 1;
 		}
 		else {
@@ -643,6 +654,10 @@ export class WebAudioBackend
 		}
 		else if (curve === 'equal-power') {
 			const durationSeconds = durationMs / 1000;
+			this.activeEqualPowerFade = {
+				startTime: now,
+				endTime,
+			};
 			if (primaryGain) {
 				primaryGain.gain.cancelScheduledValues(now);
 				primaryGain.gain.setValueCurveAtTime(equalPowerCurve(primaryGain.gain.value, 0), now, durationSeconds);
@@ -668,6 +683,7 @@ export class WebAudioBackend
 		if (durationMs > 0) {
 			await new Promise<void>(resolve => setTimeout(resolve, durationMs));
 		}
+		this.activeEqualPowerFade = undefined;
 
 		// ── Promote secondary → primary ────────────────────────────────────────
 
@@ -760,7 +776,15 @@ export class WebAudioBackend
 
 		if (this._secondaryGain) {
 			const now = this.ctx.currentTime;
-			this._secondaryGain.gain.setTargetAtTime(gain, now, 0.01);
+			const fade = this.activeEqualPowerFade;
+			if (fade && now < fade.endTime) {
+				this._secondaryGain.gain.cancelScheduledValues(fade.startTime);
+				this._secondaryGain.gain.setValueAtTime(this._secondaryGain.gain.value, now);
+				this._secondaryGain.gain.linearRampToValueAtTime(gain, fade.endTime);
+			}
+			else {
+				this._secondaryGain.gain.setTargetAtTime(gain, now, 0.01);
+			}
 		}
 	}
 

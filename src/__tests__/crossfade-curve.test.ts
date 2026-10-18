@@ -476,6 +476,27 @@ describe('WebAudioBackend.crossfade() — curve scheduling', () => {
 		expect((backend as unknown as Record<string, unknown>)['_secondaryGain']).toBeUndefined();
 	});
 
+	it('accepts volume changes while equal-power curves are active', async () => {
+		const { backend, primaryGain, secondaryGain } = await primeBackend();
+		const fade = backend.crossfade(300, 'equal-power');
+
+		for (const node of [primaryGain, secondaryGain]) {
+			let curveActive = true;
+			node.gain.setTargetAtTime.mockImplementation(() => {
+				if (curveActive)
+					throw new DOMException('Target time is inside a value curve', 'NotSupportedError');
+			});
+			node.gain.cancelScheduledValues.mockImplementation(() => { curveActive = false; });
+		}
+
+		expect(() => backend.volume(0.5)).not.toThrow();
+		expect(() => backend.secondaryGain(0.5)).not.toThrow();
+		expect(primaryGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(0, 0.3);
+		expect(secondaryGain.gain.linearRampToValueAtTime).toHaveBeenCalledWith(expect.any(Number), 0.3);
+		await vi.advanceTimersByTimeAsync(300);
+		await fade;
+	});
+
 	it('omitted curve keeps the linearRampToValueAtTime path — setValueCurveAtTime untouched', async () => {
 		const { backend, primaryGain, secondaryGain } = await primeBackend();
 
