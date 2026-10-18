@@ -58,6 +58,7 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 	private tracker?: CueTracker<LyricPayload>;
 	private cueList?: CueList<LyricPayload>;
 	private activeCue?: Cue<LyricPayload>;
+	private requestVersion = 0;
 
 	/** Attaches the `item` listener to auto-fetch lyrics when a new track loads. */
 	override use(): void {
@@ -96,6 +97,7 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 
 	/** Tear down the active cue tracker without disposing the plugin. */
 	clear(): void {
+		this.requestVersion++;
 		if (this.tracker) {
 			this.tracker.dispose();
 			this.tracker = undefined;
@@ -131,6 +133,7 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 	}
 
 	private async fetchAndAttach(url: string): Promise<CueList<LyricPayload> | undefined> {
+		const requestVersion = ++this.requestVersion;
 		const parser = this.resolveParser(url);
 		if (!parser) {
 			this.report({
@@ -145,6 +148,8 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 			raw = await this.fetch(url);
 		}
 		catch (err) {
+			if (requestVersion !== this.requestVersion)
+				return undefined;
 			this.report({
 				code: 'plugin:lyrics/fetch-failed',
 				message: `Failed to fetch lyrics from ${url}`,
@@ -153,6 +158,8 @@ export class LyricsPlugin<T extends MusicPlaylistItem = MusicPlaylistItem> exten
 			});
 			return undefined;
 		}
+		if (requestVersion !== this.requestVersion)
+			return undefined;
 		const list = parser.parse(raw) as CueList<LyricPayload>;
 		this.attach(list);
 		return list;

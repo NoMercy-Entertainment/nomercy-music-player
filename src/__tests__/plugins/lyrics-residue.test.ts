@@ -86,6 +86,28 @@ describe('LyricsPlugin residue', () => {
 	// ── Auto-fetch via the real built-in LRC parser ───────────────────────────
 
 	describe('auto-fetch on item change', () => {
+		it('ignores lyrics fetched for a previous item after the next item loads', async () => {
+			let resolveFirst!: (response: Response) => void;
+			vi.spyOn(globalThis, 'fetch')
+				.mockImplementationOnce(() => new Promise<Response>((resolve) => { resolveFirst = resolve; }))
+				.mockResolvedValueOnce(lrcResponse('[00:01.00]Second track\n'));
+			const { player, plugin } = await makePlayerWithLyrics();
+			const loadedCounts: number[] = [];
+			player.on('plugin:lyrics:loaded' as any, (data: { count: number }) => { loadedCounts.push(data.count); });
+			player.queue([
+				track('a', { lyricsUrl: 'https://example.com/a.lrc' }),
+				track('b', { lyricsUrl: 'https://example.com/b.lrc' }),
+			]);
+			player.item('a');
+			player.item('b');
+			await tick();
+			resolveFirst(lrcResponse('[00:01.00]First track\n'));
+			await tick();
+
+			expect(plugin.all().map(cue => cue.payload.text)).toEqual(['Second track']);
+			expect(loadedCounts).toEqual([1]);
+		});
+
 		it('resolves item.lyricsUrl, fetches, and parses through the built-in LRC parser', async () => {
 			const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(lrcResponse(TWO_CUE_LRC));
 			const { player, plugin } = await makePlayerWithLyrics();
