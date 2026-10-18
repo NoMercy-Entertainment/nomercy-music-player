@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2.2.6] — 2026-10-18
+
+### Fixed
+
+- Core 2.2.6: the 50 fixes listed in the core changelog.
+- Volume changes now apply during a crossfade curve fade.
+- After an element crossfade the audio graph is mounted again, and the HLS handle moves to the incoming element.
+- The secondary element of a crossfade loads with auth.
+- Lyrics ignore a stale track fetch that resolves after the track changed.
+
 ## [2.2.5] — 2026-10-08
 
 ### Fixed
