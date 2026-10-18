@@ -6,6 +6,7 @@
 //  SPDX-License-Identifier: Apache-2.0
 // -----------------------------------------------------------------------------
 
+import type { HlsHandle } from '@nomercy-entertainment/nomercy-player-core';
 import type {
 	BackendEventPayload,
 	BackendLoaderState,
@@ -106,6 +107,7 @@ export class WebAudioBackend
 	private _secondarySource?: MediaElementAudioSourceNode;
 	private _secondaryGain?: GainNode;
 	private _secondaryAnalyser?: AnalyserNode;
+	private _secondaryHls?: HlsHandle;
 
 	constructor(container?: HTMLElement, opts?: { audioContext?: AudioContext }) {
 		const resolved = WebAudioBackend.resolveElement(container);
@@ -519,9 +521,9 @@ export class WebAudioBackend
 					const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 					if (useHlsJs && hlsMod) {
-						attachHlsOrFallback(hlsMod.default, el, url, headerValue, {
+						this._secondaryHls = attachHlsOrFallback(hlsMod.default, el, url, headerValue, {
 							xhrSetup: createAuthorizationXhrSetup(this._authHeaderProvider),
-						});
+						}) ?? undefined;
 					}
 					else {
 						el.src = appendAuthTokenParam(url, headerValue);
@@ -541,6 +543,10 @@ export class WebAudioBackend
 	 * disconnect and release all secondary resources. Idempotent.
 	 */
 	disposeSecondary(): void {
+		if (this._secondaryHls) {
+			destroyHlsInstance(this._secondaryHls);
+			this._secondaryHls = undefined;
+		}
 		const gain = this._secondaryGain;
 		const source = this._secondarySource;
 		const analyser = this._secondaryAnalyser;
@@ -720,6 +726,10 @@ export class WebAudioBackend
 
 		// 4. Promote secondary fields to primary.
 		this.element = secondaryEl;
+		if (this.hlsInstance)
+			destroyHlsInstance(this.hlsInstance);
+		this.hlsInstance = this._secondaryHls;
+		this._secondaryHls = undefined;
 		this.sourceNode = this._secondarySource;
 		this.gainNode = this._secondaryGain;
 		this.analyserNode = this._secondaryAnalyser;
