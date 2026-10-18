@@ -54,6 +54,7 @@ export class AudioElementBackend
 
 	// ── Crossfade secondary ──────────────────────────────────────────────────
 	private _secondary?: HTMLAudioElement;
+	private _secondaryHls?: HlsHandle;
 	private _secondaryVol: number = 0;
 
 	constructor(container?: HTMLElement, opts?: { element?: HTMLAudioElement }) {
@@ -398,6 +399,9 @@ export class AudioElementBackend
 		el.volume = 0;
 		this._secondary = el;
 		this._secondaryVol = 0;
+		const useHlsJs = isHls(url) && !supportsNativeHls(el);
+		const headerValue = this._authHeaderProvider?.(url);
+		const hlsMod = useHlsJs ? await import('hls.js') : undefined;
 
 		await new Promise<void>((resolve, reject) => {
 			const onMeta = (): void => {
@@ -414,13 +418,28 @@ export class AudioElementBackend
 			};
 			el.addEventListener('loadedmetadata', onMeta, { once: true });
 			el.addEventListener('error', onErr, { once: true });
-			el.src = url;
-			el.load();
+			if (useHlsJs && hlsMod) {
+				this._secondaryHls = attachHlsOrFallback(hlsMod.default, el, url, headerValue, {
+					autoStartLoad: true,
+					enableWorker: true,
+					lowLatencyMode: false,
+					enableCEA708Captions: true,
+					xhrSetup: createAuthorizationXhrSetup(this._authHeaderProvider),
+				}) ?? undefined;
+			}
+			else {
+				el.src = appendAuthTokenParam(url, headerValue);
+				el.load();
+			}
 		});
 	}
 
 	/** Pause + remove the secondary element and clear the reference. Idempotent. */
 	disposeSecondary(): void {
+		if (this._secondaryHls) {
+			destroyHlsInstance(this._secondaryHls);
+			this._secondaryHls = undefined;
+		}
 		if (!this._secondary)
 			return;
 		try {
@@ -514,6 +533,10 @@ export class AudioElementBackend
 		}
 
 		this.element = secondary;
+		if (this.hlsInstance)
+			destroyHlsInstance(this.hlsInstance);
+		this.hlsInstance = this._secondaryHls;
+		this._secondaryHls = undefined;
 		this.ownsElement = true;
 		this._secondary = undefined;
 		this._secondaryVol = 0;
