@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+## [2.2.7] — 2026-10-19
+
+### Fixed
+
+- `stop()` releases the secondary audio element, so no second track keeps playing after stop (#31).
+
+### Changed
+
+- Pin `@nomercy-entertainment/nomercy-player-core` 2.2.7.
+
 ## [2.2.6] — 2026-10-18
 
 ### Fixed
