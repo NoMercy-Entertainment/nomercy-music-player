@@ -249,6 +249,11 @@ export class WebAudioBackend
 		});
 	}
 
+	override stop(): void {
+		this.disposeSecondary();
+		super.stop();
+	}
+
 	unload(): void {
 		this.disposeSecondary();
 		try {
