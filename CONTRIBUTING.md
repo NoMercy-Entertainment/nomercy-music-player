@@ -13,11 +13,12 @@ Thanks for your interest in `@nomercy-entertainment/nomercy-music-player`. This 
 ```bash
 git clone https://github.com/NoMercy-Entertainment/nomercy-music-player.git
 cd nomercy-music-player
-npm install
-npm test          # vitest run — unit tests must pass
-npm run test:e2e  # Playwright real-browser e2e suite
-npm run typecheck # tsc --noEmit
-npm run build     # writes dist/
+corepack enable
+yarn install
+yarn test          # vitest run — unit tests must pass
+yarn test:e2e      # Playwright real-browser e2e suite
+yarn typecheck     # tsc --noEmit
+yarn build         # writes dist/
 ```
 
 ## Pull requests
@@ -25,7 +26,7 @@ npm run build     # writes dist/
 - Branch off `master`. Feature branches: `feat/<short-description>`. Fixes: `fix/<short-description>`.
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `perf`, `ci`). Imperative, lowercase subject, no trailing period.
 - Tests required for new features. Bug fixes should include a regression test.
-- Run `npm run lint:fix` before pushing. CI rejects lint failures.
+- Run `yarn lint:fix` before pushing. CI rejects lint failures.
 - No `Co-Authored-By` trailers unless we paired live.
 
 ## Plugin contributions

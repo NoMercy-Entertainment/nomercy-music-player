@@ -10,7 +10,11 @@ yarn-error.log*
 .idea/
 *.log
 .DS_Store
-yarn.lock
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/plugins
+.pnp.*
 
 /dist
 /build

@@ -23,7 +23,7 @@ export default defineConfig({
 		headless: true,
 	},
 	webServer: {
-		command: 'npx vite --port 5504 --force',
+		command: 'yarn vite --port 5504 --force',
 		port: 5504,
 		reuseExistingServer: !process.env.CI,
 	},

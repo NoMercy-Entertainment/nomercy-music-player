@@ -46,7 +46,7 @@ what's specific to music.
 - Plugins surface errors only via `this.throw({ ... })` — never `this.player.emit('error', ...)` directly.
 - Plugin teardown is enforced by core's leak harness — runs in CI on every plugin.
 - Artwork reads `item.image` first (cross-library canonical field on `BasePlaylistItem`), `item.cover` as a back-compat fallback. `cover` stays on `MusicPlaylistItem` for existing consumers but is legacy — new code populates `image`.
-- Run `npm run typecheck` and `npm test` before committing changes.
+- Run `yarn typecheck` and `yarn test` before committing changes.
 
 ## Conventions locked in this branch
 
