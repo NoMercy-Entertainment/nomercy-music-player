@@ -115,8 +115,7 @@
 		"lint:fix": "eslint . --fix --max-warnings 0",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"pretest:e2e": "node scripts/generate-e2e-fixtures.mjs",
-		"test:e2e": "playwright test",
+		"test:e2e": "node scripts/generate-e2e-fixtures.mjs && playwright test",
 		"test:e2e:report": "playwright show-report reports/playwright",
 		"prepublishOnly": "yarn build:all"
 	},
