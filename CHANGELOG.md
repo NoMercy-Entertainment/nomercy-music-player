@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.2.9] — 2026-10-23
+
+### Changed
+
+- Version-only release to keep the trio at one version with core 2.2.9 and video-player 2.2.9.
+
 ## [2.2.7] — 2026-10-19
 
 ### Fixed
