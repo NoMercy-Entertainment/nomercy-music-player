@@ -13,6 +13,7 @@
  * missing re-export or a broken barrel fails here before it can ship.
  */
 
+import type { GpuSurfaceOptions } from '../plugins/index';
 import type {
 	AudioBackendFactory,
 	CrossfadeOptions,
@@ -50,6 +51,8 @@ import {
 	CastSenderPlugin,
 	embedPlugin,
 	equalizerPlugin,
+	FrameDataTexture,
+	GpuSurface,
 	keyHandlerPlugin,
 	KeyHandlerPlugin,
 	LinearPlaylistGenerator,
@@ -183,6 +186,14 @@ describe('subpath-exports', () => {
 			expect(typeof mixerPlugin).toBe('function');
 			expect(typeof spectrumPlugin).toBe('function');
 			expect(typeof VisualizationPlugin).toBe('function');
+		});
+
+		it('re-exports the kit GPU surface and frame data texture', () => {
+			const options: GpuSurfaceOptions = { scale: 1 };
+
+			expect(options.scale).toBe(1);
+			expect(typeof GpuSurface).toBe('function');
+			expect(typeof FrameDataTexture).toBe('function');
 		});
 
 		it('re-exports the kit embed / message / tab-leader plugins', () => {
