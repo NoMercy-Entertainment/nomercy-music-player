@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-10-26
+
+### Added
+
+- The plugin kit re-exports `GpuSurface`, `FrameDataTexture` and `GpuSurfaceOptions` from core 2.3.0, so a music visualization can draw with WebGL2.
+
 ## [2.2.9] — 2026-10-23
 
 ### Changed

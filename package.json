@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.2.9",
+	"version": "2.3.0",
 	"packageManager": "yarn@4.18.1",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
@@ -120,7 +120,7 @@
 		"prepublishOnly": "yarn build:all"
 	},
 	"dependencies": {
-		"@nomercy-entertainment/nomercy-player-core": "2.2.9"
+		"@nomercy-entertainment/nomercy-player-core": "2.3.0"
 	},
 	"devDependencies": {
 		"@antfu/eslint-config": "^9.0.0",
