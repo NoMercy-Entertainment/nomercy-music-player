@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+## [2.3.1] — 2026-10-27
+
+### Fixed
+
+- A finished crossfade no longer loads the incoming track again, which restarted it or, after a queue change during the fade, played another song.
+- After a crossfade the player keeps publishing `time`, so position listeners (and a Connect server's watchdog) keep receiving it.
+- The outgoing track ending during a crossfade no longer ends the player and advances the queue.
+
 ## [2.3.0] — 2026-10-26
 
 ### Added

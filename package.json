@@ -1,7 +1,7 @@
 {
 	"name": "@nomercy-entertainment/nomercy-music-player",
 	"type": "module",
-	"version": "2.3.0",
+	"version": "2.3.1",
 	"packageManager": "yarn@4.18.1",
 	"description": "Headless, plugin-driven music player engine. HLS-ready, crossfade-capable, externally-orchestratable, leak-tested.",
 	"author": {
