@@ -658,11 +658,12 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 			throw err;
 		}
 
-		// Advance the cursor so `item()` reflects the new item. The setter
-		// overload emits the `item` event, which downstream plugins
-		// (mediaSession, lyrics, autoAdvance) listen to. `current` is the old
-		// name and is warned about rather than emitted.
-		this.item?.(targetItem.id ?? targetItem);
+		// Cursor only, not the `item()` setter: the setter loads, and the swapped
+		// element already plays the incoming track.
+		const state = this as unknown as { _queueList: { setCurrent: (target: T | string | number) => void }; _mountedItemId?: string | number };
+		// Mounted first: until it matches the cursor, every position is dropped as stale.
+		state._mountedItemId = targetItem.id;
+		state._queueList.setCurrent(targetItem.id ?? targetItem);
 
 		this._isTransitioning = false;
 		this.emit('crossfadeComplete', { item: targetItem });

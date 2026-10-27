@@ -454,7 +454,7 @@ describe('NMMusicPlayer.crossfadeTo() — item cursor update', () => {
 		document.body.innerHTML = '';
 	});
 
-	it('calls item() setter with the incoming track after crossfade completes', async () => {
+	it('moves the cursor to the incoming track after crossfade completes', async () => {
 		const div = document.getElementById('cursor-test')!;
 		const player = new NMMusicPlayer(div.id);
 		player.setup({});
@@ -467,19 +467,9 @@ describe('NMMusicPlayer.crossfadeTo() — item cursor update', () => {
 		const trackB: MusicPlaylistItem = { id: 'b', name: 'Track B', url: 'http://test/b.mp3' };
 		player.queue([trackA, trackB]);
 
-		// Spy on the item setter overload (call with argument sets the cursor).
-		const itemSpy = vi.spyOn(player, 'item');
-
 		await player.crossfadeTo(trackB);
 
-		// item() must have been called with the incoming track's id (or the track itself
-		// when id is absent) — this is the cursor-update call that notifies downstream plugins.
-		const setterCalls = itemSpy.mock.calls.filter(args => args.length > 0);
-		expect(setterCalls.length).toBeGreaterThan(0);
-
-		// The argument passed is trackB.id or trackB itself.
-		const firstArg = setterCalls[0]![0];
-		expect(firstArg === trackB.id || firstArg === trackB).toBe(true);
+		expect(player.item()?.id).toBe(trackB.id);
 	});
 
 	it('emits the item event that downstream plugins (mediaSession, lyrics) listen to', async () => {
