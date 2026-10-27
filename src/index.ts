@@ -486,6 +486,9 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		});
 
 		instance.on('ended', () => {
+			// The outgoing track of a crossfade may end before the swap; the incoming one plays on.
+			if (this._isTransitioning)
+				return;
 			if (internals._phase !== 'ended') {
 				internals._transitionPhase('ended');
 			}
