@@ -507,7 +507,7 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		// Live config, not `options.auth`: setup seeds it and `player.auth()`
 		// updates it, so a rule set after setup reaches media requests too.
 		instance.setAuthHeaderProvider?.((url: string) =>
-			this.auth()?.mediaAuthorization?.(url));
+			this._mediaAuthorization(url));
 
 		// AudioElementBackend has no audioContext(); only WebAudioBackend does.
 		// Registering it here keeps AudioGraphPlugin on the one shared context.
@@ -751,6 +751,9 @@ export class NMMusicPlayer<T extends MusicPlaylistItem = MusicPlaylistItem>
 		(partial: Partial<AuthConfig>): void;
 		(clear: null): void;
 	};
+
+	/** @internal */
+	declare _mediaAuthorization: (url: string) => string | undefined;
 
 	declare refreshAuth: () => Promise<void>;
 	declare resolveUrl: (url: string, category?: UrlCategory) => Promise<ResolvedUrl>;
