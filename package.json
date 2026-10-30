@@ -130,7 +130,7 @@
 		"@vitest/coverage-v8": "^4.1.11",
 		"@vitest/ui": "^4.1.11",
 		"eslint": "^10.4.0",
-		"happy-dom": "^20.9.0",
+		"happy-dom": "^21.0.4",
 		"hls.js": "^1.6.16",
 		"playwright": "^1.60.0",
 		"tsc-alias": "^1.8.17",
