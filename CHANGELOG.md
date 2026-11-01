@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.5.0] — 2026-11-01
+
+### Changed
+
+- Pin `@nomercy-entertainment/nomercy-player-core` 2.5.0 (the trio releases at one version). Dev dependency `happy-dom` 21.0.4 clears GHSA-834v-8h66-3h79 and GHSA-c8p4-j97h-3vg8.
+
 ## [2.4.0] — 2026-10-28
 
 ### Changed

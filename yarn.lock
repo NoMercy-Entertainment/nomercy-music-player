@@ -548,7 +548,7 @@ __metadata:
   dependencies:
     "@antfu/eslint-config": "npm:^9.0.0"
     "@nomercy-entertainment/eslint-plugin-player": "npm:^0.3.0"
-    "@nomercy-entertainment/nomercy-player-core": "npm:2.4.0"
+    "@nomercy-entertainment/nomercy-player-core": "npm:2.5.0"
     "@playwright/test": "npm:^1.60.0"
     "@types/node": "npm:^25.9.0"
     "@vitest/coverage-v8": "npm:^4.1.11"
@@ -565,12 +565,12 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@nomercy-entertainment/nomercy-player-core@npm:2.4.0":
-  version: 2.4.0
-  resolution: "@nomercy-entertainment/nomercy-player-core@npm:2.4.0"
+"@nomercy-entertainment/nomercy-player-core@npm:2.5.0":
+  version: 2.5.0
+  resolution: "@nomercy-entertainment/nomercy-player-core@npm:2.5.0"
   dependencies:
     hls.js: "npm:^1.6.0"
-  checksum: 10c0/f5f9eec95c12561fbc887f0e797e800b8a2c861a0f9954c05f858c390864df8c50a9ed69b54629b162e118e5f997eed874a6742483f57b5dd6bec36ddc751157
+  checksum: 10c0/424477f5a6cf76a534a3897564a4a2f8b0ee8691b0a046b63eec89fb68cc7ec729a64c1cab80b0a81c53fd5ba47aa63b5a1ab8e2d4e8dbd4db8ee13dff09ef26
   languageName: node
   linkType: hard
 
