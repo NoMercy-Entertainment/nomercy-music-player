@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.6.0] — 2026-11-01
+
+### Changed
+
+- Needs `@nomercy-entertainment/nomercy-player-core` 2.6.0, so `next()` skips a missing item (404, 410), refreshes once on 401 and raises `fatal` on 5xx; no music-player code changed.
+
 ## [2.5.0] — 2026-11-01
 
 ### Changed
