@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [2.6.1] — 2026-11-09
+
+### Changed
+
+- Needs `@nomercy-entertainment/nomercy-player-core` 2.6.1: `pause` is emitted when the browser refuses a `play`, so the play button returns to paused after an autoplay refusal.
+
 ## [2.6.0] — 2026-11-01
 
 ### Changed
